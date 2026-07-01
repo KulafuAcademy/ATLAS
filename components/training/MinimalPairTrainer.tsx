@@ -59,6 +59,7 @@ export function MinimalPairTrainer({
 
   function speak(word: string) {
     if (!("speechSynthesis" in window)) {
+      playIncorrectSound();
       setMessage("Speech playback is not supported in this browser.");
       return;
     }
@@ -85,6 +86,7 @@ export function MinimalPairTrainer({
 
   function answerQuiz(pair: MinimalPair, answer: QuizTarget) {
     if (!activeQuiz || activeQuiz.pairId !== pair.id) {
+      playIncorrectSound();
       setMessage("Click Quiz first, then choose A or B.");
       return;
     }
@@ -106,11 +108,13 @@ export function MinimalPairTrainer({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      playIncorrectSound();
       setMessage("Recording is not supported in this browser.");
       return;
     }
 
     if (mediaRecorderRef.current?.state === "recording") {
+      playIncorrectSound();
       setMessage("Stop the current recording first.");
       return;
     }
@@ -143,6 +147,7 @@ export function MinimalPairTrainer({
         setRecordingUrl(nextRecordingUrl);
         setRecordingTarget(null);
         stopRecordingStream();
+        playCorrectSound();
         setMessage(`Recording saved for "${word}". Use Playback to review it.`);
       });
 
@@ -152,6 +157,7 @@ export function MinimalPairTrainer({
     } catch {
       setRecordingTarget(null);
       stopRecordingStream();
+      playIncorrectSound();
       setMessage("Microphone access was not available.");
     }
   }
@@ -163,11 +169,13 @@ export function MinimalPairTrainer({
       return;
     }
 
+    playIncorrectSound();
     setMessage("No active recording to stop.");
   }
 
   function playRecording() {
     if (!recordingUrl) {
+      playIncorrectSound();
       setMessage("Record your pronunciation first.");
       return;
     }
@@ -176,6 +184,16 @@ export function MinimalPairTrainer({
 
     void audio.play();
     setMessage("Playing your recording.");
+  }
+
+  function markPronunciationGood() {
+    playCorrectSound();
+    setMessage("Nice. Keep that sound.");
+  }
+
+  function markPronunciationRetry() {
+    playIncorrectSound();
+    setMessage("Try again. Record once more and compare it.");
   }
 
   return (
@@ -254,6 +272,18 @@ export function MinimalPairTrainer({
                 <ActionButton disabled={!recordingUrl} onClick={playRecording}>
                   Playback
                 </ActionButton>
+                <ActionButton
+                  disabled={!recordingUrl}
+                  onClick={markPronunciationGood}
+                >
+                  Sounds Good
+                </ActionButton>
+                <ActionButton
+                  disabled={!recordingUrl}
+                  onClick={markPronunciationRetry}
+                >
+                  Try Again
+                </ActionButton>
               </TestGroup>
             </div>
           </article>
@@ -286,7 +316,7 @@ function TestGroup({
       <p className="text-xs uppercase tracking-[0.22em] text-white/35">
         {title}
       </p>
-      <div className="grid gap-3 sm:grid-cols-4">{children}</div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
     </div>
   );
 }
