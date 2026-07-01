@@ -51,6 +51,16 @@ type ActiveQuiz = {
   target: QuizTarget;
 } | null;
 
+type FeedbackType = "listen" | "listening" | "pronunciation";
+type FeedbackTone = "neutral" | "success" | "error";
+
+type CardFeedback = {
+  pairId: string;
+  type: FeedbackType;
+  tone: FeedbackTone;
+  text: string;
+} | null;
+
 type MinimalPairTrainerProps = {
   title: string;
   description: string;
@@ -67,6 +77,7 @@ export function MinimalPairTrainer({
   );
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
+  const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -75,10 +86,35 @@ export function MinimalPairTrainer({
     };
   }, []);
 
-  function speak(word: string) {
+  function showFeedback(
+    pairId: string,
+    type: FeedbackType,
+    tone: FeedbackTone,
+    text: string,
+  ) {
+    setCardFeedback({ pairId, type, tone, text });
+    setMessage(text);
+  }
+
+  function getFeedback(pairId: string, type: FeedbackType) {
+    if (cardFeedback?.pairId !== pairId || cardFeedback.type !== type) {
+      return null;
+    }
+
+    return cardFeedback;
+  }
+
+  function speak(word: string, pairId?: string) {
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
-      setMessage("このブラウザでは音声再生に対応していません。");
+      const text = "このブラウザでは音声再生に対応していません。";
+
+      if (pairId) {
+        showFeedback(pairId, "listen", "error", text);
+      } else {
+        setMessage(text);
+      }
+
       return;
     }
 
@@ -90,7 +126,13 @@ export function MinimalPairTrainer({
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    setMessage(`再生中: ${word}`);
+    const text = `再生中: ${word}`;
+
+    if (pairId) {
+      showFeedback(pairId, "listen", "neutral", text);
+    } else {
+      setMessage(text);
+    }
   }
 
   function startQuiz(pair: MinimalPair) {
@@ -98,23 +140,31 @@ export function MinimalPairTrainer({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word);
-    setMessage("どちらの単語に聞こえましたか？");
+    speak(word, pair.id);
+    showFeedback(pair.id, "listening", "neutral", "どちらの単語に聞こえましたか？");
   }
 
   function answerQuiz(pair: MinimalPair, answer: QuizTarget) {
     if (!activeQuiz || activeQuiz.pairId !== pair.id) {
       playIncorrectSound();
-      setMessage("先に「クイズ再生」を押してから、AかBを選んでください。");
+      showFeedback(
+        pair.id,
+        "listening",
+        "error",
+        "先に「クイズ再生」を押してから、AかBを選んでください。",
+      );
       return;
     }
 
     if (answer === activeQuiz.target) {
       playCorrectSound();
-      setMessage("正解です。ピンポーン。");
+      showFeedback(pair.id, "listening", "success", "正解です。ピンポーン。");
     } else {
       playIncorrectSound();
-      setMessage(
+      showFeedback(
+        pair.id,
+        "listening",
+        "error",
         `惜しいです。正解は${activeQuiz.target}でした。`,
       );
     }
@@ -129,7 +179,12 @@ export function MinimalPairTrainer({
 
     if (!SpeechRecognitionConstructor) {
       playIncorrectSound();
-      setMessage("このブラウザでは発音チェックに対応していません。Chrome / Edgeで試してください。");
+      showFeedback(
+        pair.id,
+        "pronunciation",
+        "error",
+        "このブラウザでは発音チェックに対応していません。Chrome / Edgeで試してください。",
+      );
       return;
     }
 
@@ -143,7 +198,12 @@ export function MinimalPairTrainer({
     recognition.maxAlternatives = 3;
     speechRecognitionRef.current = recognition;
     setAiCheckTarget(word);
-    setMessage(`「${word}」を発音してください。聞き取れたら判定します。`);
+    showFeedback(
+      pair.id,
+      "pronunciation",
+      "neutral",
+      `「${word}」を発音してください。聞き取れたら判定します。`,
+    );
 
     recognition.onresult = (event) => {
       const transcripts = getSpeechRecognitionTranscripts(event);
@@ -154,10 +214,20 @@ export function MinimalPairTrainer({
 
       if (isCorrect) {
         playCorrectSound();
-        setMessage(`正解です。聞こえた単語: "${heardText}"`);
+        showFeedback(
+          pair.id,
+          "pronunciation",
+          "success",
+          `正解です。聞こえた単語: "${heardText}"`,
+        );
       } else {
         playIncorrectSound();
-        setMessage(`もう一度。聞こえた単語: "${heardText}" / 目標: "${word}"`);
+        showFeedback(
+          pair.id,
+          "pronunciation",
+          "error",
+          `もう一度。聞こえた単語: "${heardText}" / 目標: "${word}"`,
+        );
       }
 
       setAiCheckTarget(null);
@@ -166,14 +236,24 @@ export function MinimalPairTrainer({
 
     recognition.onerror = () => {
       playIncorrectSound();
-      setMessage("聞き取れませんでした。もう一度試してください。");
+      showFeedback(
+        pair.id,
+        "pronunciation",
+        "error",
+        "聞き取れませんでした。もう一度試してください。",
+      );
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
     };
 
     recognition.onnomatch = () => {
       playIncorrectSound();
-      setMessage(`「${word}」として認識できませんでした。もう一度試してください。`);
+      showFeedback(
+        pair.id,
+        "pronunciation",
+        "error",
+        `「${word}」として認識できませんでした。もう一度試してください。`,
+      );
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
     };
@@ -186,7 +266,12 @@ export function MinimalPairTrainer({
       recognition.start();
     } catch {
       playIncorrectSound();
-      setMessage("発音チェックを開始できませんでした。もう一度試してください。");
+      showFeedback(
+        pair.id,
+        "pronunciation",
+        "error",
+        "発音チェックを開始できませんでした。もう一度試してください。",
+      );
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
     }
@@ -235,11 +320,12 @@ export function MinimalPairTrainer({
                 step="1"
                 title="音を確認"
                 description="まずはAとBの違いを耳で確認します。"
+                feedback={getFeedback(pair.id, "listen")}
               >
-                <ActionButton onClick={() => speak(pair.wordA)}>
+                <ActionButton onClick={() => speak(pair.wordA, pair.id)}>
                   Aを聞く
                 </ActionButton>
-                <ActionButton onClick={() => speak(pair.wordB)}>
+                <ActionButton onClick={() => speak(pair.wordB, pair.id)}>
                   Bを聞く
                 </ActionButton>
               </TestGroup>
@@ -249,6 +335,7 @@ export function MinimalPairTrainer({
                 title="聞き取りテスト"
                 description="ランダム再生を聞いて、AかBを選びます。"
                 actionsClassName="grid gap-3"
+                feedback={getFeedback(pair.id, "listening")}
               >
                 <ActionButton intent="primary" onClick={() => startQuiz(pair)}>
                   クイズ再生
@@ -267,6 +354,7 @@ export function MinimalPairTrainer({
                 step="3"
                 title="発音テスト"
                 description="目標の単語を発音して、ブラウザAIで判定します。"
+                feedback={getFeedback(pair.id, "pronunciation")}
               >
                 <ActionButton
                   intent="primary"
@@ -307,12 +395,14 @@ function TestGroup({
   title,
   description,
   actionsClassName = "grid gap-3 sm:grid-cols-2 xl:grid-cols-3",
+  feedback,
   children,
 }: {
   step: string;
   title: string;
   description: string;
   actionsClassName?: string;
+  feedback: CardFeedback;
   children: ReactNode;
 }) {
   return (
@@ -326,8 +416,28 @@ function TestGroup({
           <p className="text-sm leading-6 text-white/50">{description}</p>
         </div>
         <div className={actionsClassName}>{children}</div>
+        {feedback ? <FeedbackMessage feedback={feedback} /> : null}
       </div>
     </div>
+  );
+}
+
+function FeedbackMessage({ feedback }: { feedback: NonNullable<CardFeedback> }) {
+  const feedbackClassName =
+    feedback.tone === "success"
+      ? "border-white bg-white text-black"
+      : feedback.tone === "error"
+        ? "border-white/20 bg-white/[0.04] text-white"
+        : "border-white/10 bg-white/[0.02] text-white/70";
+
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      className={`border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
+    >
+      {feedback.text}
+    </p>
   );
 }
 
