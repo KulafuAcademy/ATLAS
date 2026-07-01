@@ -1,8 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 import type { MinimalPair } from "@/types/training";
+
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
+type QuizTarget = "A" | "B";
+
+type ActiveQuiz = {
+  pairId: string;
+  target: QuizTarget;
+} | null;
 
 type MinimalPairTrainerProps = {
   title: string;
@@ -18,6 +32,7 @@ export function MinimalPairTrainer({
   const [message, setMessage] = useState(
     "Choose a word to listen, then practice it aloud.",
   );
+  const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
 
   function speak(word: string) {
     if (!("speechSynthesis" in window)) {
@@ -36,8 +51,38 @@ export function MinimalPairTrainer({
     setMessage(`Playing: ${word}`);
   }
 
-  function showPracticeMessage() {
-    setMessage("Voice analysis will be added later.");
+  function startQuiz(pair: MinimalPair) {
+    const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
+    const word = target === "A" ? pair.wordA : pair.wordB;
+
+    setActiveQuiz({ pairId: pair.id, target });
+    speak(word);
+    setMessage("Which word did you hear?");
+  }
+
+  function answerQuiz(pair: MinimalPair, answer: QuizTarget) {
+    if (!activeQuiz || activeQuiz.pairId !== pair.id) {
+      setMessage("Click Quiz first, then choose A or B.");
+      return;
+    }
+
+    if (answer === activeQuiz.target) {
+      playCorrectSound();
+      setMessage("Correct! Ping-pong.");
+    } else {
+      playIncorrectSound();
+      setMessage(
+        `Try again. The answer was Word ${activeQuiz.target}.`,
+      );
+    }
+
+    setActiveQuiz(null);
+  }
+
+  function startPronunciationTest(pair: MinimalPair, target: QuizTarget) {
+    const word = target === "A" ? pair.wordA : pair.wordB;
+
+    setMessage(`Pronunciation test for "${word}" will use voice analysis later.`);
   }
 
   return (
@@ -78,16 +123,36 @@ export function MinimalPairTrainer({
               </div>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <ActionButton onClick={() => speak(pair.wordA)}>
-                Listen A
-              </ActionButton>
-              <ActionButton onClick={() => speak(pair.wordB)}>
-                Listen B
-              </ActionButton>
-              <ActionButton onClick={showPracticeMessage}>
-                Practice
-              </ActionButton>
+            <div className="mt-8 space-y-5">
+              <TestGroup title="Listen">
+                <ActionButton onClick={() => speak(pair.wordA)}>
+                  Listen A
+                </ActionButton>
+                <ActionButton onClick={() => speak(pair.wordB)}>
+                  Listen B
+                </ActionButton>
+              </TestGroup>
+
+              <TestGroup title="Listening Test">
+                <ActionButton onClick={() => startQuiz(pair)}>
+                  Play Quiz
+                </ActionButton>
+                <ActionButton onClick={() => answerQuiz(pair, "A")}>
+                  Answer A
+                </ActionButton>
+                <ActionButton onClick={() => answerQuiz(pair, "B")}>
+                  Answer B
+                </ActionButton>
+              </TestGroup>
+
+              <TestGroup title="Pronunciation Test">
+                <ActionButton onClick={() => startPronunciationTest(pair, "A")}>
+                  Practice A
+                </ActionButton>
+                <ActionButton onClick={() => startPronunciationTest(pair, "B")}>
+                  Practice B
+                </ActionButton>
+              </TestGroup>
             </div>
           </article>
         ))}
@@ -103,6 +168,23 @@ function WordLabel({ label, word }: { label: string; word: string }) {
         Word {label}
       </p>
       <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
+    </div>
+  );
+}
+
+function TestGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs uppercase tracking-[0.22em] text-white/35">
+        {title}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">{children}</div>
     </div>
   );
 }
@@ -123,4 +205,60 @@ function ActionButton({
       {children}
     </button>
   );
+}
+
+function playCorrectSound() {
+  const audioContext = createAudioContext();
+
+  if (!audioContext) {
+    return;
+  }
+
+  playTone(audioContext, 660, 0, 0.12, "sine");
+  playTone(audioContext, 880, 0.13, 0.16, "sine");
+}
+
+function playIncorrectSound() {
+  const audioContext = createAudioContext();
+
+  if (!audioContext) {
+    return;
+  }
+
+  playTone(audioContext, 160, 0, 0.28, "sawtooth");
+}
+
+function createAudioContext() {
+  const AudioContextConstructor =
+    window.AudioContext ?? window.webkitAudioContext;
+
+  if (!AudioContextConstructor) {
+    return null;
+  }
+
+  return new AudioContextConstructor();
+}
+
+function playTone(
+  audioContext: AudioContext,
+  frequency: number,
+  startDelay: number,
+  duration: number,
+  type: OscillatorType,
+) {
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const startsAt = audioContext.currentTime + startDelay;
+  const endsAt = startsAt + duration;
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startsAt);
+  gain.gain.setValueAtTime(0.0001, startsAt);
+  gain.gain.exponentialRampToValueAtTime(0.16, startsAt + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(startsAt);
+  oscillator.stop(endsAt);
 }
