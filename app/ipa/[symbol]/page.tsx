@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { getRelatedSymbols, getSymbolBySlug } from "@/lib/ipa";
+import { getLearningStepBySlug, getNextLearningSymbol } from "@/lib/learning";
 
 type IpaDetailPageProps = {
   params: Promise<{
@@ -20,6 +21,8 @@ export default async function IpaDetailPage({ params }: IpaDetailPageProps) {
 
   const backHref = ipaSymbol.category === "vowel" ? "/vowels" : "/consonants";
   const relatedSymbols = getRelatedSymbols(ipaSymbol);
+  const learningStep = getLearningStepBySlug(ipaSymbol.slug);
+  const nextLearningSymbol = getNextLearningSymbol(ipaSymbol.slug);
   const learningFocus =
     ipaSymbol.category === "vowel"
       ? [
@@ -40,6 +43,25 @@ export default async function IpaDetailPage({ params }: IpaDetailPageProps) {
         title={ipaSymbol.symbol}
         description={ipaSymbol.label}
       />
+
+      {learningStep ? (
+        <section className="grid gap-4 border border-white/10 p-5 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <p className="text-sm uppercase tracking-[0.24em] text-white/35">
+              Learning Path
+            </p>
+            <p className="mt-2 text-white">
+              Step {learningStep.position}: {learningStep.stage.title}
+            </p>
+          </div>
+          <Link
+            href="/learn"
+            className="text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/70"
+          >
+            View path
+          </Link>
+        </section>
+      ) : null}
 
       <section className="grid gap-8 border-t border-white/10 pt-10 lg:grid-cols-[0.85fr_1.15fr]">
         <div className="space-y-6">
@@ -133,12 +155,22 @@ export default async function IpaDetailPage({ params }: IpaDetailPageProps) {
       </section>
 
       <section className="border-t border-white/10 pt-10">
-        <Link
-          href={backHref}
-          className="inline-flex text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/70"
-        >
-          Back to {ipaSymbol.category}s
-        </Link>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            href={backHref}
+            className="inline-flex text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/70"
+          >
+            Back to {ipaSymbol.category}s
+          </Link>
+          {nextLearningSymbol ? (
+            <Link
+              href={`/ipa/${nextLearningSymbol.slug}`}
+              className="inline-flex text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/70"
+            >
+              Next: {nextLearningSymbol.symbol} {nextLearningSymbol.label}
+            </Link>
+          ) : null}
+        </div>
       </section>
     </div>
   );

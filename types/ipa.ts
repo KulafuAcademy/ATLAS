@@ -62,3 +62,12 @@ export type ConsonantSymbol = IpaSymbolBase & {
 };
 
 export type IpaSymbol = VowelSymbol | ConsonantSymbol;
+
+export type LearningLevel = "foundation" | "contrast" | "advanced";
+
+export type LearningStage = {
+  title: string;
+  level: LearningLevel;
+  description: string;
+  slugs: string[];
+};
