@@ -230,8 +230,12 @@ export function MinimalPairTrainer({
               </div>
             </div>
 
-            <div className="mt-8 space-y-5">
-              <TestGroup title="Listen">
+            <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
+              <TestGroup
+                step="1"
+                title="音を確認"
+                description="まずはAとBの違いを耳で確認します。"
+              >
                 <ActionButton onClick={() => speak(pair.wordA)}>
                   Aを聞く
                 </ActionButton>
@@ -240,8 +244,12 @@ export function MinimalPairTrainer({
                 </ActionButton>
               </TestGroup>
 
-              <TestGroup title="聞き取りテスト">
-                <ActionButton onClick={() => startQuiz(pair)}>
+              <TestGroup
+                step="2"
+                title="聞き取りテスト"
+                description="ランダム再生を聞いて、AかBを選びます。"
+              >
+                <ActionButton intent="primary" onClick={() => startQuiz(pair)}>
                   クイズ再生
                 </ActionButton>
                 <ActionButton onClick={() => answerQuiz(pair, "A")}>
@@ -252,14 +260,20 @@ export function MinimalPairTrainer({
                 </ActionButton>
               </TestGroup>
 
-              <TestGroup title="発音テスト">
+              <TestGroup
+                step="3"
+                title="発音テスト"
+                description="目標の単語を発音して、ブラウザAIで判定します。"
+              >
                 <ActionButton
+                  intent="primary"
                   disabled={Boolean(aiCheckTarget)}
                   onClick={() => startAiPronunciationCheck(pair, "A")}
                 >
                   Aを発音する
                 </ActionButton>
                 <ActionButton
+                  intent="primary"
                   disabled={Boolean(aiCheckTarget)}
                   onClick={() => startAiPronunciationCheck(pair, "B")}
                 >
@@ -286,18 +300,30 @@ function WordLabel({ label, word }: { label: string; word: string }) {
 }
 
 function TestGroup({
+  step,
   title,
+  description,
   children,
 }: {
+  step: string;
   title: string;
+  description: string;
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-3">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/35">
-        {title}
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
+    <div className="grid gap-4 border-b border-white/10 py-5 sm:grid-cols-[3rem_1fr]">
+      <div className="flex h-9 w-9 items-center justify-center border border-white/15 text-sm font-semibold text-white">
+        {step}
+      </div>
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className="text-sm leading-6 text-white/50">{description}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
@@ -305,18 +331,25 @@ function TestGroup({
 function ActionButton({
   children,
   disabled = false,
+  intent = "secondary",
   onClick,
 }: {
   children: string;
   disabled?: boolean;
+  intent?: "primary" | "secondary";
   onClick: () => void;
 }) {
+  const buttonClassName =
+    intent === "primary"
+      ? "h-11 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-white/85 focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25"
+      : "h-11 border border-white/15 px-3 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black focus:border-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/25 disabled:hover:bg-transparent disabled:hover:text-white/25";
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="h-11 border border-white/15 px-3 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black focus:border-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/25 disabled:hover:bg-transparent disabled:hover:text-white/25"
+      className={buttonClassName}
     >
       {children}
     </button>
