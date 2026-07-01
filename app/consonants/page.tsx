@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/common/PageHeader";
-import { ConsonantClassifiedList } from "@/components/ipa/IpaClassifiedList";
+import { FilterableIpaList } from "@/components/ipa/FilterableIpaList";
 import { getSymbolsByCategory } from "@/lib/ipa";
 
 export default function ConsonantsPage() {
@@ -10,9 +10,9 @@ export default function ConsonantsPage() {
       <PageHeader
         eyebrow="Consonants"
         title="English consonant sounds"
-        description="A classified view of consonant symbols by place and manner of articulation."
+        description="Search and filter consonant symbols by place, manner, voicing, and example words."
       />
-      <ConsonantClassifiedList symbols={consonants} />
+      <FilterableIpaList category="consonant" symbols={consonants} />
     </div>
   );
 }

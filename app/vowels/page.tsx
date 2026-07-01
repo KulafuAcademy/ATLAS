@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/common/PageHeader";
-import { VowelClassifiedList } from "@/components/ipa/IpaClassifiedList";
+import { FilterableIpaList } from "@/components/ipa/FilterableIpaList";
 import { getSymbolsByCategory } from "@/lib/ipa";
 
 export default function VowelsPage() {
@@ -10,9 +10,9 @@ export default function VowelsPage() {
       <PageHeader
         eyebrow="Vowels"
         title="English vowel sounds"
-        description="A classified view of vowel symbols by tongue backness and height."
+        description="Search and filter vowel symbols by tongue backness, height, and example words."
       />
-      <VowelClassifiedList symbols={vowels} />
+      <FilterableIpaList category="vowel" symbols={vowels} />
     </div>
   );
 }
