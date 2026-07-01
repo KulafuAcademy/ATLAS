@@ -63,40 +63,22 @@ export function MinimalPairTrainer({
   pairs,
 }: MinimalPairTrainerProps) {
   const [message, setMessage] = useState(
-    "Choose a word to listen, then practice it aloud.",
+    "まずは単語を聞いて、聞き取りか発音を試しましょう。",
   );
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
-  const [recordingTarget, setRecordingTarget] = useState<string | null>(null);
-  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingChunksRef = useRef<BlobPart[]>([]);
-  const recordingStreamRef = useRef<MediaStream | null>(null);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
     return () => {
-      if (recordingUrl) {
-        URL.revokeObjectURL(recordingUrl);
-      }
-
-      stopRecordingStream();
       speechRecognitionRef.current?.abort();
     };
-  }, [recordingUrl]);
-
-  function stopRecordingStream() {
-    recordingStreamRef.current?.getTracks().forEach((track) => {
-      track.stop();
-    });
-    recordingStreamRef.current = null;
-    mediaRecorderRef.current = null;
-  }
+  }, []);
 
   function speak(word: string) {
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
-      setMessage("Speech playback is not supported in this browser.");
+      setMessage("このブラウザでは音声再生に対応していません。");
       return;
     }
 
@@ -108,7 +90,7 @@ export function MinimalPairTrainer({
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    setMessage(`Playing: ${word}`);
+    setMessage(`再生中: ${word}`);
   }
 
   function startQuiz(pair: MinimalPair) {
@@ -117,118 +99,27 @@ export function MinimalPairTrainer({
 
     setActiveQuiz({ pairId: pair.id, target });
     speak(word);
-    setMessage("Which word did you hear?");
+    setMessage("どちらの単語に聞こえましたか？");
   }
 
   function answerQuiz(pair: MinimalPair, answer: QuizTarget) {
     if (!activeQuiz || activeQuiz.pairId !== pair.id) {
       playIncorrectSound();
-      setMessage("Click Quiz first, then choose A or B.");
+      setMessage("先に「クイズ再生」を押してから、AかBを選んでください。");
       return;
     }
 
     if (answer === activeQuiz.target) {
       playCorrectSound();
-      setMessage("Correct! Ping-pong.");
+      setMessage("正解です。ピンポーン。");
     } else {
       playIncorrectSound();
       setMessage(
-        `Try again. The answer was Word ${activeQuiz.target}.`,
+        `惜しいです。正解は${activeQuiz.target}でした。`,
       );
     }
 
     setActiveQuiz(null);
-  }
-
-  async function startPronunciationTest(pair: MinimalPair, target: QuizTarget) {
-    const word = target === "A" ? pair.wordA : pair.wordB;
-
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      playIncorrectSound();
-      setMessage("Recording is not supported in this browser.");
-      return;
-    }
-
-    if (mediaRecorderRef.current?.state === "recording") {
-      playIncorrectSound();
-      setMessage("Stop the current recording first.");
-      return;
-    }
-
-    try {
-      if (recordingUrl) {
-        URL.revokeObjectURL(recordingUrl);
-        setRecordingUrl(null);
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-
-      recordingChunksRef.current = [];
-      recordingStreamRef.current = stream;
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.addEventListener("dataavailable", (event) => {
-        if (event.data.size > 0) {
-          recordingChunksRef.current.push(event.data);
-        }
-      });
-
-      mediaRecorder.addEventListener("stop", () => {
-        const recordingBlob = new Blob(recordingChunksRef.current, {
-          type: mediaRecorder.mimeType || "audio/webm",
-        });
-        const nextRecordingUrl = URL.createObjectURL(recordingBlob);
-
-        setRecordingUrl(nextRecordingUrl);
-        setRecordingTarget(null);
-        stopRecordingStream();
-        setMessage(`Recording saved for "${word}". Use Playback to review it.`);
-      });
-
-      mediaRecorder.start();
-      setRecordingTarget(word);
-      setMessage(`Recording "${word}". Say it clearly, then press Stop.`);
-    } catch {
-      setRecordingTarget(null);
-      stopRecordingStream();
-      playIncorrectSound();
-      setMessage("Microphone access was not available.");
-    }
-  }
-
-  function stopPronunciationTest() {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-      setMessage("Stopping recording...");
-      return;
-    }
-
-    playIncorrectSound();
-    setMessage("No active recording to stop.");
-  }
-
-  function playRecording() {
-    if (!recordingUrl) {
-      playIncorrectSound();
-      setMessage("Record your pronunciation first.");
-      return;
-    }
-
-    const audio = new Audio(recordingUrl);
-
-    void audio.play();
-    setMessage("Playing your recording.");
-  }
-
-  function markPronunciationGood() {
-    playCorrectSound();
-    setMessage("Nice. Keep that sound.");
-  }
-
-  function markPronunciationRetry() {
-    playIncorrectSound();
-    setMessage("Try again. Record once more and compare it.");
   }
 
   function startAiPronunciationCheck(pair: MinimalPair, target: QuizTarget) {
@@ -238,7 +129,7 @@ export function MinimalPairTrainer({
 
     if (!SpeechRecognitionConstructor) {
       playIncorrectSound();
-      setMessage("AI check is not supported in this browser yet.");
+      setMessage("このブラウザでは発音チェックに対応していません。Chrome / Edgeで試してください。");
       return;
     }
 
@@ -252,7 +143,7 @@ export function MinimalPairTrainer({
     recognition.maxAlternatives = 3;
     speechRecognitionRef.current = recognition;
     setAiCheckTarget(word);
-    setMessage(`AI checking "${word}". Say the word now.`);
+    setMessage(`「${word}」を発音してください。聞き取れたら判定します。`);
 
     recognition.onresult = (event) => {
       const transcripts = getSpeechRecognitionTranscripts(event);
@@ -263,10 +154,10 @@ export function MinimalPairTrainer({
 
       if (isCorrect) {
         playCorrectSound();
-        setMessage(`Correct. Heard "${heardText}".`);
+        setMessage(`正解です。聞こえた単語: "${heardText}"`);
       } else {
         playIncorrectSound();
-        setMessage(`Try again. Heard "${heardText}", expected "${word}".`);
+        setMessage(`もう一度。聞こえた単語: "${heardText}" / 目標: "${word}"`);
       }
 
       setAiCheckTarget(null);
@@ -275,14 +166,14 @@ export function MinimalPairTrainer({
 
     recognition.onerror = () => {
       playIncorrectSound();
-      setMessage("AI check could not hear the word. Try again.");
+      setMessage("聞き取れませんでした。もう一度試してください。");
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
     };
 
     recognition.onnomatch = () => {
       playIncorrectSound();
-      setMessage(`Try again. I could not recognize "${word}".`);
+      setMessage(`「${word}」として認識できませんでした。もう一度試してください。`);
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
     };
@@ -295,7 +186,7 @@ export function MinimalPairTrainer({
       recognition.start();
     } catch {
       playIncorrectSound();
-      setMessage("AI check could not start. Try again.");
+      setMessage("発音チェックを開始できませんでした。もう一度試してください。");
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
     }
@@ -306,7 +197,7 @@ export function MinimalPairTrainer({
       <div className="flex flex-col gap-4 border-t border-white/10 pt-10 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-3">
           <p className="text-sm uppercase tracking-[0.28em] text-white/40">
-            First training section
+            First training
           </p>
           <h2 className="text-3xl font-semibold text-white md:text-4xl">
             {title}
@@ -342,64 +233,37 @@ export function MinimalPairTrainer({
             <div className="mt-8 space-y-5">
               <TestGroup title="Listen">
                 <ActionButton onClick={() => speak(pair.wordA)}>
-                  Listen A
+                  Aを聞く
                 </ActionButton>
                 <ActionButton onClick={() => speak(pair.wordB)}>
-                  Listen B
+                  Bを聞く
                 </ActionButton>
               </TestGroup>
 
-              <TestGroup title="Listening Test">
+              <TestGroup title="聞き取りテスト">
                 <ActionButton onClick={() => startQuiz(pair)}>
-                  Play Quiz
+                  クイズ再生
                 </ActionButton>
                 <ActionButton onClick={() => answerQuiz(pair, "A")}>
-                  Answer A
+                  Aだと思う
                 </ActionButton>
                 <ActionButton onClick={() => answerQuiz(pair, "B")}>
-                  Answer B
+                  Bだと思う
                 </ActionButton>
               </TestGroup>
 
-              <TestGroup title="Pronunciation Test">
-                <ActionButton onClick={() => startPronunciationTest(pair, "A")}>
-                  Record A
-                </ActionButton>
-                <ActionButton onClick={() => startPronunciationTest(pair, "B")}>
-                  Record B
-                </ActionButton>
-                <ActionButton
-                  disabled={!recordingTarget}
-                  onClick={stopPronunciationTest}
-                >
-                  Stop
-                </ActionButton>
-                <ActionButton disabled={!recordingUrl} onClick={playRecording}>
-                  Playback
-                </ActionButton>
-                <ActionButton
-                  disabled={!recordingUrl}
-                  onClick={markPronunciationGood}
-                >
-                  Self OK
-                </ActionButton>
-                <ActionButton
-                  disabled={!recordingUrl}
-                  onClick={markPronunciationRetry}
-                >
-                  Try Again
-                </ActionButton>
+              <TestGroup title="発音テスト">
                 <ActionButton
                   disabled={Boolean(aiCheckTarget)}
                   onClick={() => startAiPronunciationCheck(pair, "A")}
                 >
-                  AI Check A
+                  Aを発音する
                 </ActionButton>
                 <ActionButton
                   disabled={Boolean(aiCheckTarget)}
                   onClick={() => startAiPronunciationCheck(pair, "B")}
                 >
-                  AI Check B
+                  Bを発音する
                 </ActionButton>
               </TestGroup>
             </div>
@@ -414,7 +278,7 @@ function WordLabel({ label, word }: { label: string; word: string }) {
   return (
     <div className="space-y-2">
       <p className="text-xs uppercase tracking-[0.22em] text-white/35">
-        Word {label}
+        {label}
       </p>
       <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
     </div>
