@@ -2,4 +2,4 @@
 
 ATLAS is a foundation for an English IPA learning application.
 
-Version 0.7.0 adds a suggested learning path and next-step guidance while keeping pronunciation audio, quizzes, and learning logic intentionally out of scope.
+Version 0.8.0 adds English/Japanese display switching across the current ATLAS foundation while keeping pronunciation audio, quizzes, and learning logic intentionally out of scope.

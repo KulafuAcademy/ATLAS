@@ -1,12 +1,19 @@
+"use client";
+
 import Link from "next/link";
 
+import { useLanguage } from "@/components/language/LanguageProvider";
+import type { LocalizedText } from "@/lib/i18n";
+
 type SectionLinkProps = {
-  title: string;
-  description: string;
+  title: LocalizedText;
+  description: LocalizedText;
   href: string;
 };
 
 export function SectionLink({ title, description, href }: SectionLinkProps) {
+  const { text } = useLanguage();
+
   return (
     <Link
       href={href}
@@ -14,8 +21,8 @@ export function SectionLink({ title, description, href }: SectionLinkProps) {
     >
       <div className="flex items-start justify-between gap-6">
         <div className="space-y-3">
-          <h2 className="text-2xl font-medium text-white">{title}</h2>
-          <p className="leading-7 text-white/55">{description}</p>
+          <h2 className="text-2xl font-medium text-white">{text(title)}</h2>
+          <p className="leading-7 text-white/55">{text(description)}</p>
         </div>
         <span className="text-2xl text-white/35 transition group-hover:text-white">
           /

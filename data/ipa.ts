@@ -2,14 +2,20 @@ import type { IpaSection, IpaSymbol } from "@/types/ipa";
 
 export const ipaSections: IpaSection[] = [
   {
-    title: "Vowels",
+    title: { en: "Vowels", ja: "母音" },
     href: "/vowels",
-    description: "A growing map of English vowel symbols with examples.",
+    description: {
+      en: "A growing map of English vowel symbols with examples.",
+      ja: "英語の母音記号を、例語と一緒に整理する一覧です。",
+    },
   },
   {
-    title: "Consonants",
+    title: { en: "Consonants", ja: "子音" },
     href: "/consonants",
-    description: "A growing map of English consonant symbols with examples.",
+    description: {
+      en: "A growing map of English consonant symbols with examples.",
+      ja: "英語の子音記号を、例語と一緒に整理する一覧です。",
+    },
   },
 ];
 

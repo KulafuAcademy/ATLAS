@@ -1,3 +1,5 @@
+import type { LocalizedText } from "@/lib/i18n";
+
 export type IpaCategory = "vowel" | "consonant";
 
 export type VowelHeight =
@@ -32,9 +34,9 @@ export type ConsonantManner =
 export type Voicing = "voiceless" | "voiced";
 
 export type IpaSection = {
-  title: string;
+  title: LocalizedText;
   href: string;
-  description: string;
+  description: LocalizedText;
 };
 
 type IpaSymbolBase = {
@@ -66,8 +68,8 @@ export type IpaSymbol = VowelSymbol | ConsonantSymbol;
 export type LearningLevel = "foundation" | "contrast" | "advanced";
 
 export type LearningStage = {
-  title: string;
+  title: LocalizedText;
   level: LearningLevel;
-  description: string;
+  description: LocalizedText;
   slugs: string[];
 };
