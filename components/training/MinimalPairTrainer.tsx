@@ -7,11 +7,44 @@ import type { MinimalPair } from "@/types/training";
 
 declare global {
   interface Window {
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
     webkitAudioContext?: typeof AudioContext;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
   }
 }
 
 type QuizTarget = "A" | "B";
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  abort: () => void;
+  start: () => void;
+  onend: (() => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onnomatch: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionResultEvent) => void) | null;
+};
+
+type BrowserSpeechRecognitionErrorEvent = Event & {
+  error?: string;
+};
+
+type BrowserSpeechRecognitionResultEvent = Event & {
+  results: {
+    length: number;
+    [index: number]: {
+      length: number;
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+};
 
 type ActiveQuiz = {
   pairId: string;
@@ -33,11 +66,13 @@ export function MinimalPairTrainer({
     "Choose a word to listen, then practice it aloud.",
   );
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
+  const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
   const [recordingTarget, setRecordingTarget] = useState<string | null>(null);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
     return () => {
@@ -46,6 +81,7 @@ export function MinimalPairTrainer({
       }
 
       stopRecordingStream();
+      speechRecognitionRef.current?.abort();
     };
   }, [recordingUrl]);
 
@@ -147,7 +183,6 @@ export function MinimalPairTrainer({
         setRecordingUrl(nextRecordingUrl);
         setRecordingTarget(null);
         stopRecordingStream();
-        playCorrectSound();
         setMessage(`Recording saved for "${word}". Use Playback to review it.`);
       });
 
@@ -194,6 +229,76 @@ export function MinimalPairTrainer({
   function markPronunciationRetry() {
     playIncorrectSound();
     setMessage("Try again. Record once more and compare it.");
+  }
+
+  function startAiPronunciationCheck(pair: MinimalPair, target: QuizTarget) {
+    const word = target === "A" ? pair.wordA : pair.wordB;
+    const SpeechRecognitionConstructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionConstructor) {
+      playIncorrectSound();
+      setMessage("AI check is not supported in this browser yet.");
+      return;
+    }
+
+    speechRecognitionRef.current?.abort();
+
+    const recognition = new SpeechRecognitionConstructor();
+
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+    speechRecognitionRef.current = recognition;
+    setAiCheckTarget(word);
+    setMessage(`AI checking "${word}". Say the word now.`);
+
+    recognition.onresult = (event) => {
+      const transcripts = getSpeechRecognitionTranscripts(event);
+      const isCorrect = transcripts.some((transcript) =>
+        transcriptMatchesWord(transcript, word),
+      );
+      const heardText = transcripts[0] ?? "unrecognized speech";
+
+      if (isCorrect) {
+        playCorrectSound();
+        setMessage(`Correct. Heard "${heardText}".`);
+      } else {
+        playIncorrectSound();
+        setMessage(`Try again. Heard "${heardText}", expected "${word}".`);
+      }
+
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.onerror = () => {
+      playIncorrectSound();
+      setMessage("AI check could not hear the word. Try again.");
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.onnomatch = () => {
+      playIncorrectSound();
+      setMessage(`Try again. I could not recognize "${word}".`);
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.onend = () => {
+      setAiCheckTarget(null);
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      playIncorrectSound();
+      setMessage("AI check could not start. Try again.");
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    }
   }
 
   return (
@@ -276,13 +381,25 @@ export function MinimalPairTrainer({
                   disabled={!recordingUrl}
                   onClick={markPronunciationGood}
                 >
-                  Sounds Good
+                  Self OK
                 </ActionButton>
                 <ActionButton
                   disabled={!recordingUrl}
                   onClick={markPronunciationRetry}
                 >
                   Try Again
+                </ActionButton>
+                <ActionButton
+                  disabled={Boolean(aiCheckTarget)}
+                  onClick={() => startAiPronunciationCheck(pair, "A")}
+                >
+                  AI Check A
+                </ActionButton>
+                <ActionButton
+                  disabled={Boolean(aiCheckTarget)}
+                  onClick={() => startAiPronunciationCheck(pair, "B")}
+                >
+                  AI Check B
                 </ActionButton>
               </TestGroup>
             </div>
@@ -340,6 +457,45 @@ function ActionButton({
       {children}
     </button>
   );
+}
+
+function getSpeechRecognitionTranscripts(
+  event: BrowserSpeechRecognitionResultEvent,
+) {
+  const transcripts: string[] = [];
+
+  for (let resultIndex = 0; resultIndex < event.results.length; resultIndex += 1) {
+    const result = event.results[resultIndex];
+
+    for (
+      let alternativeIndex = 0;
+      alternativeIndex < result.length;
+      alternativeIndex += 1
+    ) {
+      const transcript = result[alternativeIndex]?.transcript.trim();
+
+      if (transcript) {
+        transcripts.push(transcript);
+      }
+    }
+  }
+
+  return transcripts;
+}
+
+function transcriptMatchesWord(transcript: string, targetWord: string) {
+  const normalizedTranscript = normalizeRecognizedText(transcript);
+  const normalizedTarget = normalizeRecognizedText(targetWord);
+
+  return normalizedTranscript.split(" ").includes(normalizedTarget);
+}
+
+function normalizeRecognizedText(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function playCorrectSound() {
