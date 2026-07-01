@@ -2,4 +2,4 @@
 
 ATLAS is a foundation for an English IPA learning application.
 
-Version 0.3.0 introduces classified vowel and consonant list views. Pronunciation audio, quizzes, and learning logic are intentionally not implemented yet.
+Version 0.4.0 expands the starter IPA entry set while keeping pronunciation audio, quizzes, and learning logic intentionally out of scope.

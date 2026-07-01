@@ -9,7 +9,15 @@ import type {
 } from "@/types/ipa";
 
 const vowelBacknessOrder: VowelBackness[] = ["front", "central", "back"];
-const vowelHeightOrder: VowelHeight[] = ["close", "near-open", "open"];
+const vowelHeightOrder: VowelHeight[] = [
+  "close",
+  "near-close",
+  "close-mid",
+  "mid",
+  "open-mid",
+  "near-open",
+  "open",
+];
 
 const consonantPlaceOrder: ConsonantPlace[] = [
   "bilabial",
@@ -17,6 +25,7 @@ const consonantPlaceOrder: ConsonantPlace[] = [
   "dental",
   "alveolar",
   "postalveolar",
+  "palatal",
   "velar",
   "glottal",
 ];
@@ -27,6 +36,7 @@ const consonantMannerOrder: ConsonantManner[] = [
   "affricate",
   "nasal",
   "approximant",
+  "lateral approximant",
 ];
 
 type VowelClassifiedListProps = {

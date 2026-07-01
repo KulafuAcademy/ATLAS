@@ -1,6 +1,13 @@
 export type IpaCategory = "vowel" | "consonant";
 
-export type VowelHeight = "close" | "near-open" | "open";
+export type VowelHeight =
+  | "close"
+  | "near-close"
+  | "close-mid"
+  | "mid"
+  | "open-mid"
+  | "near-open"
+  | "open";
 
 export type VowelBackness = "front" | "central" | "back";
 
@@ -10,6 +17,7 @@ export type ConsonantPlace =
   | "dental"
   | "alveolar"
   | "postalveolar"
+  | "palatal"
   | "velar"
   | "glottal";
 
@@ -18,7 +26,8 @@ export type ConsonantManner =
   | "fricative"
   | "affricate"
   | "nasal"
-  | "approximant";
+  | "approximant"
+  | "lateral approximant";
 
 export type Voicing = "voiceless" | "voiced";
 

@@ -7,9 +7,9 @@ export default function HomePage() {
   return (
     <div className="space-y-20">
       <PageHeader
-        eyebrow="Version 0.3.0"
+        eyebrow="Version 0.4.0"
         title="ATLAS"
-        description="A minimal English IPA learning app with classified sound maps and starter entries."
+        description="A minimal English IPA learning app with expanded sound maps and classified entries."
       />
 
       <section className="grid gap-4 md:grid-cols-2">
