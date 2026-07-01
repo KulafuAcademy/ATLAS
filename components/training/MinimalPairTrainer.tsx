@@ -93,7 +93,6 @@ export function MinimalPairTrainer({
     text: string,
   ) {
     setCardFeedback({ pairId, type, tone, text });
-    setMessage(text);
   }
 
   function getFeedback(pairId: string, type: FeedbackType) {
@@ -353,7 +352,7 @@ export function MinimalPairTrainer({
               <TestGroup
                 step="3"
                 title="発音テスト"
-                description="目標の単語を発音して、ブラウザAIで判定します。"
+                description="目標の単語を発音して、AIで判定します。"
                 feedback={getFeedback(pair.id, "pronunciation")}
               >
                 <ActionButton
