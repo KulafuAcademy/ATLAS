@@ -248,16 +248,19 @@ export function MinimalPairTrainer({
                 step="2"
                 title="聞き取りテスト"
                 description="ランダム再生を聞いて、AかBを選びます。"
+                actionsClassName="grid gap-3"
               >
                 <ActionButton intent="primary" onClick={() => startQuiz(pair)}>
                   クイズ再生
                 </ActionButton>
-                <ActionButton onClick={() => answerQuiz(pair, "A")}>
-                  Aだと思う
-                </ActionButton>
-                <ActionButton onClick={() => answerQuiz(pair, "B")}>
-                  Bだと思う
-                </ActionButton>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ActionButton onClick={() => answerQuiz(pair, "A")}>
+                    Aだと思う
+                  </ActionButton>
+                  <ActionButton onClick={() => answerQuiz(pair, "B")}>
+                    Bだと思う
+                  </ActionButton>
+                </div>
               </TestGroup>
 
               <TestGroup
@@ -303,11 +306,13 @@ function TestGroup({
   step,
   title,
   description,
+  actionsClassName = "grid gap-3 sm:grid-cols-2 xl:grid-cols-3",
   children,
 }: {
   step: string;
   title: string;
   description: string;
+  actionsClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -320,9 +325,7 @@ function TestGroup({
           <p className="text-sm font-semibold text-white">{title}</p>
           <p className="text-sm leading-6 text-white/50">{description}</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {children}
-        </div>
+        <div className={actionsClassName}>{children}</div>
       </div>
     </div>
   );
