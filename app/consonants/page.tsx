@@ -1,16 +1,18 @@
 import { PageHeader } from "@/components/common/PageHeader";
-import { IpaPreviewGrid } from "@/components/ipa/IpaPreviewGrid";
+import { ConsonantClassifiedList } from "@/components/ipa/IpaClassifiedList";
 import { getSymbolsByCategory } from "@/lib/ipa";
 
 export default function ConsonantsPage() {
+  const consonants = getSymbolsByCategory("consonant");
+
   return (
     <div className="space-y-12">
       <PageHeader
         eyebrow="Consonants"
         title="English consonant sounds"
-        description="A starter section for consonant symbols with place, manner, and voicing."
+        description="A classified view of consonant symbols by place and manner of articulation."
       />
-      <IpaPreviewGrid symbols={getSymbolsByCategory("consonant")} />
+      <ConsonantClassifiedList symbols={consonants} />
     </div>
   );
 }

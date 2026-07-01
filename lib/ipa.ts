@@ -1,7 +1,14 @@
 import { ipaSymbols } from "@/data/ipa";
-import type { IpaCategory } from "@/types/ipa";
+import type {
+  ConsonantSymbol,
+  IpaCategory,
+  IpaSymbol,
+  VowelSymbol,
+} from "@/types/ipa";
 
-export function getSymbolsByCategory(category: IpaCategory) {
+export function getSymbolsByCategory(category: "vowel"): VowelSymbol[];
+export function getSymbolsByCategory(category: "consonant"): ConsonantSymbol[];
+export function getSymbolsByCategory(category: IpaCategory): IpaSymbol[] {
   return ipaSymbols.filter((symbol) => symbol.category === category);
 }
 
