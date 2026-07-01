@@ -158,7 +158,7 @@ export function MinimalPairTrainer({
 
     if (answer === activeQuiz.target) {
       playCorrectSound();
-      showFeedback(pair.id, "listening", "success", "正解です。ピンポーン。");
+      showFeedback(pair.id, "listening", "success", "正解です。");
     } else {
       playIncorrectSound();
       showFeedback(
@@ -423,6 +423,8 @@ function TestGroup({
 }
 
 function FeedbackMessage({ feedback }: { feedback: NonNullable<CardFeedback> }) {
+  const icon =
+    feedback.tone === "success" ? "⭕️" : feedback.tone === "error" ? "❌" : null;
   const feedbackClassName =
     feedback.tone === "success"
       ? "border-white bg-white text-black"
@@ -434,9 +436,10 @@ function FeedbackMessage({ feedback }: { feedback: NonNullable<CardFeedback> }) 
     <p
       role="status"
       aria-live="polite"
-      className={`border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
+      className={`flex items-center gap-2 border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
     >
-      {feedback.text}
+      {icon ? <span aria-hidden="true">{icon}</span> : null}
+      <span>{feedback.text}</span>
     </p>
   );
 }
