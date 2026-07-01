@@ -1,15 +1,15 @@
 import { PageHeader } from "@/components/common/PageHeader";
 import { SectionLink } from "@/components/common/SectionLink";
 import { IpaPreviewGrid } from "@/components/ipa/IpaPreviewGrid";
-import { ipaSections, placeholderSymbols } from "@/data/ipa";
+import { ipaSections, ipaSymbols } from "@/data/ipa";
 
 export default function HomePage() {
   return (
     <div className="space-y-20">
       <PageHeader
-        eyebrow="Version 0.1.0"
+        eyebrow="Version 0.2.0"
         title="ATLAS"
-        description="A minimal foundation for learning English IPA with clear structure, calm navigation, and room for future lessons."
+        description="A minimal English IPA learning app with a structured sound map and starter entries."
       />
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -29,10 +29,10 @@ export default function HomePage() {
             Preview
           </p>
           <h2 className="text-2xl font-medium md:text-3xl">
-            Placeholder IPA entries
+            Starter IPA entries
           </h2>
         </div>
-        <IpaPreviewGrid symbols={placeholderSymbols.slice(0, 4)} />
+        <IpaPreviewGrid symbols={ipaSymbols.slice(0, 4)} />
       </section>
     </div>
   );

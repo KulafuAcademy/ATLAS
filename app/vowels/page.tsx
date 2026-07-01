@@ -8,7 +8,7 @@ export default function VowelsPage() {
       <PageHeader
         eyebrow="Vowels"
         title="English vowel sounds"
-        description="A placeholder section for vowel symbols. Real IPA content will be added after the foundation is stable."
+        description="A starter section for vowel symbols, example words, and articulatory labels."
       />
       <IpaPreviewGrid symbols={getSymbolsByCategory("vowel")} />
     </div>

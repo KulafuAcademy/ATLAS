@@ -8,7 +8,7 @@ export default function ConsonantsPage() {
       <PageHeader
         eyebrow="Consonants"
         title="English consonant sounds"
-        description="A placeholder section for consonant symbols. Place, manner, and voicing can be added later."
+        description="A starter section for consonant symbols with place, manner, and voicing."
       />
       <IpaPreviewGrid symbols={getSymbolsByCategory("consonant")} />
     </div>

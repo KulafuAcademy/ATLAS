@@ -25,7 +25,7 @@ export default async function IpaDetailPage({ params }: IpaDetailPageProps) {
       <PageHeader
         eyebrow="IPA Detail"
         title={ipaSymbol.symbol}
-        description={ipaSymbol.description}
+        description={ipaSymbol.label}
       />
 
       <section className="grid gap-8 border-t border-white/10 pt-10 md:grid-cols-[0.8fr_1.2fr]">
@@ -39,12 +39,39 @@ export default async function IpaDetailPage({ params }: IpaDetailPageProps) {
           </div>
           <div className="space-y-2">
             <p className="text-sm uppercase tracking-[0.28em] text-white/35">
-              Status
+              Description
             </p>
-            <p className="leading-7">
-              Placeholder detail page. Pronunciation, audio, quizzes, and
-              learning logic are intentionally out of scope for Version 0.1.0.
+            <p className="leading-7">{ipaSymbol.description}</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm uppercase tracking-[0.28em] text-white/35">
+              Examples
             </p>
+            <p className="leading-7">{ipaSymbol.exampleWords.join(", ")}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {ipaSymbol.category === "vowel" ? (
+              <>
+                <Attribute label="Height" value={ipaSymbol.height} />
+                <Attribute label="Backness" value={ipaSymbol.backness} />
+                <Attribute
+                  label="Rounding"
+                  value={ipaSymbol.rounded ? "rounded" : "unrounded"}
+                />
+              </>
+            ) : (
+              <>
+                <Attribute label="Place" value={ipaSymbol.place} />
+                <Attribute label="Manner" value={ipaSymbol.manner} />
+                <Attribute label="Voicing" value={ipaSymbol.voicing} />
+              </>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm uppercase tracking-[0.28em] text-white/35">
+              Notes
+            </p>
+            <p className="leading-7">{ipaSymbol.notes}</p>
           </div>
           <Link
             href={backHref}
@@ -54,6 +81,17 @@ export default async function IpaDetailPage({ params }: IpaDetailPageProps) {
           </Link>
         </div>
       </section>
+    </div>
+  );
+}
+
+function Attribute({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-white/10 p-4">
+      <p className="text-xs uppercase tracking-[0.22em] text-white/35">
+        {label}
+      </p>
+      <p className="mt-2 capitalize text-white">{value}</p>
     </div>
   );
 }

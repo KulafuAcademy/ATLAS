@@ -17,6 +17,7 @@ export function IpaSymbolCard({ symbol }: IpaSymbolCardProps) {
           {symbol.category}
         </p>
         <p className="text-6xl font-semibold text-white">{symbol.symbol}</p>
+        <p className="text-lg font-medium text-white/85">{symbol.label}</p>
       </div>
       <p className="leading-7 text-white/55 transition group-hover:text-white/75">
         {symbol.description}
