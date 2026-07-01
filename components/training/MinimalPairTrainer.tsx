@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import type { MinimalPair } from "@/types/training";
@@ -33,6 +33,29 @@ export function MinimalPairTrainer({
     "Choose a word to listen, then practice it aloud.",
   );
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
+  const [recordingTarget, setRecordingTarget] = useState<string | null>(null);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<BlobPart[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recordingUrl) {
+        URL.revokeObjectURL(recordingUrl);
+      }
+
+      stopRecordingStream();
+    };
+  }, [recordingUrl]);
+
+  function stopRecordingStream() {
+    recordingStreamRef.current?.getTracks().forEach((track) => {
+      track.stop();
+    });
+    recordingStreamRef.current = null;
+    mediaRecorderRef.current = null;
+  }
 
   function speak(word: string) {
     if (!("speechSynthesis" in window)) {
@@ -79,10 +102,80 @@ export function MinimalPairTrainer({
     setActiveQuiz(null);
   }
 
-  function startPronunciationTest(pair: MinimalPair, target: QuizTarget) {
+  async function startPronunciationTest(pair: MinimalPair, target: QuizTarget) {
     const word = target === "A" ? pair.wordA : pair.wordB;
 
-    setMessage(`Pronunciation test for "${word}" will use voice analysis later.`);
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setMessage("Recording is not supported in this browser.");
+      return;
+    }
+
+    if (mediaRecorderRef.current?.state === "recording") {
+      setMessage("Stop the current recording first.");
+      return;
+    }
+
+    try {
+      if (recordingUrl) {
+        URL.revokeObjectURL(recordingUrl);
+        setRecordingUrl(null);
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+
+      recordingChunksRef.current = [];
+      recordingStreamRef.current = stream;
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      });
+
+      mediaRecorder.addEventListener("stop", () => {
+        const recordingBlob = new Blob(recordingChunksRef.current, {
+          type: mediaRecorder.mimeType || "audio/webm",
+        });
+        const nextRecordingUrl = URL.createObjectURL(recordingBlob);
+
+        setRecordingUrl(nextRecordingUrl);
+        setRecordingTarget(null);
+        stopRecordingStream();
+        setMessage(`Recording saved for "${word}". Use Playback to review it.`);
+      });
+
+      mediaRecorder.start();
+      setRecordingTarget(word);
+      setMessage(`Recording "${word}". Say it clearly, then press Stop.`);
+    } catch {
+      setRecordingTarget(null);
+      stopRecordingStream();
+      setMessage("Microphone access was not available.");
+    }
+  }
+
+  function stopPronunciationTest() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      setMessage("Stopping recording...");
+      return;
+    }
+
+    setMessage("No active recording to stop.");
+  }
+
+  function playRecording() {
+    if (!recordingUrl) {
+      setMessage("Record your pronunciation first.");
+      return;
+    }
+
+    const audio = new Audio(recordingUrl);
+
+    void audio.play();
+    setMessage("Playing your recording.");
   }
 
   return (
@@ -147,10 +240,19 @@ export function MinimalPairTrainer({
 
               <TestGroup title="Pronunciation Test">
                 <ActionButton onClick={() => startPronunciationTest(pair, "A")}>
-                  Practice A
+                  Record A
                 </ActionButton>
                 <ActionButton onClick={() => startPronunciationTest(pair, "B")}>
-                  Practice B
+                  Record B
+                </ActionButton>
+                <ActionButton
+                  disabled={!recordingTarget}
+                  onClick={stopPronunciationTest}
+                >
+                  Stop
+                </ActionButton>
+                <ActionButton disabled={!recordingUrl} onClick={playRecording}>
+                  Playback
                 </ActionButton>
               </TestGroup>
             </div>
@@ -184,23 +286,26 @@ function TestGroup({
       <p className="text-xs uppercase tracking-[0.22em] text-white/35">
         {title}
       </p>
-      <div className="grid gap-3 sm:grid-cols-3">{children}</div>
+      <div className="grid gap-3 sm:grid-cols-4">{children}</div>
     </div>
   );
 }
 
 function ActionButton({
   children,
+  disabled = false,
   onClick,
 }: {
   children: string;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className="h-11 border border-white/15 px-3 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black focus:border-white focus:outline-none"
+      className="h-11 border border-white/15 px-3 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black focus:border-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/25 disabled:hover:bg-transparent disabled:hover:text-white/25"
     >
       {children}
     </button>
