@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ATLAS",
-  description: "English IPA learning foundation",
+  description: "AI pronunciation trainer for Japanese learners of English",
   icons: {
     icon: "/icons/icon.svg",
     apple: "/icons/icon.svg",
