@@ -1,3 +1,4 @@
+import { LocalizedText } from "@/components/common/LocalizedText";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { rVsLPairs } from "@/data/minimalPairs";
 
@@ -13,17 +14,30 @@ export default function HomePage() {
             ATLAS
           </h1>
           <p className="text-3xl font-medium text-white/85 md:text-5xl">
-            AI Pronunciation Trainer
+            <LocalizedText
+              value={{
+                en: "AI Pronunciation Trainer",
+                ja: "AI発音トレーナー",
+              }}
+            />
           </p>
         </div>
         <p className="max-w-2xl text-lg leading-8 text-white/65 md:text-xl">
-          Practice difficult English sounds through minimal pairs.
+          <LocalizedText
+            value={{
+              en: "Practice difficult English sounds through minimal pairs.",
+              ja: "ミニマルペアで、日本語話者が苦手な英語の音を練習しましょう。",
+            }}
+          />
         </p>
       </section>
 
       <MinimalPairTrainer
-        title="R vs L"
-        description="A first set for Japanese learners practicing one of the most common English sound contrasts."
+        title={{ en: "R vs L", ja: "R vs L" }}
+        description={{
+          en: "A first set for Japanese learners practicing one of the most common English sound contrasts.",
+          ja: "日本語話者がつまずきやすい代表的な英語の音の違いを練習する最初のセットです。",
+        }}
         pairs={rVsLPairs}
       />
     </div>

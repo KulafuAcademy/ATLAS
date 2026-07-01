@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { LanguageToggle } from "@/components/language/LanguageToggle";
 import { navItems } from "@/lib/navigation";
 
 export function SiteHeader() {
@@ -23,6 +24,7 @@ export function SiteHeader() {
               </Link>
             ))}
           </nav>
+          <LanguageToggle />
         </div>
       </div>
     </header>
