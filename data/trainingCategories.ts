@@ -19,7 +19,7 @@ export const trainingCategories: TrainingCategory[] = [
       ja: "Bの唇を閉じる音と、Vの下唇を使う音を分けて練習します。",
     },
     examples: ["ban / van", "berry / very", "boat / vote"],
-    status: "planned",
+    status: "available",
   },
   {
     id: "s-sh",
@@ -29,7 +29,7 @@ export const trainingCategories: TrainingCategory[] = [
       ja: "鋭いSの音と、口を少し広く使うSHの音を聞き分けます。",
     },
     examples: ["see / she", "sip / ship", "seat / sheet"],
-    status: "planned",
+    status: "available",
   },
   {
     id: "short-i-long-e",
@@ -39,7 +39,7 @@ export const trainingCategories: TrainingCategory[] = [
       ja: "sit と seat のような、日本語話者が混同しやすい母音を練習します。",
     },
     examples: ["sit / seat", "ship / sheep", "bit / beat"],
-    status: "planned",
+    status: "available",
   },
   {
     id: "th",
@@ -49,7 +49,7 @@ export const trainingCategories: TrainingCategory[] = [
       ja: "S・Z・Dに寄りやすいTHの音を、舌の位置から練習します。",
     },
     examples: ["think / sink", "thin / sin", "they / day"],
-    status: "planned",
+    status: "available",
   },
   {
     id: "final-consonants",
@@ -59,6 +59,6 @@ export const trainingCategories: TrainingCategory[] = [
       ja: "母音を足しやすい語尾の子音を、短くはっきり出す練習です。",
     },
     examples: ["cap / cab", "rice / rise", "bet / bed"],
-    status: "planned",
+    status: "available",
   },
 ];
