@@ -7,7 +7,11 @@ import { ListeningTestSession } from "@/components/training/ListeningTestSession
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
 import type { LocalizedText } from "@/lib/i18n";
-import type { MinimalPair, TrainingCategory } from "@/types/training";
+import type {
+  MinimalPair,
+  TrainingCategory,
+  TrainingProgress,
+} from "@/types/training";
 
 type TrainingSection = {
   id: string;
@@ -23,6 +27,9 @@ type TrainingCurriculumProps = {
 
 type PracticeMode = "all" | "daily";
 type EntryTarget = "learn" | "test";
+type ProgressByCategory = Record<string, TrainingProgress>;
+
+const progressStorageKey = "atlas.trainingProgress.v1";
 
 const curriculumCopy = {
   en: {
@@ -53,9 +60,30 @@ export function TrainingCurriculum({
   const [practiceModes, setPracticeModes] = useState<Record<string, PracticeMode>>(
     {},
   );
+  const [progressByCategory, setProgressByCategory] = useState<ProgressByCategory>(
+    {},
+  );
   const [pendingScrollTargetId, setPendingScrollTargetId] = useState<string | null>(
     null,
   );
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const storedProgress = window.localStorage.getItem(progressStorageKey);
+
+      if (!storedProgress) {
+        return;
+      }
+
+      try {
+        setProgressByCategory(JSON.parse(storedProgress) as ProgressByCategory);
+      } catch {
+        window.localStorage.removeItem(progressStorageKey);
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
 
   useEffect(() => {
     if (!pendingScrollTargetId) {
@@ -104,11 +132,35 @@ export function TrainingCurriculum({
     setPendingScrollTargetId(targetElementId);
   }
 
+  function recordTestProgress(sectionId: string, score: number, total: number) {
+    setProgressByCategory((currentProgress) => {
+      const previousProgress = currentProgress[sectionId];
+      const nextProgress = {
+        ...currentProgress,
+        [sectionId]: {
+          attempts: (previousProgress?.attempts ?? 0) + 1,
+          bestScore: Math.max(previousProgress?.bestScore ?? 0, score),
+          lastScore: score,
+          total,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      window.localStorage.setItem(
+        progressStorageKey,
+        JSON.stringify(nextProgress),
+      );
+
+      return nextProgress;
+    });
+  }
+
   return (
     <div className="space-y-16">
       <TrainingCategoryOverview
         categories={categories}
         onStart={openAndScrollToSection}
+        progressByCategory={progressByCategory}
       />
 
       <section className="space-y-4 border-t border-white/10 pt-10">
@@ -193,6 +245,9 @@ export function TrainingCurriculum({
                   <div className="border-t border-white/10 px-5 pb-6">
                     <div id={`${section.id}-test`} className="scroll-mt-28">
                       <ListeningTestSession
+                        onComplete={(score, total) =>
+                          recordTestProgress(section.id, score, total)
+                        }
                         title={section.title}
                         pairs={getDailyPairs(`${section.id}:listening`, section.pairs)}
                       />

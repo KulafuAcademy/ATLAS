@@ -16,6 +16,7 @@ type ListeningQuestion = {
 type FeedbackTone = "neutral" | "success" | "error";
 
 type ListeningTestSessionProps = {
+  onComplete?: (score: number, total: number) => void;
   pairs: MinimalPair[];
   title: LocalizedText;
 };
@@ -60,6 +61,7 @@ const listeningTestCopy = {
 };
 
 export function ListeningTestSession({
+  onComplete,
   pairs,
   title,
 }: ListeningTestSessionProps) {
@@ -150,6 +152,7 @@ export function ListeningTestSession({
         tone: "success",
         text: copy.complete(score, questions.length),
       });
+      onComplete?.(score, questions.length);
       return;
     }
 

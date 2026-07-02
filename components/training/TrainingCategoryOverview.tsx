@@ -1,11 +1,12 @@
 "use client";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import type { TrainingCategory } from "@/types/training";
+import type { TrainingCategory, TrainingProgress } from "@/types/training";
 
 type TrainingCategoryOverviewProps = {
   categories: TrainingCategory[];
   onStart?: (categoryId: string, target: "learn" | "test") => void;
+  progressByCategory?: Record<string, TrainingProgress>;
 };
 
 const overviewCopy = {
@@ -17,6 +18,11 @@ const overviewCopy = {
     examples: "Examples",
     learn: "Learn",
     test: "Take test",
+    progress: "Progress",
+    noProgress: "No test yet",
+    best: "Best",
+    last: "Last",
+    attempts: "Attempts",
   },
   ja: {
     eyebrow: "カリキュラム",
@@ -26,12 +32,18 @@ const overviewCopy = {
     examples: "例",
     learn: "学ぶ",
     test: "テストを受ける",
+    progress: "進捗",
+    noProgress: "まだテストなし",
+    best: "ベスト",
+    last: "前回",
+    attempts: "回数",
   },
 };
 
 export function TrainingCategoryOverview({
   categories,
   onStart,
+  progressByCategory = {},
 }: TrainingCategoryOverviewProps) {
   const { language, text } = useLanguage();
   const copy = overviewCopy[language];
@@ -51,6 +63,10 @@ export function TrainingCategoryOverview({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
           const isAvailable = category.status === "available";
+          const progress = progressByCategory[category.id];
+          const bestPercentage = progress
+            ? Math.round((progress.bestScore / progress.total) * 100)
+            : 0;
 
           return (
             <article
@@ -80,6 +96,31 @@ export function TrainingCategoryOverview({
                       </span>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-2 border-t border-white/10 pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs uppercase tracking-[0.22em] text-white/35">
+                      {copy.progress}
+                    </p>
+                    <p className="text-xs text-white/45">
+                      {progress
+                        ? `${copy.attempts}: ${progress.attempts}`
+                        : copy.noProgress}
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-white/10">
+                    <div
+                      className="h-full bg-white"
+                      style={{ width: `${bestPercentage}%` }}
+                    />
+                  </div>
+                  {progress ? (
+                    <p className="text-xs text-white/55">
+                      {copy.best}: {progress.bestScore} / {progress.total} ·{" "}
+                      {copy.last}: {progress.lastScore} / {progress.total}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

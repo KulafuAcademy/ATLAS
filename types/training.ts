@@ -18,3 +18,11 @@ export type TrainingCategory = {
   examples: string[];
   status: "available" | "planned";
 };
+
+export type TrainingProgress = {
+  attempts: number;
+  bestScore: number;
+  lastScore: number;
+  total: number;
+  updatedAt: string;
+};
