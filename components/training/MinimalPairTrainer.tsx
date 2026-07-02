@@ -65,6 +65,7 @@ type CardFeedback = {
 } | null;
 
 type MinimalPairTrainerProps = {
+  id?: string;
   title: LocalizedText;
   description: LocalizedText;
   pairs: MinimalPair[];
@@ -146,6 +147,7 @@ const trainerCopy = {
 };
 
 export function MinimalPairTrainer({
+  id,
   title,
   description,
   pairs,
@@ -354,7 +356,7 @@ export function MinimalPairTrainer({
   }
 
   return (
-    <section className="space-y-8">
+    <section id={id} className="scroll-mt-28 space-y-8">
       <div className="flex flex-col gap-4 border-t border-white/10 pt-10 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-3">
           <p className="text-sm uppercase tracking-[0.28em] text-white/40">

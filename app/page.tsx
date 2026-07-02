@@ -1,6 +1,8 @@
 import { LocalizedText } from "@/components/common/LocalizedText";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
+import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
 import { rVsLPairs } from "@/data/minimalPairs";
+import { trainingCategories } from "@/data/trainingCategories";
 
 export default function HomePage() {
   return (
@@ -32,7 +34,10 @@ export default function HomePage() {
         </p>
       </section>
 
+      <TrainingCategoryOverview categories={trainingCategories} />
+
       <MinimalPairTrainer
+        id="r-vs-l"
         title={{ en: "R vs L", ja: "R vs L" }}
         description={{
           en: "A first set for Japanese learners practicing one of the most common English sound contrasts.",
