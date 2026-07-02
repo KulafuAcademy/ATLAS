@@ -1,6 +1,5 @@
 import { LocalizedText } from "@/components/common/LocalizedText";
-import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
-import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
+import { TrainingCurriculum } from "@/components/training/TrainingCurriculum";
 import {
   bVsVPairs,
   finalConsonantPairs,
@@ -98,17 +97,10 @@ export default function HomePage() {
         </p>
       </section>
 
-      <TrainingCategoryOverview categories={trainingCategories} />
-
-      {trainingSections.map((section) => (
-        <MinimalPairTrainer
-          key={section.id}
-          id={section.id}
-          title={section.title}
-          description={section.description}
-          pairs={section.pairs}
-        />
-      ))}
+      <TrainingCurriculum
+        categories={trainingCategories}
+        sections={trainingSections}
+      />
     </div>
   );
 }

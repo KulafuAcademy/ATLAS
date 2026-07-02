@@ -5,6 +5,7 @@ import type { TrainingCategory } from "@/types/training";
 
 type TrainingCategoryOverviewProps = {
   categories: TrainingCategory[];
+  onStart?: (categoryId: string) => void;
 };
 
 const overviewCopy = {
@@ -32,6 +33,7 @@ const overviewCopy = {
 
 export function TrainingCategoryOverview({
   categories,
+  onStart,
 }: TrainingCategoryOverviewProps) {
   const { language, text } = useLanguage();
   const copy = overviewCopy[language];
@@ -95,12 +97,13 @@ export function TrainingCategoryOverview({
               </div>
 
               {isAvailable ? (
-                <a
-                  href={`#${category.id}`}
+                <button
+                  type="button"
+                  onClick={() => onStart?.(category.id)}
                   className="mt-6 inline-flex h-11 items-center justify-center border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85"
                 >
                   {copy.start}
-                </a>
+                </button>
               ) : null}
             </article>
           );
