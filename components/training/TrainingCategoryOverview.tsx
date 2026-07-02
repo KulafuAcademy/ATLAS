@@ -14,8 +14,6 @@ const overviewCopy = {
     title: "Choose a sound category",
     description:
       "Start with the most common pronunciation contrasts for Japanese learners, then move into vowels, TH sounds, and word endings.",
-    available: "Available",
-    planned: "Coming soon",
     examples: "Examples",
     start: "Start",
   },
@@ -24,8 +22,6 @@ const overviewCopy = {
     title: "音のカテゴリを選ぶ",
     description:
       "日本語話者が苦手になりやすい音から始めて、母音・TH・語尾の子音へ進みます。",
-    available: "利用可能",
-    planned: "準備中",
     examples: "例",
     start: "始める",
   },
@@ -60,20 +56,9 @@ export function TrainingCategoryOverview({
               className="flex min-h-64 flex-col justify-between border border-white/10 bg-white/[0.02] p-5"
             >
               <div className="space-y-5">
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-2xl font-semibold text-white">
-                    {text(category.title)}
-                  </h3>
-                  <span
-                    className={`border px-2 py-1 text-xs font-medium ${
-                      isAvailable
-                        ? "border-white bg-white text-black"
-                        : "border-white/10 text-white/45"
-                    }`}
-                  >
-                    {isAvailable ? copy.available : copy.planned}
-                  </span>
-                </div>
+                <h3 className="text-2xl font-semibold text-white">
+                  {text(category.title)}
+                </h3>
 
                 <p className="text-sm leading-6 text-white/60">
                   {text(category.description)}
