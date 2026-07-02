@@ -22,7 +22,7 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
-type EntryTarget = "listening" | "speaking";
+type EntryTarget = "learn" | "test";
 
 const curriculumCopy = {
   en: {
@@ -94,9 +94,7 @@ export function TrainingCurriculum({
 
   function openAndScrollToSection(sectionId: string, target: EntryTarget) {
     const targetElementId =
-      target === "listening"
-        ? `${sectionId}-listening`
-        : `${sectionId}-speaking`;
+      target === "test" ? `${sectionId}-test` : `${sectionId}-learn`;
 
     setOpenSectionIds((currentSectionIds) =>
       currentSectionIds.includes(sectionId)
@@ -193,13 +191,13 @@ export function TrainingCurriculum({
 
                 {sectionIsOpen ? (
                   <div className="border-t border-white/10 px-5 pb-6">
-                    <div id={`${section.id}-listening`} className="scroll-mt-28">
+                    <div id={`${section.id}-test`} className="scroll-mt-28">
                       <ListeningTestSession
                         title={section.title}
                         pairs={getDailyPairs(`${section.id}:listening`, section.pairs)}
                       />
                     </div>
-                    <div id={`${section.id}-speaking`} className="scroll-mt-28">
+                    <div id={`${section.id}-learn`} className="scroll-mt-28">
                       <MinimalPairTrainer
                         title={section.title}
                         description={section.description}
