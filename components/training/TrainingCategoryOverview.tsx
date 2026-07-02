@@ -5,7 +5,7 @@ import type { TrainingCategory } from "@/types/training";
 
 type TrainingCategoryOverviewProps = {
   categories: TrainingCategory[];
-  onStart?: (categoryId: string) => void;
+  onStart?: (categoryId: string, target: "listening" | "speaking") => void;
 };
 
 const overviewCopy = {
@@ -15,7 +15,8 @@ const overviewCopy = {
     description:
       "Start with the most common pronunciation contrasts for Japanese learners, then move into vowels, TH sounds, and word endings.",
     examples: "Examples",
-    start: "Start",
+    listening: "Listening test",
+    speaking: "Speaking test",
   },
   ja: {
     eyebrow: "カリキュラム",
@@ -23,7 +24,8 @@ const overviewCopy = {
     description:
       "日本語話者が苦手になりやすい音から始めて、母音・TH・語尾の子音へ進みます。",
     examples: "例",
-    start: "始める",
+    listening: "聞き取りテスト",
+    speaking: "発音テスト",
   },
 };
 
@@ -82,13 +84,22 @@ export function TrainingCategoryOverview({
               </div>
 
               {isAvailable ? (
-                <button
-                  type="button"
-                  onClick={() => onStart?.(category.id)}
-                  className="mt-6 inline-flex h-11 items-center justify-center border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85"
-                >
-                  {copy.start}
-                </button>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => onStart?.(category.id, "listening")}
+                    className="h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85"
+                  >
+                    {copy.listening}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStart?.(category.id, "speaking")}
+                    className="h-11 border border-white/15 px-4 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black"
+                  >
+                    {copy.speaking}
+                  </button>
+                </div>
               ) : null}
             </article>
           );

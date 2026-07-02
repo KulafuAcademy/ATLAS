@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { ListeningTestSession } from "@/components/training/ListeningTestSession";
@@ -22,6 +22,7 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
+type EntryTarget = "listening" | "speaking";
 
 const curriculumCopy = {
   en: {
@@ -52,6 +53,25 @@ export function TrainingCurriculum({
   const [practiceModes, setPracticeModes] = useState<Record<string, PracticeMode>>(
     {},
   );
+  const [pendingScrollTargetId, setPendingScrollTargetId] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!pendingScrollTargetId) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById(pendingScrollTargetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      setPendingScrollTargetId(null);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [openSectionIds, pendingScrollTargetId]);
 
   function isOpen(sectionId: string) {
     return openSectionIds.includes(sectionId);
@@ -72,19 +92,18 @@ export function TrainingCurriculum({
     }));
   }
 
-  function openAndScrollToSection(sectionId: string) {
+  function openAndScrollToSection(sectionId: string, target: EntryTarget) {
+    const targetElementId =
+      target === "listening"
+        ? `${sectionId}-listening`
+        : `${sectionId}-speaking`;
+
     setOpenSectionIds((currentSectionIds) =>
       currentSectionIds.includes(sectionId)
         ? currentSectionIds
         : [...currentSectionIds, sectionId],
     );
-
-    window.requestAnimationFrame(() => {
-      document.getElementById(sectionId)?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
+    setPendingScrollTargetId(targetElementId);
   }
 
   return (
@@ -174,15 +193,19 @@ export function TrainingCurriculum({
 
                 {sectionIsOpen ? (
                   <div className="border-t border-white/10 px-5 pb-6">
-                    <ListeningTestSession
-                      title={section.title}
-                      pairs={getDailyPairs(`${section.id}:listening`, section.pairs)}
-                    />
-                    <MinimalPairTrainer
-                      title={section.title}
-                      description={section.description}
-                      pairs={visiblePairs}
-                    />
+                    <div id={`${section.id}-listening`} className="scroll-mt-28">
+                      <ListeningTestSession
+                        title={section.title}
+                        pairs={getDailyPairs(`${section.id}:listening`, section.pairs)}
+                      />
+                    </div>
+                    <div id={`${section.id}-speaking`} className="scroll-mt-28">
+                      <MinimalPairTrainer
+                        title={section.title}
+                        description={section.description}
+                        pairs={visiblePairs}
+                      />
+                    </div>
                   </div>
                 ) : null}
               </section>
