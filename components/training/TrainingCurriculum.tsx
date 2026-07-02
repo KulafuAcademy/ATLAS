@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import { ListeningTestSession } from "@/components/training/ListeningTestSession";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
 import type { LocalizedText } from "@/lib/i18n";
@@ -173,6 +174,10 @@ export function TrainingCurriculum({
 
                 {sectionIsOpen ? (
                   <div className="border-t border-white/10 px-5 pb-6">
+                    <ListeningTestSession
+                      title={section.title}
+                      pairs={getDailyPairs(`${section.id}:listening`, section.pairs)}
+                    />
                     <MinimalPairTrainer
                       title={section.title}
                       description={section.description}
