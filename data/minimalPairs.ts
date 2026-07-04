@@ -4,120 +4,260 @@ export const rVsLPairs: MinimalPair[] = [
   {
     id: "right-light",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Right by the light, read it right in the light.",
+      note: {
+        en: "Move slowly between R and L without adding an extra vowel.",
+        ja: "RとLをゆっくり切り替え、余計な母音を足さずに言います。",
+      },
+    },
     wordA: "right",
     wordB: "light",
   },
   {
     id: "rice-lice",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Rice on the left, lice on the right.",
+      note: {
+        en: "Keep rice and lice clearly separated at the first sound.",
+        ja: "語頭のRとLをはっきり分けて言います。",
+      },
+    },
     wordA: "rice",
     wordB: "lice",
   },
   {
     id: "road-load",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Roll down the road with a light load.",
+      note: {
+        en: "Practice R in roll and road, then L in light and load.",
+        ja: "roll / road のR、light / load のLを順番に切り替えます。",
+      },
+    },
     wordA: "road",
     wordB: "load",
   },
   {
     id: "glass-grass",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Green grass grows near a clear glass.",
+      note: {
+        en: "Listen for the cluster difference in grass and glass.",
+        ja: "grass と glass の子音連結の違いを意識します。",
+      },
+    },
     wordA: "glass",
     wordB: "grass",
   },
   {
     id: "free-flee",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Feel free to flee freely.",
+      note: {
+        en: "Switch between free and flee while keeping the vowel stable.",
+        ja: "母音を安定させたまま、free と flee を切り替えます。",
+      },
+    },
     wordA: "free",
     wordB: "flee",
   },
   {
     id: "red-led",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Red lights led Ray along the lane.",
+      note: {
+        en: "Alternate R and L across connected words.",
+        ja: "文の中でRとLを交互に切り替えます。",
+      },
+    },
     wordA: "red",
     wordB: "led",
   },
   {
     id: "rock-lock",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Rock the lock, then lock the rock.",
+      note: {
+        en: "Make the first sound decide the meaning.",
+        ja: "最初の音だけで意味が変わることを意識します。",
+      },
+    },
     wordA: "rock",
     wordB: "lock",
   },
   {
     id: "rent-lent",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Rory rented what Larry lent.",
+      note: {
+        en: "Keep R rounded and L light at the start of words.",
+        ja: "語頭のRは丸く、Lは軽く出す意識で練習します。",
+      },
+    },
     wordA: "rent",
     wordB: "lent",
   },
   {
     id: "royal-loyal",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "A royal leader stayed loyal.",
+      note: {
+        en: "Practice longer words without losing the R and L contrast.",
+        ja: "長めの単語でもRとLの対比を保ちます。",
+      },
+    },
     wordA: "royal",
     wordB: "loyal",
   },
   {
     id: "arrive-alive",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Arrive alive and arrive alert.",
+      note: {
+        en: "Focus on the middle R in arrive and the L in alive.",
+        ja: "arrive のRと alive のLを文中で切り替えます。",
+      },
+    },
     wordA: "arrive",
     wordB: "alive",
   },
   {
     id: "correct-collect",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Correct the list and collect the right result.",
+      note: {
+        en: "Practice R and L inside multi-syllable words.",
+        ja: "複数音節の単語の中にあるRとLを練習します。",
+      },
+    },
     wordA: "correct",
     wordB: "collect",
   },
   {
     id: "pray-play",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Please play, then pray before practice.",
+      note: {
+        en: "Separate PR and PL clusters clearly.",
+        ja: "PR と PL の子音連結をはっきり分けます。",
+      },
+    },
     wordA: "pray",
     wordB: "play",
   },
   {
     id: "price-place",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Place the price on the proper place.",
+      note: {
+        en: "Move between price and place without slowing too much.",
+        ja: "price と place を止まりすぎずに切り替えます。",
+      },
+    },
     wordA: "price",
     wordB: "place",
   },
   {
     id: "crown-clown",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "The clown wore a crown in the crowd.",
+      note: {
+        en: "Practice CR and CL with a strong first consonant.",
+        ja: "CR と CL を、最初の子音からしっかり出します。",
+      },
+    },
     wordA: "crown",
     wordB: "clown",
   },
   {
     id: "fry-fly",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Fresh fries fly from the fryer.",
+      note: {
+        en: "Keep FR and FL distinct in a quick sentence.",
+        ja: "速い文でもFRとFLを区別します。",
+      },
+    },
     wordA: "fry",
     wordB: "fly",
   },
   {
     id: "grow-glow",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Green plants grow under a golden glow.",
+      note: {
+        en: "Practice GR and GL while keeping the vowel smooth.",
+        ja: "GRとGLを、母音をなめらかに保ちながら練習します。",
+      },
+    },
     wordA: "grow",
     wordB: "glow",
   },
   {
     id: "frame-flame",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Frame the flame before the flame flickers.",
+      note: {
+        en: "Separate frame and flame at the cluster.",
+        ja: "frame と flame の子音連結を分けて言います。",
+      },
+    },
     wordA: "frame",
     wordB: "flame",
   },
   {
     id: "brown-blown",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Brown leaves were blown by a brisk breeze.",
+      note: {
+        en: "Practice BR and BL in connected speech.",
+        ja: "つながった文の中でBRとBLを練習します。",
+      },
+    },
     wordA: "brown",
     wordB: "blown",
   },
   {
     id: "crash-clash",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "A crash and a clash crossed the clear room.",
+      note: {
+        en: "Keep crash and clash different even when speaking faster.",
+        ja: "少し速く言っても crash と clash を分けます。",
+      },
+    },
     wordA: "crash",
     wordB: "clash",
   },
   {
     id: "wrong-long",
     soundFocus: "R vs L",
+    tongueTwister: {
+      text: "Wrong roads make long rides longer.",
+      note: {
+        en: "Practice final rhythm while keeping wrong and long separate.",
+        ja: "文のリズムを保ちながら wrong と long を分けます。",
+      },
+    },
     wordA: "wrong",
     wordB: "long",
   },

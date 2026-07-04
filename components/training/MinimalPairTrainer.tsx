@@ -53,7 +53,7 @@ type ActiveQuiz = {
   target: QuizTarget;
 } | null;
 
-type FeedbackType = "listen" | "listening" | "pronunciation";
+type FeedbackType = "listen" | "listening" | "pronunciation" | "tongueTwister";
 type FeedbackTone = "neutral" | "success" | "error";
 
 type CardFeedback = {
@@ -88,6 +88,10 @@ const trainerCopy = {
     pronunciationDescription: "Say the target word and let AI check it.",
     speakA: "Say A",
     speakB: "Say B",
+    tongueTwisterTitle: "Tongue twister",
+    tongueTwisterDescription:
+      "Practice both sounds together inside one short sentence.",
+    listenTongueTwister: "Listen sentence",
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
@@ -124,6 +128,10 @@ const trainerCopy = {
     pronunciationDescription: "目標の単語を発音して、AIで判定します。",
     speakA: "Aを発音する",
     speakB: "Bを発音する",
+    tongueTwisterTitle: "Tongue Twister",
+    tongueTwisterDescription:
+      "学んだ2つの音を、ひとつの短い文の中で練習します。",
+    listenTongueTwister: "文を聞く",
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
@@ -186,13 +194,17 @@ export function MinimalPairTrainer({
     return cardFeedback;
   }
 
-  function speak(word: string, pairId?: string) {
+  function speak(
+    word: string,
+    pairId?: string,
+    feedbackType: FeedbackType = "listen",
+  ) {
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
       const feedbackText = copy.speechPlaybackUnsupported;
 
       if (pairId) {
-        showFeedback(pairId, "listen", "error", feedbackText);
+        showFeedback(pairId, feedbackType, "error", feedbackText);
       }
 
       return;
@@ -209,7 +221,7 @@ export function MinimalPairTrainer({
     const feedbackText = copy.playing(word);
 
     if (pairId) {
-      showFeedback(pairId, "listen", "neutral", feedbackText);
+      showFeedback(pairId, feedbackType, "neutral", feedbackText);
     }
   }
 
@@ -451,6 +463,36 @@ export function MinimalPairTrainer({
                   {copy.speakB}
                 </ActionButton>
               </TestGroup>
+
+              {pair.tongueTwister ? (
+                <TestGroup
+                  step="4"
+                  title={copy.tongueTwisterTitle}
+                  description={copy.tongueTwisterDescription}
+                  actionsClassName="grid gap-3"
+                  feedback={getFeedback(pair.id, "tongueTwister")}
+                >
+                  <div className="border border-white/10 bg-black px-4 py-3">
+                    <p className="text-lg font-semibold leading-8 text-white">
+                      {pair.tongueTwister.text}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-white/50">
+                      {text(pair.tongueTwister.note)}
+                    </p>
+                  </div>
+                  <ActionButton
+                    onClick={() =>
+                      speak(
+                        pair.tongueTwister?.text ?? "",
+                        pair.id,
+                        "tongueTwister",
+                      )
+                    }
+                  >
+                    {copy.listenTongueTwister}
+                  </ActionButton>
+                </TestGroup>
+              ) : null}
             </div>
           </article>
         ))}

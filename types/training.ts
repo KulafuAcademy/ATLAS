@@ -1,6 +1,13 @@
 export type MinimalPair = {
   id: string;
   soundFocus: string;
+  tongueTwister?: {
+    note: {
+      en: string;
+      ja: string;
+    };
+    text: string;
+  };
   wordA: string;
   wordB: string;
 };
