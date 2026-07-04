@@ -60,6 +60,9 @@ const listeningTestCopy = {
   },
 };
 
+const buttonClassName =
+  "h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25 disabled:hover:bg-white/10 disabled:hover:text-white/25";
+
 export function ListeningTestSession({
   onComplete,
   pairs,
@@ -185,7 +188,7 @@ export function ListeningTestSession({
           <button
             type="button"
             onClick={startSession}
-            className="h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85"
+            className={buttonClassName}
           >
             {questions.length > 0 ? copy.restart : copy.start}
           </button>
@@ -194,7 +197,7 @@ export function ListeningTestSession({
             <button
               type="button"
               onClick={playCurrentQuestion}
-              className="h-11 border border-white/15 px-4 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black"
+              className={buttonClassName}
             >
               {copy.play}
             </button>
@@ -215,7 +218,7 @@ export function ListeningTestSession({
               type="button"
               disabled={Boolean(selectedAnswer)}
               onClick={() => answerQuestion("A")}
-              className="h-11 border border-white/15 px-4 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/25 disabled:hover:bg-transparent disabled:hover:text-white/25"
+              className={buttonClassName}
             >
               {copy.answerA}
             </button>
@@ -223,7 +226,7 @@ export function ListeningTestSession({
               type="button"
               disabled={Boolean(selectedAnswer)}
               onClick={() => answerQuestion("B")}
-              className="h-11 border border-white/15 px-4 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/25 disabled:hover:bg-transparent disabled:hover:text-white/25"
+              className={buttonClassName}
             >
               {copy.answerB}
             </button>
@@ -231,7 +234,7 @@ export function ListeningTestSession({
               type="button"
               disabled={!selectedAnswer}
               onClick={goNext}
-              className="h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25"
+              className={buttonClassName}
             >
               {currentIndex === questions.length - 1 ? copy.finish : copy.next}
             </button>

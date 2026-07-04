@@ -145,7 +145,7 @@ export function FilterableIpaList(props: FilterableIpaListProps) {
             setPrimaryFilter("all");
             setSecondaryFilter("all");
           }}
-          className="text-sm font-medium text-white/65 transition hover:text-white"
+          className="h-10 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
         >
           {text(uiText.reset)}
         </button>

@@ -633,7 +633,6 @@ function FeedbackMessage({ feedback }: { feedback: NonNullable<CardFeedback> }) 
 function ActionButton({
   children,
   disabled = false,
-  intent = "secondary",
   onClick,
 }: {
   children: string;
@@ -642,9 +641,7 @@ function ActionButton({
   onClick: () => void;
 }) {
   const buttonClassName =
-    intent === "primary"
-      ? "h-11 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-white/85 focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25"
-      : "h-11 border border-white/15 px-3 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black focus:border-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:text-white/25 disabled:hover:bg-transparent disabled:hover:text-white/25";
+    "h-11 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25 disabled:hover:bg-white/10 disabled:hover:text-white/25";
 
   return (
     <button

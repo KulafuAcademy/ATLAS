@@ -30,6 +30,8 @@ type EntryTarget = "learn" | "test";
 type ProgressByCategory = Record<string, TrainingProgress>;
 
 const progressStorageKey = "atlas.trainingProgress.v1";
+const smallButtonClassName =
+  "h-10 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
 
 const curriculumCopy = {
   en: {
@@ -209,10 +211,10 @@ export function TrainingCurriculum({
                       <button
                         type="button"
                         onClick={() => setPracticeMode(section.id, "all")}
-                        className={`h-10 px-3 transition ${
+                        className={`${smallButtonClassName} ${
                           practiceMode === "all"
-                            ? "bg-white text-black"
-                            : "text-white/55 hover:text-white"
+                            ? ""
+                            : "opacity-80 hover:opacity-100"
                         }`}
                       >
                         {copy.allPairs}
@@ -220,10 +222,10 @@ export function TrainingCurriculum({
                       <button
                         type="button"
                         onClick={() => setPracticeMode(section.id, "daily")}
-                        className={`h-10 px-3 transition ${
+                        className={`${smallButtonClassName} ${
                           practiceMode === "daily"
-                            ? "bg-white text-black"
-                            : "text-white/55 hover:text-white"
+                            ? ""
+                            : "opacity-80 hover:opacity-100"
                         }`}
                       >
                         {copy.todaysTen}
@@ -234,7 +236,7 @@ export function TrainingCurriculum({
                       type="button"
                       onClick={() => toggleSection(section.id)}
                       aria-expanded={sectionIsOpen}
-                      className="h-10 border border-white/15 px-3 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black"
+                      className={smallButtonClassName}
                     >
                       {sectionIsOpen ? copy.hide : copy.show}
                     </button>

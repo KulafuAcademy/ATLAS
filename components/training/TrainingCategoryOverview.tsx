@@ -40,6 +40,9 @@ const overviewCopy = {
   },
 };
 
+const buttonClassName =
+  "h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
+
 export function TrainingCategoryOverview({
   categories,
   onStart,
@@ -129,14 +132,14 @@ export function TrainingCategoryOverview({
                   <button
                     type="button"
                     onClick={() => onStart?.(category.id, "learn")}
-                    className="h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85"
+                    className={buttonClassName}
                   >
                     {copy.learn}
                   </button>
                   <button
                     type="button"
                     onClick={() => onStart?.(category.id, "test")}
-                    className="h-11 border border-white/15 px-4 text-sm font-medium text-white transition hover:border-white hover:bg-white hover:text-black"
+                    className={buttonClassName}
                   >
                     {copy.test}
                   </button>
