@@ -20,6 +20,10 @@ body {
   color: var(--foreground);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   overflow-x: hidden;
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;

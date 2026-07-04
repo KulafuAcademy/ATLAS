@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { BackToTopButton } from "@/components/common/BackToTopButton";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { LanguageProvider } from "@/components/language/LanguageProvider";
 
@@ -12,9 +13,13 @@ export function AppShell({ children }: AppShellProps) {
     <LanguageProvider>
       <div className="min-h-screen bg-black text-white">
         <SiteHeader />
-        <main className="mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-24">
+        <main
+          id="top"
+          className="mx-auto max-w-6xl scroll-mt-28 px-6 py-16 md:px-10 md:py-24"
+        >
           {children}
         </main>
+        <BackToTopButton />
       </div>
     </LanguageProvider>
   );

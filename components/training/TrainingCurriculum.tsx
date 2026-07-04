@@ -35,6 +35,8 @@ const smallButtonClassName =
 
 const curriculumCopy = {
   en: {
+    categoryJump: "Jump to category",
+    backToCurriculum: "Back to curriculum",
     lessons: "Lessons",
     show: "Open",
     hide: "Close",
@@ -43,6 +45,8 @@ const curriculumCopy = {
     todaysTen: "Today's 10",
   },
   ja: {
+    categoryJump: "カテゴリへ移動",
+    backToCurriculum: "カリキュラムへ戻る",
     lessons: "レッスン",
     show: "開く",
     hide: "閉じる",
@@ -122,6 +126,13 @@ export function TrainingCurriculum({
     }));
   }
 
+  function scrollToElement(elementId: string) {
+    document.getElementById(elementId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
   function openAndScrollToSection(sectionId: string, target: EntryTarget) {
     const targetElementId =
       target === "test" ? `${sectionId}-test` : `${sectionId}-learn`;
@@ -165,12 +176,40 @@ export function TrainingCurriculum({
         progressByCategory={progressByCategory}
       />
 
-      <section className="space-y-4 border-t border-white/10 pt-10">
+      <section
+        id="curriculum"
+        className="scroll-mt-28 space-y-4 border-t border-white/10 pt-10"
+      >
         <div className="space-y-2">
           <p className="text-sm uppercase tracking-[0.28em] text-white/40">
             {copy.lessons}
           </p>
         </div>
+
+        <nav
+          aria-label={copy.categoryJump}
+          className="sticky top-[5.25rem] z-10 border-y border-white/10 bg-black/90 py-3 backdrop-blur"
+        >
+          <div className="flex gap-2 overflow-x-auto">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => {
+                  setOpenSectionIds((currentSectionIds) =>
+                    currentSectionIds.includes(section.id)
+                      ? currentSectionIds
+                      : [...currentSectionIds, section.id],
+                  );
+                  setPendingScrollTargetId(section.id);
+                }}
+                className="h-10 shrink-0 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+              >
+                {text(section.title)}
+              </button>
+            ))}
+          </div>
+        </nav>
 
         <div className="space-y-4">
           {sections.map((section) => {
@@ -260,6 +299,15 @@ export function TrainingCurriculum({
                         description={section.description}
                         pairs={visiblePairs}
                       />
+                    </div>
+                    <div className="border-t border-white/10 pt-6">
+                      <button
+                        type="button"
+                        onClick={() => scrollToElement("curriculum")}
+                        className={smallButtonClassName}
+                      >
+                        {copy.backToCurriculum}
+                      </button>
                     </div>
                   </div>
                 ) : null}
