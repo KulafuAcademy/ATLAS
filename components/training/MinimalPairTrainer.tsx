@@ -391,80 +391,82 @@ export function MinimalPairTrainer({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {pairs.map((pair) => (
-          <article
-            key={pair.id}
-            className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30"
-          >
-            <div className="space-y-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/35">
-                {pair.soundFocus}
-              </p>
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <WordLabel label="A" word={pair.wordA} />
-                <span className="text-sm text-white/30">vs</span>
-                <WordLabel label="B" word={pair.wordB} />
-              </div>
-            </div>
+        {pairs.map((pair) => {
+          const tongueTwister = getTongueTwister(pair);
 
-            <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
-              <TestGroup
-                step="1"
-                title={copy.listenTitle}
-                description={copy.listenDescription}
-                feedback={getFeedback(pair.id, "listen")}
-              >
-                <ActionButton onClick={() => speak(pair.wordA, pair.id)}>
-                  {copy.listenA}
-                </ActionButton>
-                <ActionButton onClick={() => speak(pair.wordB, pair.id)}>
-                  {copy.listenB}
-                </ActionButton>
-              </TestGroup>
-
-              <TestGroup
-                step="2"
-                title={copy.listeningTitle}
-                description={copy.listeningDescription}
-                actionsClassName="grid gap-3"
-                feedback={getFeedback(pair.id, "listening")}
-              >
-                <ActionButton intent="primary" onClick={() => startQuiz(pair)}>
-                  {copy.playQuiz}
-                </ActionButton>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <ActionButton onClick={() => answerQuiz(pair, "A")}>
-                    {copy.answerA}
-                  </ActionButton>
-                  <ActionButton onClick={() => answerQuiz(pair, "B")}>
-                    {copy.answerB}
-                  </ActionButton>
+          return (
+            <article
+              key={pair.id}
+              className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30"
+            >
+              <div className="space-y-5">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/35">
+                  {pair.soundFocus}
+                </p>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                  <WordLabel label="A" word={pair.wordA} />
+                  <span className="text-sm text-white/30">vs</span>
+                  <WordLabel label="B" word={pair.wordB} />
                 </div>
-              </TestGroup>
+              </div>
 
-              <TestGroup
-                step="3"
-                title={copy.pronunciationTitle}
-                description={copy.pronunciationDescription}
-                feedback={getFeedback(pair.id, "pronunciation")}
-              >
-                <ActionButton
-                  intent="primary"
-                  disabled={Boolean(aiCheckTarget)}
-                  onClick={() => startAiPronunciationCheck(pair, "A")}
+              <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
+                <TestGroup
+                  step="1"
+                  title={copy.listenTitle}
+                  description={copy.listenDescription}
+                  feedback={getFeedback(pair.id, "listen")}
                 >
-                  {copy.speakA}
-                </ActionButton>
-                <ActionButton
-                  intent="primary"
-                  disabled={Boolean(aiCheckTarget)}
-                  onClick={() => startAiPronunciationCheck(pair, "B")}
-                >
-                  {copy.speakB}
-                </ActionButton>
-              </TestGroup>
+                  <ActionButton onClick={() => speak(pair.wordA, pair.id)}>
+                    {copy.listenA}
+                  </ActionButton>
+                  <ActionButton onClick={() => speak(pair.wordB, pair.id)}>
+                    {copy.listenB}
+                  </ActionButton>
+                </TestGroup>
 
-              {pair.tongueTwister ? (
+                <TestGroup
+                  step="2"
+                  title={copy.listeningTitle}
+                  description={copy.listeningDescription}
+                  actionsClassName="grid gap-3"
+                  feedback={getFeedback(pair.id, "listening")}
+                >
+                  <ActionButton intent="primary" onClick={() => startQuiz(pair)}>
+                    {copy.playQuiz}
+                  </ActionButton>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ActionButton onClick={() => answerQuiz(pair, "A")}>
+                      {copy.answerA}
+                    </ActionButton>
+                    <ActionButton onClick={() => answerQuiz(pair, "B")}>
+                      {copy.answerB}
+                    </ActionButton>
+                  </div>
+                </TestGroup>
+
+                <TestGroup
+                  step="3"
+                  title={copy.pronunciationTitle}
+                  description={copy.pronunciationDescription}
+                  feedback={getFeedback(pair.id, "pronunciation")}
+                >
+                  <ActionButton
+                    intent="primary"
+                    disabled={Boolean(aiCheckTarget)}
+                    onClick={() => startAiPronunciationCheck(pair, "A")}
+                  >
+                    {copy.speakA}
+                  </ActionButton>
+                  <ActionButton
+                    intent="primary"
+                    disabled={Boolean(aiCheckTarget)}
+                    onClick={() => startAiPronunciationCheck(pair, "B")}
+                  >
+                    {copy.speakB}
+                  </ActionButton>
+                </TestGroup>
+
                 <TestGroup
                   step="4"
                   title={copy.tongueTwisterTitle}
@@ -474,31 +476,93 @@ export function MinimalPairTrainer({
                 >
                   <div className="border border-white/10 bg-black px-4 py-3">
                     <p className="text-lg font-semibold leading-8 text-white">
-                      {pair.tongueTwister.text}
+                      {tongueTwister.text}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-white/50">
-                      {text(pair.tongueTwister.note)}
+                      {text(tongueTwister.note)}
                     </p>
                   </div>
                   <ActionButton
                     onClick={() =>
-                      speak(
-                        pair.tongueTwister?.text ?? "",
-                        pair.id,
-                        "tongueTwister",
-                      )
+                      speak(tongueTwister.text, pair.id, "tongueTwister")
                     }
                   >
                     {copy.listenTongueTwister}
                   </ActionButton>
                 </TestGroup>
-              ) : null}
-            </div>
-          </article>
-        ))}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
+}
+
+function getTongueTwister(pair: MinimalPair) {
+  if (pair.tongueTwister) {
+    return pair.tongueTwister;
+  }
+
+  const { wordA, wordB } = pair;
+
+  if (pair.soundFocus === "B vs V") {
+    return {
+      text: `${wordA} and ${wordB} move from closed lips to clear voice.`,
+      note: {
+        en: "Close the lips for B, then use the lower lip and voice for V.",
+        ja: "Bは唇を閉じ、Vは下唇と声を使う意識で練習します。",
+      },
+    };
+  }
+
+  if (pair.soundFocus === "S vs SH") {
+    return {
+      text: `${wordA}, ${wordB}; say ${wordA}, then ${wordB} softly.`,
+      note: {
+        en: "Keep S narrow and sharp, then make SH wider and softer.",
+        ja: "Sは細く鋭く、SHは少し広くやわらかく出します。",
+      },
+    };
+  }
+
+  if (pair.soundFocus === "Short I vs Long E") {
+    return {
+      text: `${wordA} and ${wordB} sit in a clean little line.`,
+      note: {
+        en: "Keep the short vowel relaxed, then make the long vowel clearer.",
+        ja: "短い母音は力を抜き、長い母音はよりはっきり伸ばします。",
+      },
+    };
+  }
+
+  if (pair.soundFocus === "TH sounds") {
+    return {
+      text: `${wordA} then ${wordB}; keep the tongue light and clear.`,
+      note: {
+        en: "Let the tongue come forward lightly for TH before moving on.",
+        ja: "THでは舌を軽く前に出してから、次の音へ移ります。",
+      },
+    };
+  }
+
+  if (pair.soundFocus === "Final consonants") {
+    return {
+      text: `${wordA}, ${wordB}; finish each word clean and short.`,
+      note: {
+        en: "Do not add an extra vowel after the final consonant.",
+        ja: "語尾の子音の後に、余計な母音を足さないようにします。",
+      },
+    };
+  }
+
+  return {
+    text: `${wordA}, ${wordB}, ${wordA} again, then ${wordB}.`,
+    note: {
+      en: "Practice both target sounds inside one short sentence.",
+      ja: "学んだ2つの音を、ひとつの短い文の中で練習します。",
+    },
+  };
 }
 
 function WordLabel({ label, word }: { label: string; word: string }) {
