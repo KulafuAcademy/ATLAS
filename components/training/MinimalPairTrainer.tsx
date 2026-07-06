@@ -66,6 +66,8 @@ type CardFeedback = {
 
 type TrainerCopy = typeof trainerCopy.en;
 
+const stopPronunciationCheckEvent = "atlas:stop-pronunciation-check";
+
 type MinimalPairTrainerProps = {
   id?: string;
   title: LocalizedText;
@@ -222,10 +224,18 @@ function PairPracticeCard({
   const tongueTwister = getTongueTwister(pair);
 
   useEffect(() => {
-    return () => {
+    function stopRecognition() {
       speechRecognitionRunIdRef.current += 1;
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
+      setAiCheckTarget(null);
+    }
+
+    window.addEventListener(stopPronunciationCheckEvent, stopRecognition);
+
+    return () => {
+      window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
+      stopRecognition();
     };
   }, []);
 
@@ -315,95 +325,92 @@ function PairPracticeCard({
       return;
     }
 
-    speechRecognitionRunIdRef.current += 1;
-    speechRecognitionRef.current?.abort();
+    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
 
-    window.setTimeout(() => {
-      const recognition = new SpeechRecognitionConstructor();
-      const recognitionRunId = speechRecognitionRunIdRef.current + 1;
+    const recognition = new SpeechRecognitionConstructor();
+    const recognitionRunId = speechRecognitionRunIdRef.current + 1;
 
-      recognition.lang = "en-US";
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 3;
-      speechRecognitionRunIdRef.current = recognitionRunId;
-      speechRecognitionRef.current = recognition;
-      setAiCheckTarget(word);
-      showFeedback("pronunciation", "neutral", copy.sayWord(word));
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+    speechRecognitionRunIdRef.current = recognitionRunId;
+    speechRecognitionRef.current = recognition;
+    setAiCheckTarget(word);
+    showFeedback("pronunciation", "neutral", copy.sayWord(word));
 
-      recognition.onresult = (event) => {
-        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-          return;
-        }
+    recognition.onresult = (event) => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
 
-        const transcripts = getSpeechRecognitionTranscripts(event);
-        const isCorrect = transcripts.some((transcript) =>
-          transcriptMatchesWord(transcript, word),
+      const transcripts = getSpeechRecognitionTranscripts(event);
+      const isCorrect = transcripts.some((transcript) =>
+        transcriptMatchesWord(transcript, word),
+      );
+      const heardText = transcripts[0] ?? "unrecognized speech";
+
+      if (isCorrect) {
+        playCorrectSound();
+        showFeedback(
+          "pronunciation",
+          "success",
+          copy.pronunciationCorrect(heardText),
         );
-        const heardText = transcripts[0] ?? "unrecognized speech";
-
-        if (isCorrect) {
-          playCorrectSound();
-          showFeedback(
-            "pronunciation",
-            "success",
-            copy.pronunciationCorrect(heardText),
-          );
-        } else {
-          playIncorrectSound();
-          showFeedback(
-            "pronunciation",
-            "error",
-            copy.pronunciationRetry(heardText, word),
-          );
-        }
-
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
-      };
-
-      recognition.onerror = () => {
-        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-          return;
-        }
-
+      } else {
         playIncorrectSound();
-        showFeedback("pronunciation", "error", copy.couldNotHear);
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
-      };
+        showFeedback(
+          "pronunciation",
+          "error",
+          copy.pronunciationRetry(heardText, word),
+        );
+      }
 
-      recognition.onnomatch = () => {
-        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-          return;
-        }
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
 
-        playIncorrectSound();
-        showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
-      };
+    recognition.onerror = () => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
 
-      recognition.onend = () => {
-        if (speechRecognitionRunIdRef.current === recognitionRunId) {
-          setAiCheckTarget(null);
-          speechRecognitionRef.current = null;
-        }
-      };
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.couldNotHear);
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
 
-      try {
-        recognition.start();
-      } catch {
-        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-          return;
-        }
+    recognition.onnomatch = () => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
 
-        playIncorrectSound();
-        showFeedback("pronunciation", "error", copy.checkCouldNotStart);
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.onend = () => {
+      if (speechRecognitionRunIdRef.current === recognitionRunId) {
         setAiCheckTarget(null);
         speechRecognitionRef.current = null;
       }
-    }, 120);
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
+
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.checkCouldNotStart);
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    }
   }
 
   return (
