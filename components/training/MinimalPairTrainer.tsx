@@ -164,6 +164,7 @@ export function MinimalPairTrainer({
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
+  const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const copy = trainerCopy[language];
 
@@ -281,11 +282,13 @@ export function MinimalPairTrainer({
     speechRecognitionRef.current?.abort();
 
     const recognition = new SpeechRecognitionConstructor();
+    const recognitionRunId = speechRecognitionRunIdRef.current + 1;
 
     recognition.lang = "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 3;
+    speechRecognitionRunIdRef.current = recognitionRunId;
     speechRecognitionRef.current = recognition;
     setAiCheckTarget(word);
     showFeedback(
@@ -296,6 +299,10 @@ export function MinimalPairTrainer({
     );
 
     recognition.onresult = (event) => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
+
       const transcripts = getSpeechRecognitionTranscripts(event);
       const isCorrect = transcripts.some((transcript) =>
         transcriptMatchesWord(transcript, word),
@@ -325,6 +332,10 @@ export function MinimalPairTrainer({
     };
 
     recognition.onerror = () => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
+
       playIncorrectSound();
       showFeedback(
         pair.id,
@@ -337,6 +348,10 @@ export function MinimalPairTrainer({
     };
 
     recognition.onnomatch = () => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
+
       playIncorrectSound();
       showFeedback(
         pair.id,
@@ -349,12 +364,19 @@ export function MinimalPairTrainer({
     };
 
     recognition.onend = () => {
-      setAiCheckTarget(null);
+      if (speechRecognitionRunIdRef.current === recognitionRunId) {
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+      }
     };
 
     try {
       recognition.start();
     } catch {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
+
       playIncorrectSound();
       showFeedback(
         pair.id,
