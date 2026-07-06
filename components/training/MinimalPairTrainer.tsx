@@ -64,6 +64,8 @@ type CardFeedback = {
   language: "en" | "ja";
 } | null;
 
+type TrainerCopy = typeof trainerCopy.en;
+
 type MinimalPairTrainerProps = {
   id?: string;
   title: LocalizedText;
@@ -161,233 +163,7 @@ export function MinimalPairTrainer({
   pairs,
 }: MinimalPairTrainerProps) {
   const { language, text } = useLanguage();
-  const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
-  const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
-  const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
-  const speechRecognitionRunIdRef = useRef(0);
-  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const copy = trainerCopy[language];
-
-  useEffect(() => {
-    return () => {
-      speechRecognitionRef.current?.abort();
-    };
-  }, []);
-
-  function showFeedback(
-    pairId: string,
-    type: FeedbackType,
-    tone: FeedbackTone,
-    text: string,
-  ) {
-    setCardFeedback({ pairId, type, tone, text, language });
-  }
-
-  function getFeedback(pairId: string, type: FeedbackType) {
-    if (
-      cardFeedback?.pairId !== pairId ||
-      cardFeedback.type !== type ||
-      cardFeedback.language !== language
-    ) {
-      return null;
-    }
-
-    return cardFeedback;
-  }
-
-  function speak(
-    word: string,
-    pairId?: string,
-    feedbackType: FeedbackType = "listen",
-  ) {
-    if (!("speechSynthesis" in window)) {
-      playIncorrectSound();
-      const feedbackText = copy.speechPlaybackUnsupported;
-
-      if (pairId) {
-        showFeedback(pairId, feedbackType, "error", feedbackText);
-      }
-
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = "en-US";
-    utterance.rate = 0.85;
-    utterance.pitch = 1;
-
-    window.speechSynthesis.speak(utterance);
-    const feedbackText = copy.playing(word);
-
-    if (pairId) {
-      showFeedback(pairId, feedbackType, "neutral", feedbackText);
-    }
-  }
-
-  function startQuiz(pair: MinimalPair) {
-    const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
-    const word = target === "A" ? pair.wordA : pair.wordB;
-
-    setActiveQuiz({ pairId: pair.id, target });
-    speak(word, pair.id);
-    showFeedback(pair.id, "listening", "neutral", copy.whichWord);
-  }
-
-  function answerQuiz(pair: MinimalPair, answer: QuizTarget) {
-    if (!activeQuiz || activeQuiz.pairId !== pair.id) {
-      playIncorrectSound();
-      showFeedback(
-        pair.id,
-        "listening",
-        "error",
-        copy.playQuizFirst,
-      );
-      return;
-    }
-
-    if (answer === activeQuiz.target) {
-      playCorrectSound();
-      showFeedback(pair.id, "listening", "success", copy.correct);
-    } else {
-      playIncorrectSound();
-      showFeedback(
-        pair.id,
-        "listening",
-        "error",
-        copy.listeningIncorrect(activeQuiz.target),
-      );
-    }
-
-    setActiveQuiz(null);
-  }
-
-  function startAiPronunciationCheck(pair: MinimalPair, target: QuizTarget) {
-    const word = target === "A" ? pair.wordA : pair.wordB;
-    const SpeechRecognitionConstructor =
-      window.SpeechRecognition ?? window.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionConstructor) {
-      playIncorrectSound();
-      showFeedback(
-        pair.id,
-        "pronunciation",
-        "error",
-        copy.pronunciationUnsupported,
-      );
-      return;
-    }
-
-    speechRecognitionRef.current?.abort();
-
-    const recognition = new SpeechRecognitionConstructor();
-    const recognitionRunId = speechRecognitionRunIdRef.current + 1;
-
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
-    speechRecognitionRunIdRef.current = recognitionRunId;
-    speechRecognitionRef.current = recognition;
-    setAiCheckTarget(word);
-    showFeedback(
-      pair.id,
-      "pronunciation",
-      "neutral",
-      copy.sayWord(word),
-    );
-
-    recognition.onresult = (event) => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
-
-      const transcripts = getSpeechRecognitionTranscripts(event);
-      const isCorrect = transcripts.some((transcript) =>
-        transcriptMatchesWord(transcript, word),
-      );
-      const heardText = transcripts[0] ?? "unrecognized speech";
-
-      if (isCorrect) {
-        playCorrectSound();
-        showFeedback(
-          pair.id,
-          "pronunciation",
-          "success",
-          copy.pronunciationCorrect(heardText),
-        );
-      } else {
-        playIncorrectSound();
-        showFeedback(
-          pair.id,
-          "pronunciation",
-          "error",
-          copy.pronunciationRetry(heardText, word),
-        );
-      }
-
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
-    };
-
-    recognition.onerror = () => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
-
-      playIncorrectSound();
-      showFeedback(
-        pair.id,
-        "pronunciation",
-        "error",
-        copy.couldNotHear,
-      );
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
-    };
-
-    recognition.onnomatch = () => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
-
-      playIncorrectSound();
-      showFeedback(
-        pair.id,
-        "pronunciation",
-        "error",
-        copy.couldNotRecognize(word),
-      );
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
-    };
-
-    recognition.onend = () => {
-      if (speechRecognitionRunIdRef.current === recognitionRunId) {
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
-      }
-    };
-
-    try {
-      recognition.start();
-    } catch {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
-
-      playIncorrectSound();
-      showFeedback(
-        pair.id,
-        "pronunciation",
-        "error",
-        copy.checkCouldNotStart,
-      );
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
-    }
-  }
 
   return (
     <section id={id} className="scroll-mt-28 space-y-8">
@@ -413,111 +189,316 @@ export function MinimalPairTrainer({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {pairs.map((pair) => {
-          const tongueTwister = getTongueTwister(pair);
-
-          return (
-            <article
-              key={pair.id}
-              className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30"
-            >
-              <div className="space-y-5">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/35">
-                  {pair.soundFocus}
-                </p>
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                  <WordLabel label="A" word={pair.wordA} />
-                  <span className="text-sm text-white/30">vs</span>
-                  <WordLabel label="B" word={pair.wordB} />
-                </div>
-              </div>
-
-              <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
-                <TestGroup
-                  step="1"
-                  title={copy.listenTitle}
-                  description={copy.listenDescription}
-                  feedback={getFeedback(pair.id, "listen")}
-                >
-                  <ActionButton onClick={() => speak(pair.wordA, pair.id)}>
-                    {copy.listenA}
-                  </ActionButton>
-                  <ActionButton onClick={() => speak(pair.wordB, pair.id)}>
-                    {copy.listenB}
-                  </ActionButton>
-                </TestGroup>
-
-                <TestGroup
-                  step="2"
-                  title={copy.listeningTitle}
-                  description={copy.listeningDescription}
-                  actionsClassName="grid gap-3"
-                  feedback={getFeedback(pair.id, "listening")}
-                >
-                  <ActionButton intent="primary" onClick={() => startQuiz(pair)}>
-                    {copy.playQuiz}
-                  </ActionButton>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <ActionButton onClick={() => answerQuiz(pair, "A")}>
-                      {copy.answerA}
-                    </ActionButton>
-                    <ActionButton onClick={() => answerQuiz(pair, "B")}>
-                      {copy.answerB}
-                    </ActionButton>
-                  </div>
-                </TestGroup>
-
-                <TestGroup
-                  step="3"
-                  title={copy.pronunciationTitle}
-                  description={copy.pronunciationDescription}
-                  feedback={getFeedback(pair.id, "pronunciation")}
-                >
-                  <ActionButton
-                    intent="primary"
-                    disabled={Boolean(aiCheckTarget)}
-                    onClick={() => startAiPronunciationCheck(pair, "A")}
-                  >
-                    {copy.speakA}
-                  </ActionButton>
-                  <ActionButton
-                    intent="primary"
-                    disabled={Boolean(aiCheckTarget)}
-                    onClick={() => startAiPronunciationCheck(pair, "B")}
-                  >
-                    {copy.speakB}
-                  </ActionButton>
-                </TestGroup>
-
-                <TestGroup
-                  step="4"
-                  title={copy.tongueTwisterTitle}
-                  description={copy.tongueTwisterDescription}
-                  actionsClassName="grid gap-3"
-                  feedback={getFeedback(pair.id, "tongueTwister")}
-                >
-                  <div className="border border-white/10 bg-black px-4 py-3">
-                    <p className="text-lg font-semibold leading-8 text-white">
-                      {tongueTwister.text}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-white/50">
-                      {text(tongueTwister.note)}
-                    </p>
-                  </div>
-                  <ActionButton
-                    onClick={() =>
-                      speak(tongueTwister.text, pair.id, "tongueTwister")
-                    }
-                  >
-                    {copy.listenTongueTwister}
-                  </ActionButton>
-                </TestGroup>
-              </div>
-            </article>
-          );
-        })}
+        {pairs.map((pair) => (
+          <PairPracticeCard
+            key={pair.id}
+            copy={copy}
+            language={language}
+            pair={pair}
+            text={text}
+          />
+        ))}
       </div>
     </section>
+  );
+}
+
+function PairPracticeCard({
+  copy,
+  language,
+  pair,
+  text,
+}: {
+  copy: TrainerCopy;
+  language: "en" | "ja";
+  pair: MinimalPair;
+  text: (value: LocalizedText) => string;
+}) {
+  const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
+  const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
+  const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
+  const speechRecognitionRunIdRef = useRef(0);
+  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const tongueTwister = getTongueTwister(pair);
+
+  useEffect(() => {
+    return () => {
+      speechRecognitionRunIdRef.current += 1;
+      speechRecognitionRef.current?.abort();
+      speechRecognitionRef.current = null;
+    };
+  }, []);
+
+  function showFeedback(
+    type: FeedbackType,
+    tone: FeedbackTone,
+    textValue: string,
+  ) {
+    setCardFeedback({
+      pairId: pair.id,
+      type,
+      tone,
+      text: textValue,
+      language,
+    });
+  }
+
+  function getFeedback(type: FeedbackType) {
+    if (
+      cardFeedback?.pairId !== pair.id ||
+      cardFeedback.type !== type ||
+      cardFeedback.language !== language
+    ) {
+      return null;
+    }
+
+    return cardFeedback;
+  }
+
+  function speak(word: string, feedbackType: FeedbackType = "listen") {
+    if (!("speechSynthesis" in window)) {
+      playIncorrectSound();
+      showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = "en-US";
+    utterance.rate = 0.85;
+    utterance.pitch = 1;
+
+    window.speechSynthesis.speak(utterance);
+    showFeedback(feedbackType, "neutral", copy.playing(word));
+  }
+
+  function startQuiz() {
+    const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
+    const word = target === "A" ? pair.wordA : pair.wordB;
+
+    setActiveQuiz({ pairId: pair.id, target });
+    speak(word);
+    showFeedback("listening", "neutral", copy.whichWord);
+  }
+
+  function answerQuiz(answer: QuizTarget) {
+    if (!activeQuiz || activeQuiz.pairId !== pair.id) {
+      playIncorrectSound();
+      showFeedback("listening", "error", copy.playQuizFirst);
+      return;
+    }
+
+    if (answer === activeQuiz.target) {
+      playCorrectSound();
+      showFeedback("listening", "success", copy.correct);
+    } else {
+      playIncorrectSound();
+      showFeedback(
+        "listening",
+        "error",
+        copy.listeningIncorrect(activeQuiz.target),
+      );
+    }
+
+    setActiveQuiz(null);
+  }
+
+  function startAiPronunciationCheck(target: QuizTarget) {
+    const word = target === "A" ? pair.wordA : pair.wordB;
+    const SpeechRecognitionConstructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionConstructor) {
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.pronunciationUnsupported);
+      return;
+    }
+
+    speechRecognitionRunIdRef.current += 1;
+    speechRecognitionRef.current?.abort();
+
+    window.setTimeout(() => {
+      const recognition = new SpeechRecognitionConstructor();
+      const recognitionRunId = speechRecognitionRunIdRef.current + 1;
+
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 3;
+      speechRecognitionRunIdRef.current = recognitionRunId;
+      speechRecognitionRef.current = recognition;
+      setAiCheckTarget(word);
+      showFeedback("pronunciation", "neutral", copy.sayWord(word));
+
+      recognition.onresult = (event) => {
+        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+          return;
+        }
+
+        const transcripts = getSpeechRecognitionTranscripts(event);
+        const isCorrect = transcripts.some((transcript) =>
+          transcriptMatchesWord(transcript, word),
+        );
+        const heardText = transcripts[0] ?? "unrecognized speech";
+
+        if (isCorrect) {
+          playCorrectSound();
+          showFeedback(
+            "pronunciation",
+            "success",
+            copy.pronunciationCorrect(heardText),
+          );
+        } else {
+          playIncorrectSound();
+          showFeedback(
+            "pronunciation",
+            "error",
+            copy.pronunciationRetry(heardText, word),
+          );
+        }
+
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+      };
+
+      recognition.onerror = () => {
+        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+          return;
+        }
+
+        playIncorrectSound();
+        showFeedback("pronunciation", "error", copy.couldNotHear);
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+      };
+
+      recognition.onnomatch = () => {
+        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+          return;
+        }
+
+        playIncorrectSound();
+        showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+      };
+
+      recognition.onend = () => {
+        if (speechRecognitionRunIdRef.current === recognitionRunId) {
+          setAiCheckTarget(null);
+          speechRecognitionRef.current = null;
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch {
+        if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+          return;
+        }
+
+        playIncorrectSound();
+        showFeedback("pronunciation", "error", copy.checkCouldNotStart);
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+      }
+    }, 120);
+  }
+
+  return (
+    <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
+      <div className="space-y-5">
+        <p className="text-xs uppercase tracking-[0.24em] text-white/35">
+          {pair.soundFocus}
+        </p>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <WordLabel label="A" word={pair.wordA} />
+          <span className="text-sm text-white/30">vs</span>
+          <WordLabel label="B" word={pair.wordB} />
+        </div>
+      </div>
+
+      <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
+        <TestGroup
+          step="1"
+          title={copy.listenTitle}
+          description={copy.listenDescription}
+          feedback={getFeedback("listen")}
+        >
+          <ActionButton onClick={() => speak(pair.wordA)}>
+            {copy.listenA}
+          </ActionButton>
+          <ActionButton onClick={() => speak(pair.wordB)}>
+            {copy.listenB}
+          </ActionButton>
+        </TestGroup>
+
+        <TestGroup
+          step="2"
+          title={copy.listeningTitle}
+          description={copy.listeningDescription}
+          actionsClassName="grid gap-3"
+          feedback={getFeedback("listening")}
+        >
+          <ActionButton intent="primary" onClick={startQuiz}>
+            {copy.playQuiz}
+          </ActionButton>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ActionButton onClick={() => answerQuiz("A")}>
+              {copy.answerA}
+            </ActionButton>
+            <ActionButton onClick={() => answerQuiz("B")}>
+              {copy.answerB}
+            </ActionButton>
+          </div>
+        </TestGroup>
+
+        <TestGroup
+          step="3"
+          title={copy.pronunciationTitle}
+          description={copy.pronunciationDescription}
+          feedback={getFeedback("pronunciation")}
+        >
+          <ActionButton
+            intent="primary"
+            disabled={Boolean(aiCheckTarget)}
+            onClick={() => startAiPronunciationCheck("A")}
+          >
+            {copy.speakA}
+          </ActionButton>
+          <ActionButton
+            intent="primary"
+            disabled={Boolean(aiCheckTarget)}
+            onClick={() => startAiPronunciationCheck("B")}
+          >
+            {copy.speakB}
+          </ActionButton>
+        </TestGroup>
+
+        <TestGroup
+          step="4"
+          title={copy.tongueTwisterTitle}
+          description={copy.tongueTwisterDescription}
+          actionsClassName="grid gap-3"
+          feedback={getFeedback("tongueTwister")}
+        >
+          <div className="border border-white/10 bg-black px-4 py-3">
+            <p className="text-lg font-semibold leading-8 text-white">
+              {tongueTwister.text}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-white/50">
+              {text(tongueTwister.note)}
+            </p>
+          </div>
+          <ActionButton
+            onClick={() => speak(tongueTwister.text, "tongueTwister")}
+          >
+            {copy.listenTongueTwister}
+          </ActionButton>
+        </TestGroup>
+      </div>
+    </article>
   );
 }
 
