@@ -10,6 +10,8 @@ export type MinimalPair = {
   };
   wordA: string;
   wordB: string;
+  audioA?: string;
+  audioB?: string;
 };
 
 export type TrainingCategory = {
