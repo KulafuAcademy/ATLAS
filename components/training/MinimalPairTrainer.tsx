@@ -223,7 +223,6 @@ function PairPracticeCard({
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const tongueTwister = getTongueTwister(pair);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     function stopRecognition() {
@@ -238,7 +237,7 @@ function PairPracticeCard({
     return () => {
       window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
       stopRecognition();
-      audioRef.current?.pause();
+      window.speechSynthesis?.cancel();
     };
   }, []);
 
@@ -274,7 +273,7 @@ function PairPracticeCard({
       showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
       return;
     }
-    audioRef.current?.pause();
+
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(word);
@@ -286,30 +285,12 @@ function PairPracticeCard({
     showFeedback(feedbackType, "neutral", copy.playing(word));
   }
 
-  function playWord(target: QuizTarget, feedbackType: FeedbackType = "listen") {
-    const word = target === "A" ? pair.wordA : pair.wordB;
-    const src = `/audio/words/${word.toLowerCase()}.wav`;
-
-    audioRef.current?.pause();
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    const audio = new Audio(src);
-    audioRef.current = audio;
-
-    audio
-      .play()
-      .then(() => showFeedback(feedbackType, "neutral", copy.playing(word)))
-      .catch(() => speak(word, feedbackType));
-  }
-
   function startQuiz() {
     const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
+    const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    playWord(target);
+    speak(word);
     showFeedback("listening", "neutral", copy.whichWord);
   }
 
@@ -453,10 +434,11 @@ function PairPracticeCard({
           description={copy.listenDescription}
           feedback={getFeedback("listen")}
         >
-          <ActionButton onClick={() => playWord("A")}>
+          <ActionButton onClick={() => speak(pair.wordA)}>
             {copy.listenA}
           </ActionButton>
-          <ActionButton onClick={() => playWord("B")}>
+
+          <ActionButton onClick={() => speak(pair.wordB)}>
             {copy.listenB}
           </ActionButton>
         </TestGroup>
