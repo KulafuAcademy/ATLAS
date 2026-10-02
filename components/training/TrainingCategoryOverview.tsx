@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { TrainingCategory, TrainingProgress } from "@/types/training";
 
 type TrainingCategoryOverviewProps = {
   categories: TrainingCategory[];
-  onStart?: (categoryId: string, target: "learn" | "test") => void;
+  onStart?: (categoryId: string) => void;
   progressByCategory?: Record<string, TrainingProgress>;
 };
 
@@ -20,6 +22,7 @@ const overviewCopy = {
     test: "Take test",
     progress: "Progress",
     noProgress: "No test yet",
+    tested: "Tested",
     best: "Best",
     last: "Last",
     attempts: "Attempts",
@@ -34,14 +37,17 @@ const overviewCopy = {
     test: "テストを受ける",
     progress: "進捗",
     noProgress: "まだテストなし",
+    tested: "テスト済み",
     best: "ベスト",
     last: "前回",
     attempts: "回数",
   },
 };
 
-const buttonClassName =
-  "h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
+const learnButtonClassName =
+  "h-11 rounded-lg border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-white/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
+const testButtonClassName =
+  "inline-flex h-11 items-center justify-center rounded-lg border border-white/20 bg-white/[0.03] px-4 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
 
 export function TrainingCategoryOverview({
   categories,
@@ -67,33 +73,38 @@ export function TrainingCategoryOverview({
         {categories.map((category) => {
           const isAvailable = category.status === "available";
           const progress = progressByCategory[category.id];
-          const bestPercentage = progress
-            ? Math.round((progress.bestScore / progress.total) * 100)
+          const hasTested = Boolean(progress && progress.attempts > 0);
+          const bestPercentage = hasTested && progress.total > 0
+            ? Math.min(100, Math.max(0, Math.round((progress.bestScore / progress.total) * 100)))
             : 0;
 
           return (
             <article
               key={category.id}
-              className="flex min-h-64 flex-col justify-between border border-white/10 bg-white/[0.02] p-5"
+              className="group relative flex min-h-72 flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.015] p-5 transition duration-200 hover:-translate-y-1 hover:border-white/25 hover:from-white/[0.07]"
             >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-cyan-200/[0.035] blur-2xl transition group-hover:bg-cyan-200/[0.08]"
+              />
               <div className="space-y-5">
-                <h3 className="text-2xl font-semibold text-white">
+                <h3 className="relative text-2xl font-semibold tracking-tight text-white">
                   {text(category.title)}
                 </h3>
 
-                <p className="text-sm leading-6 text-white/60">
+                <p className="relative min-h-12 text-sm leading-6 text-white/60">
                   {text(category.description)}
                 </p>
 
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/35">
+                <div className="relative space-y-2">
+                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-white/40">
                     {copy.examples}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {category.examples.map((example) => (
                       <span
                         key={example}
-                        className="border border-white/10 px-2 py-1 text-xs text-white/65"
+                        className="rounded-md border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white/70 transition group-hover:border-white/15"
                       >
                         {example}
                       </span>
@@ -101,25 +112,39 @@ export function TrainingCategoryOverview({
                   </div>
                 </div>
 
-                <div className="space-y-2 border-t border-white/10 pt-4">
+                <div className="relative space-y-3 rounded-xl border border-white/[0.07] bg-black/30 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs uppercase tracking-[0.22em] text-white/35">
+                    <p className="text-[0.68rem] font-medium uppercase tracking-[0.2em] text-white/45">
                       {copy.progress}
                     </p>
-                    <p className="text-xs text-white/45">
-                      {progress
-                        ? `${copy.attempts}: ${progress.attempts}`
-                        : copy.noProgress}
-                    </p>
+                    {hasTested ? (
+                      <p className="rounded-full border border-cyan-200/20 bg-cyan-200/[0.08] px-2.5 py-1 text-[0.7rem] font-medium text-cyan-100">
+                        {copy.tested} · {copy.attempts}: {progress.attempts}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-white/45">{copy.noProgress}</p>
+                    )}
                   </div>
-                  <div className="h-1.5 bg-white/10">
+                  <div
+                    role="progressbar"
+                    aria-label={`${text(category.title)} ${copy.progress}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={bestPercentage}
+                    aria-valuetext={
+                      hasTested
+                        ? `${copy.best}: ${progress.bestScore} / ${progress.total}`
+                        : copy.noProgress
+                    }
+                    className="h-2.5 overflow-hidden rounded-full bg-white/10"
+                  >
                     <div
-                      className="h-full bg-white"
+                      className="h-full rounded-full bg-gradient-to-r from-cyan-200 to-sky-300 transition-[width] duration-500 ease-out"
                       style={{ width: `${bestPercentage}%` }}
                     />
                   </div>
-                  {progress ? (
-                    <p className="text-xs text-white/55">
+                  {hasTested ? (
+                    <p className="text-xs tabular-nums text-white/60">
                       {copy.best}: {progress.bestScore} / {progress.total} ·{" "}
                       {copy.last}: {progress.lastScore} / {progress.total}
                     </p>
@@ -128,21 +153,20 @@ export function TrainingCategoryOverview({
               </div>
 
               {isAvailable ? (
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => onStart?.(category.id, "learn")}
-                    className={buttonClassName}
+                    onClick={() => onStart?.(category.id)}
+                    className={learnButtonClassName}
                   >
                     {copy.learn}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onStart?.(category.id, "test")}
-                    className={buttonClassName}
+                  <Link
+                    href={`/test/${category.id}`}
+                    className={testButtonClassName}
                   >
                     {copy.test}
-                  </button>
+                  </Link>
                 </div>
               ) : null}
             </article>

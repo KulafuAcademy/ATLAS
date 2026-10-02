@@ -6,19 +6,14 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { ListeningTestSession } from "@/components/training/ListeningTestSession";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
-import type { LocalizedText } from "@/lib/i18n";
-import type {
-  MinimalPair,
-  TrainingCategory,
-  TrainingProgress,
-} from "@/types/training";
-
-type TrainingSection = {
-  id: string;
-  title: LocalizedText;
-  description: LocalizedText;
-  pairs: MinimalPair[];
-};
+import {
+  readTrainingProgress,
+  saveTrainingTestResult,
+  trainingProgressUpdatedEvent,
+  type ProgressByCategory,
+} from "@/lib/trainingProgress";
+import type { TrainingSection } from "@/data/trainingSections";
+import type { MinimalPair, TrainingCategory } from "@/types/training";
 
 type TrainingCurriculumProps = {
   categories: TrainingCategory[];
@@ -26,10 +21,6 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
-type EntryTarget = "learn" | "test";
-type ProgressByCategory = Record<string, TrainingProgress>;
-
-const progressStorageKey = "atlas.trainingProgress.v1";
 const smallButtonClassName =
   "h-10 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
 
@@ -66,29 +57,24 @@ export function TrainingCurriculum({
   const [practiceModes, setPracticeModes] = useState<Record<string, PracticeMode>>(
     {},
   );
-  const [progressByCategory, setProgressByCategory] = useState<ProgressByCategory>(
-    {},
-  );
+  const [progressByCategory, setProgressByCategory] =
+    useState<ProgressByCategory>({});
   const [pendingScrollTargetId, setPendingScrollTargetId] = useState<string | null>(
     null,
   );
 
   useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      const storedProgress = window.localStorage.getItem(progressStorageKey);
+    const refreshProgress = () => setProgressByCategory(readTrainingProgress());
+    refreshProgress();
+    window.addEventListener(trainingProgressUpdatedEvent, refreshProgress);
+    window.addEventListener("storage", refreshProgress);
+    window.addEventListener("pageshow", refreshProgress);
 
-      if (!storedProgress) {
-        return;
-      }
-
-      try {
-        setProgressByCategory(JSON.parse(storedProgress) as ProgressByCategory);
-      } catch {
-        window.localStorage.removeItem(progressStorageKey);
-      }
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
+    return () => {
+      window.removeEventListener(trainingProgressUpdatedEvent, refreshProgress);
+      window.removeEventListener("storage", refreshProgress);
+      window.removeEventListener("pageshow", refreshProgress);
+    };
   }, []);
 
   useEffect(() => {
@@ -133,10 +119,8 @@ export function TrainingCurriculum({
     });
   }
 
-  function openAndScrollToSection(sectionId: string, target: EntryTarget) {
-    const targetElementId =
-      target === "test" ? `${sectionId}-test` : `${sectionId}-learn`;
-
+  function openAndScrollToSection(sectionId: string) {
+    const targetElementId = `${sectionId}-learn`;
     setOpenSectionIds((currentSectionIds) =>
       currentSectionIds.includes(sectionId)
         ? currentSectionIds
@@ -146,26 +130,7 @@ export function TrainingCurriculum({
   }
 
   function recordTestProgress(sectionId: string, score: number, total: number) {
-    setProgressByCategory((currentProgress) => {
-      const previousProgress = currentProgress[sectionId];
-      const nextProgress = {
-        ...currentProgress,
-        [sectionId]: {
-          attempts: (previousProgress?.attempts ?? 0) + 1,
-          bestScore: Math.max(previousProgress?.bestScore ?? 0, score),
-          lastScore: score,
-          total,
-          updatedAt: new Date().toISOString(),
-        },
-      };
-
-      window.localStorage.setItem(
-        progressStorageKey,
-        JSON.stringify(nextProgress),
-      );
-
-      return nextProgress;
-    });
+    setProgressByCategory(saveTrainingTestResult(sectionId, score, total));
   }
 
   return (
