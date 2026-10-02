@@ -366,10 +366,9 @@ function PairPracticeCard({
       }
 
       const transcripts = getSpeechRecognitionTranscripts(event);
-      const isCorrect = transcripts.some((transcript) =>
-        transcriptMatchesWord(transcript, word),
-      );
       const heardText = transcripts[0] ?? "unrecognized speech";
+
+      const isCorrect = transcriptMatchesWord(heardText, word);
 
       if (isCorrect) {
         playCorrectSound();
