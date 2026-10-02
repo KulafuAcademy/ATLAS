@@ -40,6 +40,7 @@ type BrowserSpeechRecognitionResultEvent = Event & {
   results: {
     length: number;
     [index: number]: {
+      isFinal: boolean;
       length: number;
       [index: number]: {
         transcript: string;
@@ -335,35 +336,57 @@ function PairPracticeCard({
     recognition.lang = "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 1;
     speechRecognitionRunIdRef.current = recognitionRunId;
     speechRecognitionRef.current = recognition;
     setAiCheckTarget(word);
     showFeedback("pronunciation", "neutral", copy.sayWord(word));
+
+    function getFirstRecognizedWord(transcript: string) {
+      const normalized = normalizeRecognizedText(transcript);
+
+      return normalized.split(" ")[0] ?? "";
+    }
 
     recognition.onresult = (event) => {
       if (speechRecognitionRunIdRef.current !== recognitionRunId) {
         return;
       }
 
-      const transcripts = getSpeechRecognitionTranscripts(event);
-      const heardText = transcripts[0] ?? "unrecognized speech";
+      // Stop recording immediately once we have a result.
+      recognition.abort();
 
-      const isCorrect = transcriptMatchesWord(heardText, word);
+      const transcripts = getSpeechRecognitionTranscripts(event);
+      const heardText = transcripts[0] ?? "";
+
+      // Speech recognition may return something like:
+      // "Road Hello. Hello, hello."
+      // Only use the first recognized word.
+      const heardWord = getFirstRecognizedWord(heardText);
+
+      if (!heardWord) {
+        playIncorrectSound();
+        showFeedback("pronunciation", "error", copy.couldNotHear);
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+        return;
+      }
+
+      const isCorrect = transcriptMatchesWord(heardWord, word);
 
       if (isCorrect) {
         playCorrectSound();
         showFeedback(
           "pronunciation",
           "success",
-          copy.pronunciationCorrect(heardText),
+          copy.pronunciationCorrect(heardWord),
         );
       } else {
         playIncorrectSound();
         showFeedback(
           "pronunciation",
           "error",
-          copy.pronunciationRetry(heardText, word),
+          copy.pronunciationRetry(heardWord, word),
         );
       }
 
@@ -804,7 +827,7 @@ function transcriptMatchesWord(transcript: string, targetWord: string) {
   const normalizedTranscript = normalizeRecognizedText(transcript);
   const normalizedTarget = normalizeRecognizedText(targetWord);
 
-  return normalizedTranscript.split(" ").includes(normalizedTarget);
+  return normalizedTranscript === normalizedTarget;
 }
 
 function normalizeRecognizedText(text: string) {
