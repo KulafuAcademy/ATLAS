@@ -5,6 +5,15 @@ import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
+import {
+  AZURE_SPEECH_VOICES,
+  DEFAULT_AZURE_SPEECH_VOICE,
+  getSavedAzureSpeechVoice,
+  saveAzureSpeechVoice,
+  type AzureSpeechVoiceId,
+} from "@/lib/speechVoices";
+import { playAzureSpeech, stopSpeechPlayback } from "@/lib/speechPlayback";
+import { startWavRecorder, type WavRecorder } from "@/lib/wavRecorder";
 import type { MinimalPair } from "@/types/training";
 
 declare global {
@@ -26,20 +35,30 @@ type BrowserSpeechRecognition = {
   maxAlternatives: number;
   abort: () => void;
   start: () => void;
+  stop: () => void;
   onend: (() => void) | null;
   onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
   onnomatch: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onaudiostart: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onspeechend: (() => void) | null;
+  onsoundend: (() => void) | null;
+  onaudioend: (() => void) | null;
   onresult: ((event: BrowserSpeechRecognitionResultEvent) => void) | null;
 };
 
 type BrowserSpeechRecognitionErrorEvent = Event & {
   error?: string;
+  message?: string;
 };
 
 type BrowserSpeechRecognitionResultEvent = Event & {
+  resultIndex: number;
   results: {
     length: number;
     [index: number]: {
+      isFinal: boolean;
       length: number;
       [index: number]: {
         transcript: string;
@@ -56,17 +75,99 @@ type ActiveQuiz = {
 type FeedbackType = "listen" | "listening" | "pronunciation" | "tongueTwister";
 type FeedbackTone = "neutral" | "success" | "error";
 
+// One scored item in an Azure result: a sound (/l/) or a word.
+// focus: false marks a word outside the drill (e.g. "the", "on"); it is shown
+// in grey and does not affect the result.
+type ScoredItem = { label: string; score: number | null; focus?: boolean };
+
+type AssessmentDetail = {
+  score: number;
+  items: ScoredItem[];
+};
+
 type CardFeedback = {
   pairId: string;
   type: FeedbackType;
   tone: FeedbackTone;
   text: string;
   language: "en" | "ja";
+  detail?: AssessmentDetail;
 } | null;
 
 type TrainerCopy = typeof trainerCopy.en;
 
+type ListenKey = "A" | "B" | "sentence";
+
+type ListenSession = {
+  runId: number;
+  key: ListenKey;
+  target: string;
+  // R vs L records audio for Azure pronunciation assessment; other
+  // categories use the browser's speech recognition.
+  engine: "browser" | "azure";
+  recorder: WavRecorder | null;
+  heard: string;
+  speechDetected: boolean;
+  log: SpeechLogger;
+  finished: boolean;
+  timers: number[];
+};
+
+// Finish a single-word check shortly after a word is heard instead of
+// waiting for the browser's own end-of-speech detection.
+const wordSettleMs = 450;
+const sentenceSettleMs = 1200;
+const finalResultGraceMs = 1500;
+const noSpeechTimeoutMs = 6000;
+// Azure recordings: RMS level that counts as voice, and how much silence after
+// speech ends the recording.
+const voiceRmsThreshold = 0.03;
+const silenceAfterSpeechSeconds = { word: 0.7, sentence: 1.2 };
+const maxRecordingMs = { word: 5000, sentence: 10000 };
+
+type PronunciationAssessment = {
+  status: string;
+  recognizedText: string;
+  accuracy: number | null;
+  pronunciation: number | null;
+  words: {
+    word: string;
+    accuracy: number | null;
+    errorType: string;
+    phonemes: { phoneme: string; accuracy: number | null }[];
+  }[];
+};
+// Chrome sometimes hears speech but never returns words; don't wait it out.
+const noWordsAfterSpeechMs = 2500;
+const maxListenMs = { word: 8000, sentence: 12000 };
+const holdThresholdMs = 500;
+
+type SpeechLogger = (event: string, detail?: unknown) => void;
+
+// Mic diagnostics go to the browser console in development, or anywhere after
+// running localStorage.setItem("atlas.debugSpeech", "1").
+function isSpeechDebugEnabled() {
+  if (process.env.NODE_ENV !== "production") return true;
+  try {
+    return window.localStorage.getItem("atlas.debugSpeech") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function createSpeechLogger(label: string): SpeechLogger {
+  const startedAt = performance.now();
+  return (event, detail) => {
+    if (!isSpeechDebugEnabled()) return;
+    const elapsed = Math.round(performance.now() - startedAt);
+    console.info(`[ATLAS mic ${label}] +${elapsed}ms ${event}`, detail ?? "");
+  };
+}
+
 const stopPronunciationCheckEvent = "atlas:stop-pronunciation-check";
+
+// Sound focuses that offer slow playback in steps 1, 2 and 4 (listening and the tongue twister).
+const slowModeSoundFocuses = new Set(["R vs L"]);
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -90,15 +191,34 @@ const trainerCopy = {
     answerB: "I hear B",
     pronunciationTitle: "Pronunciation test",
     pronunciationDescription: "Say the target word and let AI check it.",
+    pronunciationDescriptionRvsL:
+      "Say the target word. AI pronunciation assessment scores each sound from 0 to 100.",
+    pronunciationPromptRvsL: (word: string) =>
+      'Say "' + word + '". Speech recognition will transcribe it.',
+    practiceVoice: "Practice voice",
+    testVoice: "Test voice",
+    voiceHelp: "This voice is used for R vs L practice and its listening test.",
+    previewStarting: "Playing voice preview…",
+    previewStarted: "Voice preview started.",
+    voicePlaybackError: "Azure voice could not play. Check the Speech key, region, and quota.",
     speakA: "Say A",
     speakB: "Say B",
     tongueTwisterTitle: "Tongue twister",
     tongueTwisterDescription:
       "Practice both sounds together inside one short sentence.",
     listenTongueTwister: "Listen sentence",
+    recordTongueTwister: "Speak and check",
+    tongueTwisterPrompt: (sentence: string) => `Say: “${sentence}”`,
+    tongueTwisterCorrect: (heardText: string) =>
+      `Both target sounds were recognized. Heard: “${heardText}”`,
+    tongueTwisterRetry: (heardText: string) =>
+      `Try again and focus on both sounds. Heard: “${heardText}”`,
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
+    playingSlow: (word: string) => `Playing slowly: ${word}`,
+    slowMode: "Slow",
+    slowModeLabel: "Slow playback",
     whichWord: "Which word did you hear?",
     playQuizFirst: "Press Play quiz first, then choose A or B.",
     correct: "Correct.",
@@ -115,6 +235,38 @@ const trainerCopy = {
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
+    preparingMicrophone: "Getting the microphone ready…",
+    azurePrompt: (target: string) =>
+      `Say “${target}”. AI will score your pronunciation.`,
+    recordingSpeech: "Recording… stop talking, or tap again to check.",
+    checkingPronunciation: "AI is checking your pronunciation…",
+    azureWordPass: (word: string) => `Nice “${word}”!`,
+    azureWordRetry: (word: string, weakest: string) =>
+      `Almost. Focus on the /${weakest}/ sound in “${word}”.`,
+    azureSentencePass: "Clear R and L sounds in every key word!",
+    azureSentenceRetry: "Good try. Practice the words marked in red.",
+    missedWord: "missed",
+    scoreLabel: "Score",
+    soundScore: (label: string, score: number) => `${label}: ${score} out of 100`,
+    azureNoMatch:
+      "AI heard speech but could not match it to English words. Try again a little slower.",
+    azureCheckFailed: "The pronunciation check failed. Try again.",
+    micHint: "Tap to start, tap again to check. Or hold while you speak and release.",
+    listeningNow: "Listening…",
+    hearing: (heardText: string) => `Hearing: “${heardText}”`,
+    stopAndCheck: "Stop & check",
+    cancelListening: "Cancel",
+    noSpeechRecognized: "no speech recognized",
+    micBlocked:
+      "Microphone access is blocked. Allow the microphone for this site and try again.",
+    noSpeechDetected:
+      "No speech was detected. Check that the right microphone is selected in your browser and system settings, then try again.",
+    noMicrophone: "No microphone was found. Connect or select a microphone and try again.",
+    speechServiceUnreachable:
+      "The browser's speech recognition service could not be reached. Check your internet connection, or use Chrome or Edge.",
+    recognitionError: (code: string) => `Speech recognition failed (${code}). Try again.`,
+    speechNotTranscribed:
+      "Your voice was heard, but the browser's speech recognition returned no words. Try again a little slower and clearer.",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -130,14 +282,33 @@ const trainerCopy = {
     answerB: "Bだと思う",
     pronunciationTitle: "発音テスト",
     pronunciationDescription: "目標の単語を発音して、AIで判定します。",
+    pronunciationDescriptionRvsL:
+      "目標の単語を発音してください。AIの発音評価が音ごとに0〜100で採点します。",
+    pronunciationPromptRvsL: (word: string) =>
+      "「" + word + "」を発音してください。音声認識が聞き取った内容を表示します。",
+    practiceVoice: "練習音声",
+    testVoice: "音声を試す",
+    voiceHelp: "この音声はRとLの練習と聞き取りテストで使われます。",
+    previewStarting: "音声プレビューを再生しています…",
+    previewStarted: "音声プレビューを再生しました。",
+    voicePlaybackError: "Azure音声を再生できません。Speechキー、リージョン、利用量を確認してください。",
     speakA: "Aを発音する",
     speakB: "Bを発音する",
     tongueTwisterTitle: "Tongue Twister",
     tongueTwisterDescription:
       "学んだ2つの音を、ひとつの短い文の中で練習します。",
     listenTongueTwister: "文を聞く",
+    recordTongueTwister: "発音して確認",
+    tongueTwisterPrompt: (sentence: string) => `発音してください:「${sentence}」`,
+    tongueTwisterCorrect: (heardText: string) =>
+      `両方の音を認識しました。聞こえた内容:「${heardText}」`,
+    tongueTwisterRetry: (heardText: string) =>
+      `両方の音を意識して、もう一度試してください。聞こえた内容:「${heardText}」`,
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
+    playingSlow: (word: string) => `ゆっくり再生中: ${word}`,
+    slowMode: "ゆっくり",
+    slowModeLabel: "ゆっくり再生",
     whichWord: "どちらの単語に聞こえましたか？",
     playQuizFirst: "先に「クイズ再生」を押してから、AかBを選んでください。",
     correct: "正解です。",
@@ -156,6 +327,38 @@ const trainerCopy = {
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
       "発音チェックを開始できませんでした。もう一度試してください。",
+    preparingMicrophone: "マイクを準備しています…",
+    azurePrompt: (target: string) =>
+      `「${target}」と発音してください。AIが発音を採点します。`,
+    recordingSpeech: "録音中… 話し終えるか、もう一度タップすると判定します。",
+    checkingPronunciation: "AIが発音をチェックしています…",
+    azureWordPass: (word: string) => `「${word}」、良い発音です！`,
+    azureWordRetry: (word: string, weakest: string) =>
+      `あと少し。「${word}」の /${weakest}/ の音を意識しましょう。`,
+    azureSentencePass: "大事な単語のRとLがすべてはっきりしていました！",
+    azureSentenceRetry: "良い挑戦です。赤い印の単語を練習しましょう。",
+    missedWord: "抜け",
+    scoreLabel: "スコア",
+    soundScore: (label: string, score: number) => `${label}: 100点中${score}点`,
+    azureNoMatch:
+      "声は聞こえましたが、英語の単語として認識できませんでした。少しゆっくり試してください。",
+    azureCheckFailed: "発音チェックに失敗しました。もう一度試してください。",
+    micHint: "タップで開始、もう一度タップで判定。押したまま話して、離して判定することもできます。",
+    listeningNow: "聞き取り中…",
+    hearing: (heardText: string) => `聞き取り中:「${heardText}」`,
+    stopAndCheck: "停止して判定",
+    cancelListening: "キャンセル",
+    noSpeechRecognized: "音声を認識できませんでした",
+    micBlocked:
+      "マイクへのアクセスがブロックされています。このサイトのマイクを許可してから、もう一度試してください。",
+    noSpeechDetected:
+      "音声が検出されませんでした。ブラウザとシステム設定で正しいマイクが選ばれているか確認して、もう一度試してください。",
+    noMicrophone: "マイクが見つかりません。マイクを接続または選択してから、もう一度試してください。",
+    speechServiceUnreachable:
+      "ブラウザの音声認識サービスに接続できません。インターネット接続を確認するか、Chrome / Edgeを使ってください。",
+    recognitionError: (code: string) => `音声認識に失敗しました（${code}）。もう一度試してください。`,
+    speechNotTranscribed:
+      "声は聞こえましたが、ブラウザの音声認識が単語を返しませんでした。少しゆっくり、はっきり発音してもう一度試してください。",
   },
 };
 
@@ -167,6 +370,37 @@ export function MinimalPairTrainer({
 }: MinimalPairTrainerProps) {
   const { language, text } = useLanguage();
   const copy = trainerCopy[language];
+  const isRvsL = pairs.some((pair) => pair.soundFocus === "R vs L");
+  const [selectedVoice, setSelectedVoice] = useState<AzureSpeechVoiceId>(
+    DEFAULT_AZURE_SPEECH_VOICE,
+  );
+  const [voicePreviewMessage, setVoicePreviewMessage] = useState("");
+
+  useEffect(() => {
+    if (!isRvsL) return;
+    const frame = window.requestAnimationFrame(() =>
+      setSelectedVoice(getSavedAzureSpeechVoice()),
+    );
+    return () => {
+      window.cancelAnimationFrame(frame);
+      stopSpeechPlayback();
+    };
+  }, [isRvsL]);
+
+  async function previewSelectedVoice() {
+    setVoicePreviewMessage(copy.previewStarting);
+    try {
+      await playAzureSpeech(
+        "Hello, this is the selected practice voice.",
+        selectedVoice,
+      );
+      setVoicePreviewMessage(copy.previewStarted);
+    } catch (error) {
+      setVoicePreviewMessage(
+        error instanceof Error ? error.message : copy.voicePlaybackError,
+      );
+    }
+  }
 
   return (
     <section id={id} className="scroll-mt-28 space-y-8">
@@ -191,6 +425,42 @@ export function MinimalPairTrainer({
         </p>
       </div>
 
+      {isRvsL ? (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="grid min-w-48 flex-1 gap-1.5 text-xs font-medium text-white/65">
+            <label htmlFor="rvsl-practice-voice">{copy.practiceVoice}</label>
+            <select
+              id="rvsl-practice-voice"
+              value={selectedVoice}
+              onChange={(event) => {
+                const voice = event.target.value as AzureSpeechVoiceId;
+                setSelectedVoice(voice);
+                saveAzureSpeechVoice(voice);
+                stopSpeechPlayback();
+                setVoicePreviewMessage("");
+              }}
+              className="h-11 rounded-lg border border-white/15 bg-[#101313] px-3 text-sm text-white outline-none transition focus:border-cyan-100/60 focus:ring-2 focus:ring-cyan-100/30"
+            >
+              {AZURE_SPEECH_VOICES.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name} · {voice.gender}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={() => void previewSelectedVoice()}
+            className="h-11 rounded-lg border border-cyan-100/30 bg-cyan-100/[0.06] px-4 text-sm font-semibold text-cyan-50 transition hover:border-cyan-100/60 hover:bg-cyan-100/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+          >
+            {copy.testVoice}
+          </button>
+          <p className="basis-full text-xs leading-5 text-white/40" role="status" aria-live="polite">
+            {voicePreviewMessage || copy.voiceHelp}
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2">
         {pairs.map((pair) => (
           <PairPracticeCard
@@ -199,6 +469,7 @@ export function MinimalPairTrainer({
             language={language}
             pair={pair}
             text={text}
+            azureVoice={pair.soundFocus === "R vs L" ? selectedVoice : undefined}
           />
         ))}
       </div>
@@ -211,25 +482,48 @@ function PairPracticeCard({
   language,
   pair,
   text,
+  azureVoice,
 }: {
   copy: TrainerCopy;
   language: "en" | "ja";
   pair: MinimalPair;
   text: (value: LocalizedText) => string;
+  azureVoice?: AzureSpeechVoiceId;
 }) {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
-  const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
+  const [listeningKey, setListeningKey] = useState<ListenKey | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const listenSessionRef = useRef<ListenSession | null>(null);
+  const holdingRef = useRef(false);
+  const setHolding = (pressed: boolean) => {
+    holdingRef.current = pressed;
+  };
   const tongueTwister = getTongueTwister(pair);
+  const hasSlowMode = slowModeSoundFocuses.has(pair.soundFocus);
+  const [slowListen, setSlowListen] = useState(false);
+  const [slowQuiz, setSlowQuiz] = useState(false);
+  const [slowTongueTwister, setSlowTongueTwister] = useState(false);
 
   useEffect(() => {
     function stopRecognition() {
+      listenSessionRef.current?.log("cancelled (Cancel button or another check started)");
+      listenSessionRef.current?.recorder?.cancel();
       speechRecognitionRunIdRef.current += 1;
+      setIsChecking(false);
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
-      setAiCheckTarget(null);
+      clearListenSession();
+      setListeningKey(null);
+      // Drop the "Say …" prompt left behind when another card takes the mic.
+      setCardFeedback((current) =>
+        current?.tone === "neutral" &&
+        (current.type === "pronunciation" || current.type === "tongueTwister")
+          ? null
+          : current,
+      );
     }
 
     window.addEventListener(stopPronunciationCheckEvent, stopRecognition);
@@ -237,6 +531,7 @@ function PairPracticeCard({
     return () => {
       window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
       stopRecognition();
+      stopSpeechPlayback();
       window.speechSynthesis?.cancel();
     };
   }, []);
@@ -245,6 +540,7 @@ function PairPracticeCard({
     type: FeedbackType,
     tone: FeedbackTone,
     textValue: string,
+    detail?: AssessmentDetail,
   ) {
     setCardFeedback({
       pairId: pair.id,
@@ -252,6 +548,7 @@ function PairPracticeCard({
       tone,
       text: textValue,
       language,
+      detail,
     });
   }
 
@@ -267,7 +564,23 @@ function PairPracticeCard({
     return cardFeedback;
   }
 
-  function speak(word: string, feedbackType: FeedbackType = "listen") {
+  function speak(word: string, feedbackType: FeedbackType = "listen", slow = false) {
+    const playingText = slow ? copy.playingSlow(word) : copy.playing(word);
+
+    if (azureVoice) {
+      stopSpeechPlayback();
+      showFeedback(feedbackType, "neutral", playingText);
+      void playAzureSpeech(word, azureVoice, slow ? "slow" : "normal").catch((error: unknown) => {
+        playIncorrectSound();
+        showFeedback(
+          feedbackType,
+          "error",
+          error instanceof Error ? error.message : copy.voicePlaybackError,
+        );
+      });
+      return;
+    }
+
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
       showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
@@ -278,11 +591,11 @@ function PairPracticeCard({
 
     const utterance = new SpeechSynthesisUtterance(word);
     utterance.lang = "en-US";
-    utterance.rate = 0.85;
+    utterance.rate = slow ? 0.55 : 0.85;
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    showFeedback(feedbackType, "neutral", copy.playing(word));
+    showFeedback(feedbackType, "neutral", playingText);
   }
 
   function startQuiz() {
@@ -290,7 +603,7 @@ function PairPracticeCard({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word);
+    speak(word, "listen", hasSlowMode && slowQuiz);
     showFeedback("listening", "neutral", copy.whichWord);
   }
 
@@ -316,101 +629,564 @@ function PairPracticeCard({
     setActiveQuiz(null);
   }
 
-  function startAiPronunciationCheck(target: QuizTarget) {
-    const word = target === "A" ? pair.wordA : pair.wordB;
+  function clearListenSession() {
+    listenSessionRef.current?.timers.forEach((timer) => window.clearTimeout(timer));
+    listenSessionRef.current = null;
+  }
+
+  function feedbackTypeFor(key: ListenKey): FeedbackType {
+    return key === "sentence" ? "tongueTwister" : "pronunciation";
+  }
+
+  // Closes out one check exactly once; later events from that run are ignored.
+  function completeListening(runId: number) {
+    if (speechRecognitionRunIdRef.current !== runId) return false;
+
+    speechRecognitionRunIdRef.current += 1;
+    speechRecognitionRef.current?.abort();
+    speechRecognitionRef.current = null;
+    clearListenSession();
+    setListeningKey(null);
+    return true;
+  }
+
+  function evaluateHeard(key: ListenKey, heardText: string) {
+    if (key === "sentence") {
+      const normalizedHeard = normalizeRecognizedText(heardText);
+      const heardBothSounds = [pair.wordA, pair.wordB].every((word) =>
+        normalizedHeard.split(" ").includes(normalizeRecognizedText(word)),
+      );
+
+      if (heardBothSounds) {
+        playCorrectSound();
+        showFeedback("tongueTwister", "success", copy.tongueTwisterCorrect(heardText));
+      } else {
+        playIncorrectSound();
+        showFeedback(
+          "tongueTwister",
+          "error",
+          copy.tongueTwisterRetry(heardText || copy.noSpeechRecognized),
+        );
+      }
+      return;
+    }
+
+    const word = key === "A" ? pair.wordA : pair.wordB;
+
+    if (transcriptMatchesWord(heardText, word)) {
+      playCorrectSound();
+      showFeedback("pronunciation", "success", copy.pronunciationCorrect(heardText));
+    } else {
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.pronunciationRetry(heardText, word));
+    }
+  }
+
+  // Stops listening now and judges whatever has been heard so far.
+  function finishListening(reason: string) {
+    const session = listenSessionRef.current;
+    if (!session || session.finished) return;
+
+    session.log("finish requested", {
+      reason,
+      heard: session.heard,
+      speechDetected: session.speechDetected,
+    });
+
+    session.finished = true;
+    session.timers.forEach((timer) => window.clearTimeout(timer));
+    session.timers = [];
+
+    if (session.engine === "azure") {
+      const recorder = session.recorder;
+      if (!recorder || !session.speechDetected) {
+        recorder?.cancel();
+        if (completeListening(session.runId)) {
+          playIncorrectSound();
+          showFeedback(feedbackTypeFor(session.key), "error", copy.noSpeechDetected);
+        }
+        return;
+      }
+      void submitForAssessment(session, recorder.stop());
+      return;
+    }
+
+    if (session.heard) {
+      // stop() makes the browser deliver its final result right away.
+      speechRecognitionRef.current?.stop();
+      session.timers.push(
+        window.setTimeout(() => {
+          if (completeListening(session.runId)) {
+            session.log("no final result after stop(); judging last interim", session.heard);
+            evaluateHeard(session.key, session.heard);
+          }
+        }, finalResultGraceMs),
+      );
+      return;
+    }
+
+    if (completeListening(session.runId)) {
+      playIncorrectSound();
+      showFeedback(
+        feedbackTypeFor(session.key),
+        "error",
+        session.speechDetected ? copy.speechNotTranscribed : copy.noSpeechDetected,
+      );
+    }
+  }
+
+  // Letting go of a held button only checks once something has been heard;
+  // otherwise it keeps listening as if the button had been tapped.
+  function releaseHold() {
+    const session = listenSessionRef.current;
+    if (session?.heard || (session?.engine === "azure" && session.speechDetected)) {
+      finishListening("button released");
+    } else {
+      listenSessionRef.current?.log("button released before any words; still listening");
+    }
+  }
+
+  function describeRecognitionError(code = "unknown") {
+    switch (code) {
+      case "not-allowed":
+      case "service-not-allowed":
+        return copy.micBlocked;
+      case "no-speech":
+        return copy.noSpeechDetected;
+      case "audio-capture":
+        return copy.noMicrophone;
+      case "network":
+        return copy.speechServiceUnreachable;
+      default:
+        return copy.recognitionError(code);
+    }
+  }
+
+  function cancelListening() {
+    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+  }
+
+  async function submitForAssessment(session: ListenSession, wav: Blob) {
+    const { key, log, target } = session;
+    const feedbackType = feedbackTypeFor(key);
+    if (!completeListening(session.runId)) return;
+
+    // completeListening moved to a new run id; a later check or cancel changes it again.
+    const checkRunId = speechRecognitionRunIdRef.current;
+    setIsChecking(true);
+    showFeedback(feedbackType, "neutral", copy.checkingPronunciation);
+    log("sending recording to Azure", { bytes: wav.size, target });
+
+    try {
+      const form = new FormData();
+      form.append("audio", wav, "speech.wav");
+      form.append("referenceText", target);
+      const response = await fetch("/api/pronunciation", { method: "POST", body: form });
+      const result = (await response.json().catch(() => null)) as
+        | (PronunciationAssessment & { error?: string })
+        | null;
+      if (speechRecognitionRunIdRef.current !== checkRunId) return;
+
+      log("azure result", result);
+      if (!response.ok || !result) {
+        playIncorrectSound();
+        showFeedback(feedbackType, "error", copy.azureCheckFailed);
+        return;
+      }
+      showAssessment(key, target, result);
+    } catch (error) {
+      if (speechRecognitionRunIdRef.current !== checkRunId) return;
+      log("azure request failed", error);
+      playIncorrectSound();
+      showFeedback(feedbackType, "error", copy.azureCheckFailed);
+    } finally {
+      if (speechRecognitionRunIdRef.current === checkRunId) setIsChecking(false);
+    }
+  }
+
+  function showAssessment(key: ListenKey, target: string, result: PronunciationAssessment) {
+    const feedbackType = feedbackTypeFor(key);
+    const words = result.words.filter((word) => word.errorType !== "Insertion");
+
+    if (result.status !== "Success" || words.length === 0) {
+      playIncorrectSound();
+      showFeedback(
+        feedbackType,
+        "error",
+        result.status === "InitialSilenceTimeout"
+          ? copy.noSpeechDetected
+          : result.status === "NoMatch"
+            ? copy.azureNoMatch
+            : copy.azureCheckFailed,
+      );
+      return;
+    }
+
+    if (key === "sentence") {
+      const score = Math.round(result.pronunciation ?? result.accuracy ?? 0);
+      // Linking words like "the" and "on" are often reduced in natural speech;
+      // only the words carrying the R/L contrast decide the result.
+      const isFocusWord = (word: (typeof words)[number]) => /[rl]/i.test(word.word);
+      const isWeak = (word: (typeof words)[number]) =>
+        word.errorType === "Omission" || (word.accuracy ?? 0) < 60;
+      const detail = {
+        score,
+        items: words.map((word) => ({
+          label: word.word,
+          score: word.errorType === "Omission" ? null : Math.round(word.accuracy ?? 0),
+          focus: isFocusWord(word),
+        })),
+      };
+
+      if (score >= 80 && !words.some((word) => isFocusWord(word) && isWeak(word))) {
+        playCorrectSound();
+        showFeedback(feedbackType, "success", copy.azureSentencePass, detail);
+      } else {
+        playIncorrectSound();
+        showFeedback(feedbackType, "error", copy.azureSentenceRetry, detail);
+      }
+      return;
+    }
+
+    // Azure biases recognition toward the reference word, so judge the
+    // per-sound scores rather than the recognized text.
+    const word =
+      words.find(
+        (item) => normalizeRecognizedText(item.word) === normalizeRecognizedText(target),
+      ) ?? words[0];
+    const score = Math.round(word.accuracy ?? 0);
+    const phonemes = word.phonemes.filter((phoneme) => phoneme.phoneme);
+    const detail = {
+      score,
+      items: phonemes.map((phoneme) => ({
+        label: `/${phoneme.phoneme}/`,
+        score: Math.round(phoneme.accuracy ?? 0),
+      })),
+    };
+    const weakest = phonemes.reduce<(typeof phonemes)[number] | null>(
+      (lowest, phoneme) =>
+        !lowest || (phoneme.accuracy ?? 0) < (lowest.accuracy ?? 0) ? phoneme : lowest,
+      null,
+    );
+    const passed =
+      word.errorType === "None" &&
+      score >= 80 &&
+      phonemes.every((phoneme) => (phoneme.accuracy ?? 0) >= 60);
+
+    if (passed) {
+      playCorrectSound();
+      showFeedback(feedbackType, "success", copy.azureWordPass(target), detail);
+    } else {
+      playIncorrectSound();
+      showFeedback(
+        feedbackType,
+        "error",
+        copy.azureWordRetry(target, weakest?.phoneme ?? "?"),
+        detail,
+      );
+    }
+  }
+
+  function startAzureListening(key: ListenKey) {
+    const feedbackType = feedbackTypeFor(key);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      playIncorrectSound();
+      showFeedback(feedbackType, "error", copy.noMicrophone);
+      return;
+    }
+
+    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+    stopSpeechPlayback();
+    window.speechSynthesis?.cancel();
+
+    const runId = speechRecognitionRunIdRef.current + 1;
+    const target =
+      key === "sentence" ? tongueTwister.text : key === "A" ? pair.wordA : pair.wordB;
+    const log = createSpeechLogger(`#${runId} ${pair.id}/${key} azure`);
+    const session: ListenSession = {
+      runId,
+      key,
+      target,
+      engine: "azure",
+      recorder: null,
+      heard: "",
+      speechDetected: false,
+      log,
+      finished: false,
+      timers: [],
+    };
+    const lengthKey = key === "sentence" ? "sentence" : "word";
+
+    speechRecognitionRunIdRef.current = runId;
+    listenSessionRef.current = session;
+    setListeningKey(key);
+    // Ask the learner to speak only once audio is actually being captured.
+    showFeedback(feedbackType, "neutral", copy.preparingMicrophone);
+    log("start", { target, engine: "azure" });
+
+    session.timers.push(
+      window.setTimeout(() => {
+        if (!session.speechDetected) {
+          finishListening(`no speech detected within ${noSpeechTimeoutMs}ms`);
+        }
+      }, noSpeechTimeoutMs),
+      window.setTimeout(
+        () => finishListening("max recording time reached"),
+        maxRecordingMs[lengthKey],
+      ),
+    );
+
+    let voicedSeconds = 0;
+    let silentSeconds = 0;
+    let recordedSeconds = 0;
+    let peakRms = 0;
+    let receivedAudio = false;
+
+    startWavRecorder((rms, seconds) => {
+      if (speechRecognitionRunIdRef.current !== runId || session.finished) return;
+
+      if (!receivedAudio) {
+        receivedAudio = true;
+        log("first audio received");
+        if (!session.speechDetected) {
+          showFeedback(feedbackType, "neutral", copy.azurePrompt(target));
+        }
+      }
+
+      recordedSeconds += seconds;
+      peakRms = Math.max(peakRms, rms);
+      if (recordedSeconds >= 1) {
+        log("recording level peak (voice threshold 0.03)", Number(peakRms.toFixed(3)));
+        recordedSeconds = 0;
+        peakRms = 0;
+      }
+
+      if (rms >= voiceRmsThreshold) {
+        voicedSeconds += seconds;
+        silentSeconds = 0;
+        if (!session.speechDetected && voicedSeconds >= 0.15) {
+          session.speechDetected = true;
+          log("speech detected", { rms: Number(rms.toFixed(3)) });
+          showFeedback(feedbackType, "neutral", copy.recordingSpeech);
+        }
+        return;
+      }
+
+      if (!session.speechDetected) return;
+      silentSeconds += seconds;
+      if (silentSeconds >= silenceAfterSpeechSeconds[lengthKey] && !holdingRef.current) {
+        finishListening("silence after speech");
+      }
+    })
+      .then((recorder) => {
+        if (speechRecognitionRunIdRef.current !== runId || session.finished) {
+          recorder.cancel();
+          return;
+        }
+        session.recorder = recorder;
+        log("recording", { device: recorder.deviceLabel, sampleRate: recorder.sampleRate });
+      })
+      .catch((error: unknown) => {
+        log("microphone error", error);
+        if (!completeListening(runId)) return;
+
+        const name = error instanceof DOMException ? error.name : "";
+        playIncorrectSound();
+        showFeedback(
+          feedbackType,
+          "error",
+          name === "NotAllowedError"
+            ? copy.micBlocked
+            : name === "NotFoundError"
+              ? copy.noMicrophone
+              : copy.checkCouldNotStart,
+        );
+      });
+  }
+
+  function startListening(key: ListenKey) {
+    if (pair.soundFocus === "R vs L") {
+      startAzureListening(key);
+      return;
+    }
+
+    const feedbackType = feedbackTypeFor(key);
     const SpeechRecognitionConstructor =
       window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
     if (!SpeechRecognitionConstructor) {
       playIncorrectSound();
-      showFeedback("pronunciation", "error", copy.pronunciationUnsupported);
+      showFeedback(feedbackType, "error", copy.pronunciationUnsupported);
       return;
     }
 
     window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+    stopSpeechPlayback();
+    window.speechSynthesis?.cancel();
 
     const recognition = new SpeechRecognitionConstructor();
-    const recognitionRunId = speechRecognitionRunIdRef.current + 1;
+    const runId = speechRecognitionRunIdRef.current + 1;
+    const target =
+      key === "sentence" ? tongueTwister.text : key === "A" ? pair.wordA : pair.wordB;
+    const log = createSpeechLogger(`#${runId} ${pair.id}/${key}`);
+    const session: ListenSession = {
+      runId,
+      key,
+      target,
+      engine: "browser",
+      recorder: null,
+      heard: "",
+      speechDetected: false,
+      log,
+      finished: false,
+      timers: [],
+    };
 
     recognition.lang = "en-US";
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 3;
-    speechRecognitionRunIdRef.current = recognitionRunId;
+    speechRecognitionRunIdRef.current = runId;
     speechRecognitionRef.current = recognition;
-    setAiCheckTarget(word);
-    showFeedback("pronunciation", "neutral", copy.sayWord(word));
+    listenSessionRef.current = session;
+    setListeningKey(key);
+    log("start", { target, lang: recognition.lang, interimResults: true });
+
+    if (key === "sentence") {
+      showFeedback(feedbackType, "neutral", copy.tongueTwisterPrompt(tongueTwister.text));
+    } else {
+      const word = key === "A" ? pair.wordA : pair.wordB;
+      showFeedback(
+        feedbackType,
+        "neutral",
+        pair.soundFocus === "R vs L"
+          ? copy.pronunciationPromptRvsL(word)
+          : copy.sayWord(word),
+      );
+    }
+
+    session.timers.push(
+      window.setTimeout(() => {
+        if (!session.heard && !session.speechDetected) {
+          finishListening(`no speech detected within ${noSpeechTimeoutMs}ms`);
+        }
+      }, noSpeechTimeoutMs),
+      window.setTimeout(
+        () => finishListening("max listening time reached"),
+        key === "sentence" ? maxListenMs.sentence : maxListenMs.word,
+      ),
+    );
+    let settleTimer = 0;
 
     recognition.onresult = (event) => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+      log("result", describeResults(event));
+      if (speechRecognitionRunIdRef.current !== runId) return;
+
+      let heardText = "";
+      let isFinal = true;
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        heardText += ` ${result[0]?.transcript ?? ""}`;
+        isFinal &&= result.isFinal;
+      }
+      heardText = heardText.replace(/\s+/g, " ").trim();
+      if (heardText) session.heard = heardText;
+
+      if (isFinal) {
+        if (completeListening(runId)) {
+          log("judge final result", { heard: session.heard, target });
+          evaluateHeard(key, session.heard);
+        }
         return;
       }
 
-      const transcripts = getSpeechRecognitionTranscripts(event);
-      const heardText = transcripts[0] ?? "unrecognized speech";
-
-      const isCorrect = transcriptMatchesWord(heardText, word);
-
-      if (isCorrect) {
-        playCorrectSound();
-        showFeedback(
-          "pronunciation",
-          "success",
-          copy.pronunciationCorrect(heardText),
+      if (session.heard && !session.finished) {
+        showFeedback(feedbackType, "neutral", copy.hearing(session.heard));
+        window.clearTimeout(settleTimer);
+        const settle = () => {
+          // While the button is held, the release decides when to check.
+          if (holdingRef.current) {
+            settleTimer = window.setTimeout(settle, 200);
+            session.timers.push(settleTimer);
+            return;
+          }
+          finishListening("words settled");
+        };
+        settleTimer = window.setTimeout(
+          settle,
+          key === "sentence" ? sentenceSettleMs : wordSettleMs,
         );
-      } else {
-        playIncorrectSound();
-        showFeedback(
-          "pronunciation",
-          "error",
-          copy.pronunciationRetry(heardText, word),
-        );
+        session.timers.push(settleTimer);
       }
-
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
     };
 
-    recognition.onerror = () => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
+    recognition.onaudiostart = () => log("audiostart (browser opened the mic)");
+    recognition.onsoundstart = () => log("soundstart (any sound)");
+    recognition.onspeechstart = () => {
+      log("speechstart (speech detected)");
+      session.speechDetected = true;
+    };
+    recognition.onspeechend = () => {
+      log("speechend");
+      session.timers.push(
+        window.setTimeout(() => {
+          if (session.heard || !completeListening(runId)) return;
+          log(`no words returned ${noWordsAfterSpeechMs}ms after speech ended`);
+          playIncorrectSound();
+          showFeedback(feedbackType, "error", copy.speechNotTranscribed);
+        }, noWordsAfterSpeechMs),
+      );
+    };
+    recognition.onsoundend = () => log("soundend");
+    recognition.onaudioend = () => log("audioend");
+
+    recognition.onerror = (event) => {
+      log("error", { error: event.error, message: event.message });
+      if (event.error === "aborted" || !completeListening(runId)) return;
 
       playIncorrectSound();
-      showFeedback("pronunciation", "error", copy.couldNotHear);
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
+      showFeedback(feedbackType, "error", describeRecognitionError(event.error));
     };
 
     recognition.onnomatch = () => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
+      log("nomatch");
+      if (!completeListening(runId)) return;
 
       playIncorrectSound();
-      showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
+      showFeedback(
+        feedbackType,
+        "error",
+        copy.couldNotRecognize(
+          key === "sentence" ? tongueTwister.text : key === "A" ? pair.wordA : pair.wordB,
+        ),
+      );
     };
 
     recognition.onend = () => {
-      if (speechRecognitionRunIdRef.current === recognitionRunId) {
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
+      log("end", { heard: session.heard, alreadyHandled: speechRecognitionRunIdRef.current !== runId });
+      if (!completeListening(runId)) return;
+
+      // Some browsers end after stop() without a final result; judge what was heard.
+      if (session.heard) {
+        evaluateHeard(key, session.heard);
+      } else {
+        playIncorrectSound();
+        showFeedback(
+          feedbackType,
+          "error",
+          session.speechDetected ? copy.speechNotTranscribed : copy.noSpeechDetected,
+        );
       }
     };
 
     try {
       recognition.start();
-    } catch {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
+    } catch (error) {
+      log("start() threw", error);
+      if (!completeListening(runId)) return;
 
       playIncorrectSound();
-      showFeedback("pronunciation", "error", copy.checkCouldNotStart);
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
+      showFeedback(feedbackType, "error", copy.checkCouldNotStart);
     }
   }
 
@@ -429,26 +1205,38 @@ function PairPracticeCard({
 
       <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
         <TestGroup
+          copy={copy}
           step="1"
           title={copy.listenTitle}
           description={copy.listenDescription}
           feedback={getFeedback("listen")}
+          headerAction={
+            hasSlowMode ? (
+              <SlowToggle copy={copy} enabled={slowListen} onChange={setSlowListen} />
+            ) : null
+          }
         >
-          <ActionButton onClick={() => speak(pair.wordA)}>
+          <ActionButton onClick={() => speak(pair.wordA, "listen", hasSlowMode && slowListen)}>
             {copy.listenA}
           </ActionButton>
 
-          <ActionButton onClick={() => speak(pair.wordB)}>
+          <ActionButton onClick={() => speak(pair.wordB, "listen", hasSlowMode && slowListen)}>
             {copy.listenB}
           </ActionButton>
         </TestGroup>
 
         <TestGroup
+          copy={copy}
           step="2"
           title={copy.listeningTitle}
           description={copy.listeningDescription}
           actionsClassName="grid gap-3"
           feedback={getFeedback("listening")}
+          headerAction={
+            hasSlowMode ? (
+              <SlowToggle copy={copy} enabled={slowQuiz} onChange={setSlowQuiz} />
+            ) : null
+          }
         >
           <ActionButton intent="primary" onClick={startQuiz}>
             {copy.playQuiz}
@@ -464,34 +1252,65 @@ function PairPracticeCard({
         </TestGroup>
 
         <TestGroup
+          copy={copy}
           step="3"
           title={copy.pronunciationTitle}
-          description={copy.pronunciationDescription}
+          description={
+            pair.soundFocus === "R vs L"
+              ? copy.pronunciationDescriptionRvsL
+              : copy.pronunciationDescription
+          }
           feedback={getFeedback("pronunciation")}
         >
-          <ActionButton
-            intent="primary"
-            disabled={Boolean(aiCheckTarget)}
-            onClick={() => startAiPronunciationCheck("A")}
-          >
-            {copy.speakA}
-          </ActionButton>
-          <ActionButton
-            intent="primary"
-            disabled={Boolean(aiCheckTarget)}
-            onClick={() => startAiPronunciationCheck("B")}
-          >
-            {copy.speakB}
-          </ActionButton>
-          {aiCheckTarget ? <MicLevelMeter /> : null}
+          <MicButton
+            active={listeningKey === "A"}
+            disabled={listeningKey === "B" || isChecking}
+            label={copy.speakA}
+            activeLabel={copy.listeningNow}
+            onStart={() => startListening("A")}
+            onFinish={() => finishListening("button tapped again")}
+            onRelease={releaseHold}
+            onPressChange={setHolding}
+          />
+          <MicButton
+            active={listeningKey === "B"}
+            disabled={listeningKey === "A" || isChecking}
+            label={copy.speakB}
+            activeLabel={copy.listeningNow}
+            onStart={() => startListening("B")}
+            onFinish={() => finishListening("button tapped again")}
+            onRelease={releaseHold}
+            onPressChange={setHolding}
+          />
+          {listeningKey === "A" || listeningKey === "B" ? (
+            <ListeningControls
+              copy={copy}
+              onFinish={() => finishListening("Stop & check button")}
+              onCancel={cancelListening}
+            />
+          ) : (
+            <p className="col-span-full text-xs leading-5 text-white/40">
+              {copy.micHint}
+            </p>
+          )}
         </TestGroup>
 
         <TestGroup
+          copy={copy}
           step="4"
           title={copy.tongueTwisterTitle}
           description={copy.tongueTwisterDescription}
           actionsClassName="grid gap-3"
           feedback={getFeedback("tongueTwister")}
+          headerAction={
+            hasSlowMode ? (
+              <SlowToggle
+                copy={copy}
+                enabled={slowTongueTwister}
+                onChange={setSlowTongueTwister}
+              />
+            ) : null
+          }
         >
           <div className="border border-white/10 bg-black px-4 py-3">
             <p className="text-lg font-semibold leading-8 text-white">
@@ -502,10 +1321,31 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
-            onClick={() => speak(tongueTwister.text, "tongueTwister")}
+            onClick={() =>
+              speak(tongueTwister.text, "tongueTwister", hasSlowMode && slowTongueTwister)
+            }
           >
             {copy.listenTongueTwister}
           </ActionButton>
+          <MicButton
+            active={listeningKey === "sentence"}
+            disabled={isChecking}
+            label={copy.recordTongueTwister}
+            activeLabel={copy.listeningNow}
+            onStart={() => startListening("sentence")}
+            onFinish={() => finishListening("button tapped again")}
+            onRelease={releaseHold}
+            onPressChange={setHolding}
+          />
+          {listeningKey === "sentence" ? (
+            <ListeningControls
+              copy={copy}
+              onFinish={() => finishListening("Stop & check button")}
+              onCancel={cancelListening}
+            />
+          ) : (
+            <p className="text-xs leading-5 text-white/40">{copy.micHint}</p>
+          )}
         </TestGroup>
       </div>
     </article>
@@ -588,6 +1428,7 @@ function MicLevelMeter() {
     let frameId = 0;
     let stream: MediaStream | null = null;
     let audioContext: AudioContext | null = null;
+    const log = createSpeechLogger("meter");
 
     function setBars(level: number, time: number) {
       barRefs.current.forEach((bar, index) => {
@@ -601,6 +1442,12 @@ function MicLevelMeter() {
     async function start() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const track = stream.getAudioTracks()[0];
+        log("opened microphone", {
+          device: track?.label,
+          muted: track?.muted,
+          settings: track?.getSettings(),
+        });
 
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
@@ -616,6 +1463,8 @@ function MicLevelMeter() {
 
         const samples = new Uint8Array(analyser.fftSize);
         let smoothed = 0;
+        let peak = 0;
+        let lastReportAt = 0;
 
         const tick = (time: number) => {
           analyser.getByteTimeDomainData(samples);
@@ -636,12 +1485,20 @@ function MicLevelMeter() {
               : smoothed * 0.9 + level * 0.1;
 
           setBars(smoothed, time);
+
+          peak = Math.max(peak, level);
+          if (time - lastReportAt >= 1000) {
+            log("input level peak (0-1)", Number(peak.toFixed(2)));
+            peak = 0;
+            lastReportAt = time;
+          }
           frameId = requestAnimationFrame(tick);
         };
 
         frameId = requestAnimationFrame(tick);
-      } catch {
+      } catch (error) {
         // Mic level unavailable; recognition still works without the animation.
+        log("level meter unavailable", error);
       }
     }
 
@@ -674,6 +1531,118 @@ function MicLevelMeter() {
   );
 }
 
+// Tap to start and tap again to check, or hold while speaking and release.
+function MicButton({
+  active,
+  disabled = false,
+  label,
+  activeLabel,
+  onStart,
+  onFinish,
+  onRelease,
+  onPressChange,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  label: string;
+  activeLabel: string;
+  onStart: () => void;
+  onFinish: () => void;
+  onRelease: () => void;
+  onPressChange: (pressed: boolean) => void;
+}) {
+  const pressStartedAtRef = useRef<number | null>(null);
+  const handledByPointerRef = useRef(false);
+
+  function releasePress() {
+    const startedAt = pressStartedAtRef.current;
+    pressStartedAtRef.current = null;
+    onPressChange(false);
+
+    if (startedAt !== null && Date.now() - startedAt >= holdThresholdMs) {
+      onRelease();
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={active}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        handledByPointerRef.current = true;
+
+        if (active) {
+          onFinish();
+          return;
+        }
+
+        pressStartedAtRef.current = Date.now();
+        onPressChange(true);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        onStart();
+      }}
+      onPointerUp={releasePress}
+      onPointerCancel={releasePress}
+      onKeyDown={() => {
+        handledByPointerRef.current = false;
+      }}
+      onClick={() => {
+        // Pointer presses are handled above; this path is for the keyboard.
+        if (handledByPointerRef.current) {
+          handledByPointerRef.current = false;
+          return;
+        }
+
+        if (active) {
+          onFinish();
+        } else {
+          onStart();
+        }
+      }}
+      onContextMenu={(event) => event.preventDefault()}
+      className={`flex h-11 touch-none select-none items-center justify-center gap-2 border px-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25 ${
+        active
+          ? "border-white bg-black text-white"
+          : "border-white bg-white text-black hover:bg-black hover:text-white"
+      }`}
+    >
+      {active ? (
+        <span aria-hidden="true" className="size-2 animate-pulse rounded-full bg-rose-400" />
+      ) : null}
+      {active ? activeLabel : label}
+    </button>
+  );
+}
+
+function ListeningControls({
+  copy,
+  onFinish,
+  onCancel,
+}: {
+  copy: TrainerCopy;
+  onFinish: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="col-span-full grid gap-3">
+      <MicLevelMeter />
+      <div className="grid grid-cols-[1fr_auto] gap-3">
+        <ActionButton onClick={onFinish}>{`■ ${copy.stopAndCheck}`}</ActionButton>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="h-11 border border-white/20 px-4 text-sm font-semibold text-white transition hover:border-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <span aria-hidden="true">✕ </span>
+          {copy.cancelListening}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function WordLabel({ label, word }: { label: string; word: string }) {
   return (
     <div className="space-y-2">
@@ -691,6 +1660,8 @@ function TestGroup({
   description,
   actionsClassName = "grid gap-3 sm:grid-cols-2 xl:grid-cols-3",
   feedback,
+  copy,
+  headerAction,
   children,
 }: {
   step: string;
@@ -698,6 +1669,8 @@ function TestGroup({
   description: string;
   actionsClassName?: string;
   feedback: CardFeedback;
+  copy: TrainerCopy;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -706,21 +1679,63 @@ function TestGroup({
         {step}
       </div>
       <div className="space-y-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-white">{title}</p>
-          <p className="text-sm leading-6 text-white/50">{description}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-white">{title}</p>
+            <p className="text-sm leading-6 text-white/50">{description}</p>
+          </div>
+          {headerAction}
         </div>
         <div className={actionsClassName}>{children}</div>
-        {feedback ? <FeedbackMessage feedback={feedback} /> : null}
+        {feedback ? <FeedbackMessage feedback={feedback} copy={copy} /> : null}
       </div>
     </div>
   );
 }
 
+function SlowToggle({
+  copy,
+  enabled,
+  onChange,
+}: {
+  copy: TrainerCopy;
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={copy.slowModeLabel}
+      onClick={() => onChange(!enabled)}
+      className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+        enabled
+          ? "border-white bg-white text-black"
+          : "border-white/20 text-white/70 hover:border-white/50 hover:text-white"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`relative h-3.5 w-6 rounded-full transition ${enabled ? "bg-black" : "bg-white/20"}`}
+      >
+        <span
+          className={`absolute top-0.5 size-2.5 rounded-full transition-all ${
+            enabled ? "left-3 bg-white" : "left-0.5 bg-white/70"
+          }`}
+        />
+      </span>
+      {copy.slowMode}
+    </button>
+  );
+}
+
 function FeedbackMessage({
   feedback,
+  copy,
 }: {
   feedback: NonNullable<CardFeedback>;
+  copy: TrainerCopy;
 }) {
   const icon =
     feedback.tone === "success"
@@ -736,14 +1751,78 @@ function FeedbackMessage({
         : "border-white/10 bg-white/[0.02] text-white/70";
 
   return (
-    <p
+    <div
       role="status"
       aria-live="polite"
-      className={`flex items-center gap-2 border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
+      className={`space-y-3 border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
     >
-      {icon ? <span aria-hidden="true">{icon}</span> : null}
-      <span>{feedback.text}</span>
-    </p>
+      <div className="flex items-center gap-2">
+        {icon ? <span aria-hidden="true">{icon}</span> : null}
+        <span className="flex-1">{feedback.text}</span>
+        {feedback.detail ? (
+          <span className="shrink-0 text-right leading-none">
+            <span className="block text-2xl font-semibold tabular-nums">
+              {feedback.detail.score}
+            </span>
+            <span className="text-[0.65rem] uppercase tracking-[0.18em] opacity-60">
+              {copy.scoreLabel}
+            </span>
+          </span>
+        ) : null}
+      </div>
+      {feedback.detail && feedback.detail.items.length > 0 ? (
+        <ul className="flex flex-wrap gap-1.5">
+          {feedback.detail.items.map((item, index) => (
+            <ScoreChip
+              key={`${item.label}-${index}`}
+              item={item}
+              copy={copy}
+            />
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+// Colour shows the level; the exact number is in the tooltip and screen reader text.
+function ScoreChip({ item, copy }: { item: ScoredItem; copy: TrainerCopy }) {
+  const level =
+    item.focus === false
+      ? "other"
+      : item.score === null || item.score < 60
+        ? "weak"
+        : item.score < 80
+          ? "close"
+          : "good";
+  const dotClassName =
+    level === "good"
+      ? "bg-emerald-500"
+      : level === "close"
+        ? "bg-amber-400"
+        : level === "weak"
+          ? "bg-rose-500"
+          : "bg-zinc-400";
+  const description =
+    item.score === null
+      ? `${item.label}: ${copy.missedWord}`
+      : copy.soundScore(item.label, item.score);
+
+  return (
+    <li
+      title={description}
+      aria-label={description}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+        level === "weak"
+          ? "border-rose-400/70"
+          : level === "other"
+            ? "border-current/10 opacity-60"
+            : "border-current/20"
+      }`}
+    >
+      <span aria-hidden="true" className={`size-2 rounded-full ${dotClassName}`} />
+      <span aria-hidden="true">{item.label}</span>
+    </li>
   );
 }
 
@@ -772,32 +1851,17 @@ function ActionButton({
   );
 }
 
-function getSpeechRecognitionTranscripts(
-  event: BrowserSpeechRecognitionResultEvent,
-) {
-  const transcripts: string[] = [];
-
-  for (
-    let resultIndex = 0;
-    resultIndex < event.results.length;
-    resultIndex += 1
-  ) {
-    const result = event.results[resultIndex];
-
-    for (
-      let alternativeIndex = 0;
-      alternativeIndex < result.length;
-      alternativeIndex += 1
-    ) {
-      const transcript = result[alternativeIndex]?.transcript.trim();
-
-      if (transcript) {
-        transcripts.push(transcript);
-      }
+function describeResults(event: BrowserSpeechRecognitionResultEvent) {
+  const results = [];
+  for (let index = 0; index < event.results.length; index += 1) {
+    const result = event.results[index];
+    const alternatives = [];
+    for (let alt = 0; alt < result.length; alt += 1) {
+      alternatives.push(result[alt]?.transcript);
     }
+    results.push({ isFinal: result.isFinal, alternatives });
   }
-
-  return transcripts;
+  return results;
 }
 
 function transcriptMatchesWord(transcript: string, targetWord: string) {

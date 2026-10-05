@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
+import {
+  AZURE_SPEECH_VOICES,
+  DEFAULT_AZURE_SPEECH_VOICE,
+  getSavedAzureSpeechVoice,
+  saveAzureSpeechVoice,
+  type AzureSpeechVoiceId,
+} from "@/lib/speechVoices";
+import { playAzureSpeech, stopSpeechPlayback } from "@/lib/speechPlayback";
 import type { MinimalPair } from "@/types/training";
 
 type QuizTarget = "A" | "B";
@@ -19,6 +27,8 @@ type ListeningTestSessionProps = {
   onComplete?: (score: number, total: number) => void;
   pairs: MinimalPair[];
   title: LocalizedText;
+  enhancedLayout?: boolean;
+  useAzureTts?: boolean;
 };
 
 const listeningTestCopy = {
@@ -35,6 +45,22 @@ const listeningTestCopy = {
     question: (current: number, total: number) => `Question ${current} / ${total}`,
     score: (score: number, total: number) => `Score: ${score} / ${total}`,
     ready: "Press Play question, then choose A or B.",
+    readyStatus: "Ready to begin",
+    activeStatus: "Listening test",
+    completedStatus: "Test complete",
+    instructions: "Start the test, listen to each word, and choose whether you heard A or B.",
+    voice: "Practice voice",
+    testVoice: "Test voice",
+    previewStarting: "Playing voice preview…",
+    previewStarted: "Voice preview started.",
+    voicePlaybackError: "Azure voice could not play. Check the Speech key, region, and quota.",
+    practiceFirst: "Practice first",
+    questionHeading: "Which word do you hear?",
+    chooseWord: "Choose the word you heard",
+    incorrectWord: (word: string) => `Not quite. The word was “${word}”.`,
+    allAnswered: "All questions answered",
+    progressLabel: "Test progress",
+    questionProgress: (current: number, total: number) => `Question ${current} of ${total}`,
     correct: "Correct.",
     incorrect: (target: QuizTarget) => `Not quite. The answer was ${target}.`,
     complete: (score: number, total: number) => `Complete. Score: ${score} / ${total}`,
@@ -53,6 +79,22 @@ const listeningTestCopy = {
     question: (current: number, total: number) => `${current} / ${total} 問目`,
     score: (score: number, total: number) => `スコア: ${score} / ${total}`,
     ready: "問題を再生してから、AかBを選びます。",
+    readyStatus: "テスト開始前",
+    activeStatus: "聞き取りテスト",
+    completedStatus: "テスト完了",
+    instructions: "テストを始めて、単語を聞き、AかBを選んでください。",
+    voice: "練習音声",
+    testVoice: "音声を試す",
+    previewStarting: "音声プレビューを再生しています…",
+    previewStarted: "音声プレビューを再生しました。",
+    voicePlaybackError: "Azure音声を再生できません。Speechキー、リージョン、利用量を確認してください。",
+    practiceFirst: "まずは練習",
+    questionHeading: "どの単語が聞こえますか？",
+    chooseWord: "聞こえた単語を選んでください",
+    incorrectWord: (word: string) => `惜しいです。正解は「${word}」でした。`,
+    allAnswered: "すべての問題に回答しました",
+    progressLabel: "テストの進捗",
+    questionProgress: (current: number, total: number) => `${total}問中${current}問目`,
     correct: "正解です。",
     incorrect: (target: QuizTarget) => `惜しいです。正解は${target}でした。`,
     complete: (score: number, total: number) => `完了です。スコア: ${score} / ${total}`,
@@ -67,10 +109,16 @@ export function ListeningTestSession({
   onComplete,
   pairs,
   title,
+  enhancedLayout = false,
+  useAzureTts = false,
 }: ListeningTestSessionProps) {
   const { language, text } = useLanguage();
   const copy = listeningTestCopy[language];
   const [questions, setQuestions] = useState<ListeningQuestion[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<AzureSpeechVoiceId>(
+    DEFAULT_AZURE_SPEECH_VOICE,
+  );
+  const [voicePreviewMessage, setVoicePreviewMessage] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<QuizTarget | null>(null);
@@ -81,6 +129,32 @@ export function ListeningTestSession({
   const isRunning = questions.length > 0 && currentIndex < questions.length;
   const isComplete = questions.length > 0 && currentIndex >= questions.length;
   const currentQuestion = isRunning ? questions[currentIndex] : null;
+
+  useEffect(() => {
+    if (!useAzureTts) return;
+    const frame = window.requestAnimationFrame(() =>
+      setSelectedVoice(getSavedAzureSpeechVoice()),
+    );
+    return () => {
+      window.cancelAnimationFrame(frame);
+      stopSpeechPlayback();
+    };
+  }, [useAzureTts]);
+
+  async function previewSelectedVoice() {
+    setVoicePreviewMessage(copy.previewStarting);
+    try {
+      await playAzureSpeech(
+        "Hello, this is the selected practice voice.",
+        selectedVoice,
+      );
+      setVoicePreviewMessage(copy.previewStarted);
+    } catch (error) {
+      setVoicePreviewMessage(
+        error instanceof Error ? error.message : copy.voicePlaybackError,
+      );
+    }
+  }
 
   function startSession() {
     const nextQuestions = pairs.slice(0, 10).map((pair) => ({
@@ -105,6 +179,18 @@ export function ListeningTestSession({
         ? currentQuestion.pair.wordA
         : currentQuestion.pair.wordB;
 
+    if (useAzureTts) {
+      setFeedback({ tone: "neutral", text: copy.ready });
+      void playAzureSpeech(word, selectedVoice).catch((error: unknown) => {
+        playIncorrectSound();
+        setFeedback({
+          tone: "error",
+          text: error instanceof Error ? error.message : copy.voicePlaybackError,
+        });
+      });
+      return;
+    }
+
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
       setFeedback({ tone: "error", text: copy.unsupported });
@@ -112,9 +198,7 @@ export function ListeningTestSession({
     }
 
     window.speechSynthesis.cancel();
-
     const utterance = new SpeechSynthesisUtterance(word);
-
     utterance.lang = "en-US";
     utterance.rate = 0.85;
     utterance.pitch = 1;
@@ -139,7 +223,13 @@ export function ListeningTestSession({
       playIncorrectSound();
       setFeedback({
         tone: "error",
-        text: copy.incorrect(currentQuestion.target),
+        text: enhancedLayout
+          ? copy.incorrectWord(
+              currentQuestion.target === "A"
+                ? currentQuestion.pair.wordA
+                : currentQuestion.pair.wordB,
+            )
+          : copy.incorrect(currentQuestion.target),
       });
     }
   }
@@ -164,31 +254,67 @@ export function ListeningTestSession({
   }
 
   return (
-    <section className="border-b border-white/10 py-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-white">{copy.title}</p>
-          <p className="text-sm leading-6 text-white/55">
+    <section className={enhancedLayout ? "overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.055] to-white/[0.015] p-5 shadow-[0_24px_80px_-48px_rgba(80,210,235,0.22)] sm:p-7" : "border-b border-white/10 py-6"}>
+      {(!enhancedLayout || !isRunning) ? <div className={enhancedLayout ? "flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between" : "flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"}>
+        <div className={enhancedLayout ? "space-y-3" : "space-y-2"}>
+          <div className="flex items-center gap-3">
+            {enhancedLayout ? <span className="grid size-10 place-items-center rounded-xl border border-cyan-100/15 bg-cyan-100/[0.07] text-lg text-cyan-100" aria-hidden="true">♪</span> : null}
+            <div>
+              <p className="text-sm font-semibold text-white">{copy.title}</p>
+              {enhancedLayout ? <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-100/60">{questions.length === 0 ? copy.readyStatus : isComplete ? copy.completedStatus : copy.activeStatus}</p> : null}
+            </div>
+          </div>
+          <p className="text-sm leading-6 text-white/60">
             {text(title)}: {copy.description}
           </p>
-          {isRunning ? (
-            <p className="text-sm text-white/45">
-              {copy.question(currentIndex + 1, questions.length)} /{" "}
-              {copy.score(score, questions.length)}
-            </p>
-          ) : null}
-          {isComplete ? (
-            <p className="text-sm text-white/70">
-              {copy.score(score, questions.length)}
-            </p>
+          {enhancedLayout && questions.length === 0 ? (
+            <p className="text-xs leading-5 text-white/40">{copy.instructions}</p>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className={enhancedLayout ? "flex shrink-0 flex-wrap items-end gap-3" : "flex flex-wrap gap-3"}>
+          {enhancedLayout && useAzureTts && questions.length === 0 ? (
+            <div className="grid min-w-48 gap-1.5 text-xs font-medium text-white/65">
+              <label htmlFor="take-test-voice">{copy.voice}</label>
+              <div className="flex gap-2">
+                <select
+                  id="take-test-voice"
+                  value={selectedVoice}
+                  onChange={(event) => {
+                    const voice = event.target.value as AzureSpeechVoiceId;
+                    setSelectedVoice(voice);
+                    saveAzureSpeechVoice(voice);
+                    stopSpeechPlayback();
+                    setVoicePreviewMessage("");
+                  }}
+                  className="h-11 min-w-0 flex-1 rounded-lg border border-white/15 bg-[#101313] px-3 text-sm text-white outline-none transition focus:border-cyan-100/60 focus:ring-2 focus:ring-cyan-100/30"
+                >
+                  {AZURE_SPEECH_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.name} · {voice.gender}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void previewSelectedVoice()}
+                  className="h-11 shrink-0 rounded-lg border border-cyan-100/30 bg-cyan-100/[0.06] px-3 text-xs font-semibold text-cyan-50 transition hover:border-cyan-100/60 hover:bg-cyan-100/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100"
+                >
+                  {copy.testVoice}
+                </button>
+              </div>
+              {voicePreviewMessage ? (
+                <span role="status" aria-live="polite" className="text-[0.68rem] leading-4 text-cyan-50/65">
+                  {voicePreviewMessage}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={startSession}
-            className={buttonClassName}
+            className={enhancedLayout ? `${buttonClassName} min-h-12 rounded-lg px-5 shadow-[0_8px_30px_-16px_rgba(255,255,255,0.5)]` : buttonClassName}
           >
             {questions.length > 0 ? copy.restart : copy.start}
           </button>
@@ -197,15 +323,119 @@ export function ListeningTestSession({
             <button
               type="button"
               onClick={playCurrentQuestion}
-              className={buttonClassName}
+              className={enhancedLayout ? "min-h-12 rounded-lg border border-white/15 bg-white/[0.04] px-5 text-sm font-semibold text-white transition hover:border-cyan-100/40 hover:bg-cyan-100/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100" : buttonClassName}
             >
+              {enhancedLayout ? <span aria-hidden="true" className="mr-2 text-cyan-100">▶</span> : null}
               {copy.play}
             </button>
           ) : null}
         </div>
-      </div>
+      </div> : null}
 
-      {isRunning && currentQuestion ? (
+      {enhancedLayout && (isRunning || isComplete) ? (
+        <div className="mt-6 border-t border-white/10 pt-5">
+          <div className="mb-2 flex items-center justify-between gap-4 text-xs font-medium text-white/55">
+            <span>{isComplete ? copy.allAnswered : copy.questionProgress(currentIndex + 1, questions.length)}</span>
+            <span>{copy.score(score, questions.length)}</span>
+          </div>
+          <div
+            className="h-2 overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-label={copy.progressLabel}
+            aria-valuemin={0}
+            aria-valuemax={questions.length}
+            aria-valuenow={isComplete ? questions.length : currentIndex + 1}
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-200 to-sky-400 transition-[width] duration-500"
+              style={{ width: `${(Math.min(currentIndex + 1, questions.length) / questions.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
+      {!enhancedLayout && isRunning ? (
+        <p className="mt-3 text-sm text-white/45">
+          {copy.question(currentIndex + 1, questions.length)} / {copy.score(score, questions.length)}
+        </p>
+      ) : null}
+      {!enhancedLayout && isComplete ? (
+        <p className="mt-3 text-sm text-white/70">{copy.score(score, questions.length)}</p>
+      ) : null}
+      {isRunning && currentQuestion && enhancedLayout ? (
+        <div className="mt-7 space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-cyan-100/70">
+                {copy.practiceFirst}
+              </p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                {copy.questionHeading}
+              </h2>
+            </div>
+            <span className="shrink-0 rounded-full border border-cyan-100/15 bg-cyan-100/[0.07] px-3 py-1.5 text-xs font-semibold tabular-nums text-cyan-100">
+              {currentIndex + 1} / {questions.length}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 py-2">
+            <button
+              type="button"
+              onClick={playCurrentQuestion}
+              aria-label={copy.play}
+              className="grid size-[4.5rem] place-items-center rounded-full border border-cyan-100/20 bg-cyan-100/[0.08] text-cyan-100 shadow-[0_12px_40px_-18px_rgba(103,232,249,0.55)] transition hover:scale-105 hover:bg-cyan-100/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100 focus-visible:ring-offset-4 focus-visible:ring-offset-black"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-7">
+                <path d="M11 5 6 9H3v6h3l5 4V5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+            <p className="text-sm text-white/55">{copy.chooseWord}</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(["A", "B"] as const).map((answer) => {
+              const word = answer === "A" ? currentQuestion.pair.wordA : currentQuestion.pair.wordB;
+              const isSelected = selectedAnswer === answer;
+              const isCorrectChoice = currentQuestion.target === answer;
+              const choiceState = selectedAnswer
+                ? isCorrectChoice
+                  ? "border-cyan-100/70 bg-cyan-100/[0.09] text-cyan-50"
+                  : isSelected
+                    ? "border-rose-300/60 bg-rose-300/[0.07] text-white/75"
+                    : "border-white/10 bg-white/[0.02] text-white/40"
+                : "border-white/20 bg-white/[0.025] text-white hover:border-cyan-100/55 hover:bg-cyan-100/[0.06]";
+
+              return (
+                <button
+                  key={answer}
+                  type="button"
+                  disabled={Boolean(selectedAnswer)}
+                  onClick={() => answerQuestion(answer)}
+                  aria-pressed={isSelected}
+                  className={`flex min-h-[4.5rem] items-center justify-center rounded-xl border px-5 text-lg font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100 disabled:cursor-default ${choiceState}`}
+                >
+                  {word}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedAnswer ? (
+            <div className={`flex flex-col gap-4 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${feedback?.tone === "success" ? "border-cyan-100/15 bg-cyan-100/[0.07]" : "border-white/10 bg-white/[0.035]"}`}>
+              {feedback ? <ListeningFeedback tone={feedback.tone} text={feedback.text} /> : null}
+              <button
+                type="button"
+                onClick={goNext}
+                className="min-h-10 shrink-0 rounded-lg bg-white px-5 text-sm font-semibold text-black transition hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              >
+                {currentIndex === questions.length - 1 ? copy.finish : copy.next}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isRunning && currentQuestion && !enhancedLayout ? (
         <div className="mt-5 space-y-4">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border border-white/10 bg-white/[0.02] p-4">
             <WordChoice label="A" word={currentQuestion.pair.wordA} />
