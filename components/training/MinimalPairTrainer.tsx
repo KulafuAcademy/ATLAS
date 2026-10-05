@@ -365,16 +365,21 @@ function PairPracticeCard({
         return;
       }
 
-      // Stop recording immediately once we have a result.
-      // recognition.abort();
+      // Invalidate this recognition immediately so stale callbacks
+      // cannot change the result.
+      speechRecognitionRunIdRef.current += 1;
 
       const transcripts = getSpeechRecognitionTranscripts(event);
       const heardText = transcripts[0] ?? "";
-
-      // Speech recognition may return something like:
-      // "Road Hello. Hello, hello."
-      // Only use the first recognized word.
       const heardWord = getFirstRecognizedWord(heardText);
+
+      console.log("[Pronunciation Check]", {
+        pair: pair.id,
+        selectedTarget: target,
+        targetWord: word,
+        heardText,
+        heardWord,
+      });
 
       if (!heardWord) {
         playIncorrectSound();
@@ -404,6 +409,12 @@ function PairPracticeCard({
 
       setAiCheckTarget(null);
       speechRecognitionRef.current = null;
+
+      try {
+        recognition.abort();
+      } catch {
+        // Already stopped.
+      }
     };
 
     recognition.onerror = () => {
@@ -429,10 +440,12 @@ function PairPracticeCard({
     };
 
     recognition.onend = () => {
-      if (speechRecognitionRunIdRef.current === recognitionRunId) {
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
       }
+
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
     };
 
     try {
