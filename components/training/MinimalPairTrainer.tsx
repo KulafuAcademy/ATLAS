@@ -40,6 +40,7 @@ type BrowserSpeechRecognitionResultEvent = Event & {
   results: {
     length: number;
     [index: number]: {
+      isFinal: boolean;
       length: number;
       [index: number]: {
         transcript: string;
@@ -154,7 +155,8 @@ const trainerCopy = {
     couldNotHear: "聞き取れませんでした。もう一度試してください。",
     couldNotRecognize: (word: string) =>
       `「${word}」として認識できませんでした。もう一度試してください。`,
-    checkCouldNotStart: "発音チェックを開始できませんでした。もう一度試してください。",
+    checkCouldNotStart:
+      "発音チェックを開始できませんでした。もう一度試してください。",
   },
 };
 
@@ -219,9 +221,21 @@ function PairPracticeCard({
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const tongueTwister = getTongueTwister(pair);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(
+        /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent),
+      );
+    };
+
+    checkMobile();
+  }, []);
 
   useEffect(() => {
     function stopRecognition() {
@@ -236,6 +250,7 @@ function PairPracticeCard({
     return () => {
       window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
       stopRecognition();
+      window.speechSynthesis?.cancel();
     };
   }, []);
 
@@ -333,36 +348,57 @@ function PairPracticeCard({
     recognition.lang = "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 1;
     speechRecognitionRunIdRef.current = recognitionRunId;
     speechRecognitionRef.current = recognition;
     setAiCheckTarget(word);
     showFeedback("pronunciation", "neutral", copy.sayWord(word));
+
+    function getFirstRecognizedWord(transcript: string) {
+      const normalized = normalizeRecognizedText(transcript);
+
+      return normalized.split(" ")[0] ?? "";
+    }
 
     recognition.onresult = (event) => {
       if (speechRecognitionRunIdRef.current !== recognitionRunId) {
         return;
       }
 
+      // Stop recording immediately once we have a result.
+      // recognition.abort();
+
       const transcripts = getSpeechRecognitionTranscripts(event);
-      const isCorrect = transcripts.some((transcript) =>
-        transcriptMatchesWord(transcript, word),
-      );
-      const heardText = transcripts[0] ?? "unrecognized speech";
+      const heardText = transcripts[0] ?? "";
+
+      // Speech recognition may return something like:
+      // "Road Hello. Hello, hello."
+      // Only use the first recognized word.
+      const heardWord = getFirstRecognizedWord(heardText);
+
+      if (!heardWord) {
+        playIncorrectSound();
+        showFeedback("pronunciation", "error", copy.couldNotHear);
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
+        return;
+      }
+
+      const isCorrect = transcriptMatchesWord(heardWord, word);
 
       if (isCorrect) {
         playCorrectSound();
         showFeedback(
           "pronunciation",
           "success",
-          copy.pronunciationCorrect(heardText),
+          copy.pronunciationCorrect(heardWord),
         );
       } else {
         playIncorrectSound();
         showFeedback(
           "pronunciation",
           "error",
-          copy.pronunciationRetry(heardText, word),
+          copy.pronunciationRetry(heardWord, word),
         );
       }
 
@@ -436,6 +472,7 @@ function PairPracticeCard({
           <ActionButton onClick={() => speak(pair.wordA)}>
             {copy.listenA}
           </ActionButton>
+
           <ActionButton onClick={() => speak(pair.wordB)}>
             {copy.listenB}
           </ActionButton>
@@ -481,6 +518,7 @@ function PairPracticeCard({
           >
             {copy.speakB}
           </ActionButton>
+          {aiCheckTarget && !isMobile ? <MicLevelMeter /> : null}
         </TestGroup>
 
         <TestGroup
@@ -575,6 +613,102 @@ function getTongueTwister(pair: MinimalPair) {
   };
 }
 
+const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
+
+function MicLevelMeter() {
+  const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let frameId = 0;
+    let stream: MediaStream | null = null;
+    let audioContext: AudioContext | null = null;
+
+    function setBars(level: number, time: number) {
+      barRefs.current.forEach((bar, index) => {
+        if (!bar) return;
+        const wobble = 0.85 + 0.15 * Math.sin(time / 90 + index * 1.7);
+        const scale = Math.min(1, 0.12 + level * meterWeights[index] * wobble);
+        bar.style.transform = `scaleY(${scale})`;
+      });
+    }
+
+    async function start() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        audioContext = createAudioContext();
+        if (!audioContext) return;
+
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        audioContext.createMediaStreamSource(stream).connect(analyser);
+
+        const samples = new Uint8Array(analyser.fftSize);
+        let smoothed = 0;
+
+        const tick = (time: number) => {
+          analyser.getByteTimeDomainData(samples);
+
+          let sumSquares = 0;
+          for (const sample of samples) {
+            const normalized = (sample - 128) / 128;
+            sumSquares += normalized * normalized;
+          }
+
+          const rms = Math.sqrt(sumSquares / samples.length);
+          const level = Math.min(1, rms * 6);
+
+          // fast attack, slow release so the bars feel natural
+          smoothed =
+            level > smoothed
+              ? smoothed * 0.4 + level * 0.6
+              : smoothed * 0.9 + level * 0.1;
+
+          setBars(smoothed, time);
+          frameId = requestAnimationFrame(tick);
+        };
+
+        frameId = requestAnimationFrame(tick);
+      } catch {
+        // Mic level unavailable; recognition still works without the animation.
+      }
+    }
+
+    start();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+      stream?.getTracks().forEach((track) => track.stop());
+      void audioContext?.close();
+    };
+  }, []);
+
+  return (
+    <div
+      aria-hidden="true"
+      className="col-span-full flex h-10 items-center justify-center gap-1.5 border border-white/10 bg-white/[0.02]"
+    >
+      {meterWeights.map((_, index) => (
+        <span
+          key={index}
+          ref={(element) => {
+            barRefs.current[index] = element;
+          }}
+          className="h-6 w-1.5 origin-center bg-white"
+          style={{ transform: "scaleY(0.12)" }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function WordLabel({ label, word }: { label: string; word: string }) {
   return (
     <div className="space-y-2">
@@ -618,9 +752,17 @@ function TestGroup({
   );
 }
 
-function FeedbackMessage({ feedback }: { feedback: NonNullable<CardFeedback> }) {
+function FeedbackMessage({
+  feedback,
+}: {
+  feedback: NonNullable<CardFeedback>;
+}) {
   const icon =
-    feedback.tone === "success" ? "⭕️" : feedback.tone === "error" ? "❌" : null;
+    feedback.tone === "success"
+      ? "⭕️"
+      : feedback.tone === "error"
+        ? "❌"
+        : null;
   const feedbackClassName =
     feedback.tone === "success"
       ? "border-white bg-white text-black"
@@ -670,7 +812,11 @@ function getSpeechRecognitionTranscripts(
 ) {
   const transcripts: string[] = [];
 
-  for (let resultIndex = 0; resultIndex < event.results.length; resultIndex += 1) {
+  for (
+    let resultIndex = 0;
+    resultIndex < event.results.length;
+    resultIndex += 1
+  ) {
     const result = event.results[resultIndex];
 
     for (
@@ -693,7 +839,7 @@ function transcriptMatchesWord(transcript: string, targetWord: string) {
   const normalizedTranscript = normalizeRecognizedText(transcript);
   const normalizedTarget = normalizeRecognizedText(targetWord);
 
-  return normalizedTranscript.split(" ").includes(normalizedTarget);
+  return normalizedTranscript === normalizedTarget;
 }
 
 function normalizeRecognizedText(text: string) {
