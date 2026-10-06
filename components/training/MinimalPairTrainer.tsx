@@ -100,7 +100,8 @@ const trainerCopy = {
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
-    playQuizFirst: "Press Play quiz first, then choose what you heard.",
+    playQuizFirst:
+      "まず「クイズを再生」を押してから、聞こえたものを選んでください。",
     correct: "Correct.",
     listeningIncorrect: (word: string) =>
       `Not quite. The answer was "${word}".`,
@@ -129,7 +130,8 @@ const trainerCopy = {
     playQuiz: "クイズ再生",
     answer: (word: string) => `${word}だと思う`,
     pronunciationTitle: "発音テスト",
-    pronunciationDescription: "目標の単語を発音して、AIで判定します。",
+    pronunciationDescription:
+      "ターゲットの単語を発音して、Atlasにチェックしてもらいましょう。",
     speak: (word: string) => `${word}を発音する`,
 
     tongueTwisterTitle: "Tongue Twister",
