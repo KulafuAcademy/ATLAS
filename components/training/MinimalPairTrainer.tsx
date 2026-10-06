@@ -100,7 +100,7 @@ const trainerCopy = {
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
-    playQuizFirst: "Press Play quiz first, then choose your answer.",
+    playQuizFirst: "Press Play quiz first, then choose what you heard.",
     correct: "Correct.",
     listeningIncorrect: (word: string) =>
       `Not quite. The answer was "${word}".`,
