@@ -90,7 +90,7 @@ const trainerCopy = {
     playQuiz: "Play quiz",
     answer: (word: string) => `I hear ${word}`,
     pronunciationTitle: "Pronunciation test",
-    pronunciationDescription: "Say the target word and let AI check it.",
+    pronunciationDescription: "Say the target word and let Atlas check it.",
     speak: (word: string) => `Say ${word}`,
     tongueTwisterTitle: "Tongue twister",
     tongueTwisterDescription:
