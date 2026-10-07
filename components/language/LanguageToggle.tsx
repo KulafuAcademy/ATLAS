@@ -3,7 +3,7 @@
 import { useLanguage } from "@/components/language/LanguageProvider";
 
 const languageButtonClassName =
-  "h-9 border border-white bg-white px-3 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
+  "h-8 border border-white bg-white px-2.5 text-[10px] font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
 
 export function LanguageToggle() {
   const { language, setLanguage } = useLanguage();

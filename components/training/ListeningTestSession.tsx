@@ -3,15 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import type { LocalizedText } from "@/lib/i18n";
+import type { Language, LocalizedText } from "@/lib/i18n";
 import {
-  AZURE_SPEECH_VOICES,
-  DEFAULT_AZURE_SPEECH_VOICE,
-  getSavedAzureSpeechVoice,
-  saveAzureSpeechVoice,
-  type AzureSpeechVoiceId,
+  getBrowserSpeechVoices,
+  getSavedBrowserSpeechVoice,
+  saveBrowserSpeechVoice,
 } from "@/lib/speechVoices";
-import { playAzureSpeech, stopSpeechPlayback } from "@/lib/speechPlayback";
+import { playBrowserSpeech, stopSpeechPlayback } from "@/lib/speechPlayback";
 import type { MinimalPair } from "@/types/training";
 
 type QuizTarget = "A" | "B";
@@ -22,13 +20,22 @@ type ListeningQuestion = {
 };
 
 type FeedbackTone = "neutral" | "success" | "error";
+type VoicePreviewMessage = "" | "starting" | "started" | "error";
+type FeedbackState =
+  | { tone: "neutral"; kind: "ready" }
+  | { tone: "error"; kind: "unsupported" | "playbackError" }
+  | { tone: "success"; kind: "correct" }
+  | { tone: "error"; kind: "incorrect"; target: QuizTarget }
+  | { tone: "error"; kind: "incorrectWord"; word: string }
+  | { tone: "success"; kind: "complete"; score: number; total: number };
 
 type ListeningTestSessionProps = {
   onComplete?: (score: number, total: number) => void;
   pairs: MinimalPair[];
   title: LocalizedText;
   enhancedLayout?: boolean;
-  useAzureTts?: boolean;
+  browserVoice?: string;
+  showVoiceControls?: boolean;
 };
 
 const listeningTestCopy = {
@@ -53,15 +60,16 @@ const listeningTestCopy = {
     testVoice: "Test voice",
     previewStarting: "Playing voice preview…",
     previewStarted: "Voice preview started.",
-    voicePlaybackError: "Azure voice could not play. Check the Speech key, region, and quota.",
+    voicePlaybackError: "Browser speech playback failed. Try another available voice.",
     practiceFirst: "Practice first",
+    slowMode: "Slow mode",
     questionHeading: "Which word do you hear?",
     chooseWord: "Choose the word you heard",
-    incorrectWord: (word: string) => `Not quite. The word was “${word}”.`,
+    incorrectWord: (word: string) => `Good try. The word was “${word}”. Listen for its first sound on the next question.`,
     allAnswered: "All questions answered",
     progressLabel: "Test progress",
     questionProgress: (current: number, total: number) => `Question ${current} of ${total}`,
-    correct: "Correct.",
+    correct: "Correct — you identified the word. Continue to the next question.",
     incorrect: (target: QuizTarget) => `Not quite. The answer was ${target}.`,
     complete: (score: number, total: number) => `Complete. Score: ${score} / ${total}`,
     unsupported: "Speech playback is not supported in this browser.",
@@ -87,20 +95,42 @@ const listeningTestCopy = {
     testVoice: "音声を試す",
     previewStarting: "音声プレビューを再生しています…",
     previewStarted: "音声プレビューを再生しました。",
-    voicePlaybackError: "Azure音声を再生できません。Speechキー、リージョン、利用量を確認してください。",
+    voicePlaybackError: "ブラウザ音声を再生できません。別の音声を試してください。",
     practiceFirst: "まずは練習",
+    slowMode: "ゆっくり再生",
     questionHeading: "どの単語が聞こえますか？",
     chooseWord: "聞こえた単語を選んでください",
-    incorrectWord: (word: string) => `惜しいです。正解は「${word}」でした。`,
+    incorrectWord: (word: string) => `惜しいです。正解は「${word}」です。次の問題では最初の音に注目してみましょう。`,
     allAnswered: "すべての問題に回答しました",
     progressLabel: "テストの進捗",
     questionProgress: (current: number, total: number) => `${total}問中${current}問目`,
-    correct: "正解です。",
+    correct: "正解です。単語を聞き取れました。次の問題に進みましょう。",
     incorrect: (target: QuizTarget) => `惜しいです。正解は${target}でした。`,
     complete: (score: number, total: number) => `完了です。スコア: ${score} / ${total}`,
     unsupported: "このブラウザでは音声再生に対応していません。",
   },
 };
+
+function getFeedbackText(feedback: FeedbackState, language: "en" | "ja") {
+  const copy = listeningTestCopy[language];
+
+  switch (feedback.kind) {
+    case "ready":
+      return copy.ready;
+    case "unsupported":
+      return copy.unsupported;
+    case "playbackError":
+      return copy.voicePlaybackError;
+    case "correct":
+      return copy.correct;
+    case "incorrect":
+      return copy.incorrect(feedback.target);
+    case "incorrectWord":
+      return copy.incorrectWord(feedback.word);
+    case "complete":
+      return copy.complete(feedback.score, feedback.total);
+  }
+}
 
 const buttonClassName =
   "h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25 disabled:hover:bg-white/10 disabled:hover:text-white/25";
@@ -110,49 +140,48 @@ export function ListeningTestSession({
   pairs,
   title,
   enhancedLayout = false,
-  useAzureTts = false,
+  browserVoice,
+  showVoiceControls = true,
 }: ListeningTestSessionProps) {
   const { language, text } = useLanguage();
   const copy = listeningTestCopy[language];
   const [questions, setQuestions] = useState<ListeningQuestion[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<AzureSpeechVoiceId>(
-    DEFAULT_AZURE_SPEECH_VOICE,
-  );
-  const [voicePreviewMessage, setVoicePreviewMessage] = useState("");
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState("");
+  const [voicePreviewMessage, setVoicePreviewMessage] =
+    useState<VoicePreviewMessage>("");
+  const [slowPlayback, setSlowPlayback] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<QuizTarget | null>(null);
-  const [feedback, setFeedback] = useState<{
-    tone: FeedbackTone;
-    text: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const activeVoice = browserVoice ?? selectedVoice;
+  const feedbackText = feedback ? getFeedbackText(feedback, language) : "";
   const isRunning = questions.length > 0 && currentIndex < questions.length;
   const isComplete = questions.length > 0 && currentIndex >= questions.length;
   const currentQuestion = isRunning ? questions[currentIndex] : null;
 
   useEffect(() => {
-    if (!useAzureTts) return;
-    const frame = window.requestAnimationFrame(() =>
-      setSelectedVoice(getSavedAzureSpeechVoice()),
-    );
+    const updateVoices = () => setAvailableVoices(getBrowserSpeechVoices());
+    setSelectedVoice(getSavedBrowserSpeechVoice());
+    updateVoices();
+    window.speechSynthesis?.addEventListener("voiceschanged", updateVoices);
     return () => {
-      window.cancelAnimationFrame(frame);
+      window.speechSynthesis?.removeEventListener("voiceschanged", updateVoices);
       stopSpeechPlayback();
     };
-  }, [useAzureTts]);
+  }, []);
 
   async function previewSelectedVoice() {
-    setVoicePreviewMessage(copy.previewStarting);
+    setVoicePreviewMessage("starting");
     try {
-      await playAzureSpeech(
+      await playBrowserSpeech(
         "Hello, this is the selected practice voice.",
         selectedVoice,
       );
-      setVoicePreviewMessage(copy.previewStarted);
-    } catch (error) {
-      setVoicePreviewMessage(
-        error instanceof Error ? error.message : copy.voicePlaybackError,
-      );
+      setVoicePreviewMessage("started");
+    } catch {
+      setVoicePreviewMessage("error");
     }
   }
 
@@ -166,7 +195,7 @@ export function ListeningTestSession({
     setCurrentIndex(0);
     setScore(0);
     setSelectedAnswer(null);
-    setFeedback({ tone: "neutral", text: copy.ready });
+    setFeedback({ tone: "neutral", kind: "ready" });
   }
 
   function playCurrentQuestion() {
@@ -179,31 +208,21 @@ export function ListeningTestSession({
         ? currentQuestion.pair.wordA
         : currentQuestion.pair.wordB;
 
-    if (useAzureTts) {
-      setFeedback({ tone: "neutral", text: copy.ready });
-      void playAzureSpeech(word, selectedVoice).catch((error: unknown) => {
-        playIncorrectSound();
-        setFeedback({
-          tone: "error",
-          text: error instanceof Error ? error.message : copy.voicePlaybackError,
-        });
-      });
-      return;
-    }
-
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
-      setFeedback({ tone: "error", text: copy.unsupported });
+      setFeedback({ tone: "error", kind: "unsupported" });
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = "en-US";
-    utterance.rate = 0.85;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
-    setFeedback({ tone: "neutral", text: copy.ready });
+    setFeedback({ tone: "neutral", kind: "ready" });
+    void playBrowserSpeech(
+      word,
+      activeVoice,
+      slowPlayback ? "slow" : "normal",
+    ).catch(() => {
+      playIncorrectSound();
+      setFeedback({ tone: "error", kind: "playbackError" });
+    });
   }
 
   function answerQuestion(answer: QuizTarget) {
@@ -218,19 +237,25 @@ export function ListeningTestSession({
     if (isCorrect) {
       playCorrectSound();
       setScore((currentScore) => currentScore + 1);
-      setFeedback({ tone: "success", text: copy.correct });
+      setFeedback({ tone: "success", kind: "correct" });
     } else {
       playIncorrectSound();
-      setFeedback({
-        tone: "error",
-        text: enhancedLayout
-          ? copy.incorrectWord(
-              currentQuestion.target === "A"
-                ? currentQuestion.pair.wordA
-                : currentQuestion.pair.wordB,
-            )
-          : copy.incorrect(currentQuestion.target),
-      });
+      if (enhancedLayout) {
+        setFeedback({
+          tone: "error",
+          kind: "incorrectWord",
+          word:
+            currentQuestion.target === "A"
+              ? currentQuestion.pair.wordA
+              : currentQuestion.pair.wordB,
+        });
+      } else {
+        setFeedback({
+          tone: "error",
+          kind: "incorrect",
+          target: currentQuestion.target,
+        });
+      }
     }
   }
 
@@ -241,16 +266,13 @@ export function ListeningTestSession({
 
     if (nextIndex >= questions.length) {
       setCurrentIndex(nextIndex);
-      setFeedback({
-        tone: "success",
-        text: copy.complete(score, questions.length),
-      });
+      setFeedback({ tone: "success", kind: "complete", score, total: questions.length });
       onComplete?.(score, questions.length);
       return;
     }
 
     setCurrentIndex(nextIndex);
-    setFeedback({ tone: "neutral", text: copy.ready });
+    setFeedback({ tone: "neutral", kind: "ready" });
   }
 
   return (
@@ -273,7 +295,7 @@ export function ListeningTestSession({
         </div>
 
         <div className={enhancedLayout ? "flex shrink-0 flex-wrap items-end gap-3" : "flex flex-wrap gap-3"}>
-          {enhancedLayout && useAzureTts && questions.length === 0 ? (
+          {enhancedLayout && showVoiceControls && questions.length === 0 ? (
             <div className="grid min-w-48 gap-1.5 text-xs font-medium text-white/65">
               <label htmlFor="take-test-voice">{copy.voice}</label>
               <div className="flex gap-2">
@@ -281,17 +303,21 @@ export function ListeningTestSession({
                   id="take-test-voice"
                   value={selectedVoice}
                   onChange={(event) => {
-                    const voice = event.target.value as AzureSpeechVoiceId;
+                    const voice = event.target.value;
                     setSelectedVoice(voice);
-                    saveAzureSpeechVoice(voice);
+                    saveBrowserSpeechVoice(voice);
                     stopSpeechPlayback();
                     setVoicePreviewMessage("");
                   }}
                   className="h-11 min-w-0 flex-1 rounded-lg border border-white/15 bg-[#101313] px-3 text-sm text-white outline-none transition focus:border-cyan-100/60 focus:ring-2 focus:ring-cyan-100/30"
                 >
-                  {AZURE_SPEECH_VOICES.map((voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.name} · {voice.gender}
+                  <option value="atlas-recordings" disabled>
+                    ATLAS Voice (recordings coming soon)
+                  </option>
+                  <option value="">Default browser voice</option>
+                  {availableVoices.map((voice) => (
+                    <option key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name} · {voice.lang}
                     </option>
                   ))}
                 </select>
@@ -305,7 +331,11 @@ export function ListeningTestSession({
               </div>
               {voicePreviewMessage ? (
                 <span role="status" aria-live="polite" className="text-[0.68rem] leading-4 text-cyan-50/65">
-                  {voicePreviewMessage}
+                  {voicePreviewMessage === "starting"
+                    ? copy.previewStarting
+                    : voicePreviewMessage === "started"
+                      ? copy.previewStarted
+                      : copy.voicePlaybackError}
                 </span>
               ) : null}
             </div>
@@ -372,9 +402,27 @@ export function ListeningTestSession({
                 {copy.questionHeading}
               </h2>
             </div>
-            <span className="shrink-0 rounded-full border border-cyan-100/15 bg-cyan-100/[0.07] px-3 py-1.5 text-xs font-semibold tabular-nums text-cyan-100">
-              {currentIndex + 1} / {questions.length}
-            </span>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <span className="rounded-full border border-cyan-100/15 bg-cyan-100/[0.07] px-3 py-1.5 text-xs font-semibold tabular-nums text-cyan-100">
+                {currentIndex + 1} / {questions.length}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={slowPlayback}
+                aria-label={copy.slowMode}
+                onClick={() => setSlowPlayback((enabled) => !enabled)}
+                className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-100 ${slowPlayback ? "border-cyan-100/40 bg-cyan-100/[0.1] text-cyan-50" : "border-white/15 bg-white/[0.03] text-white/60 hover:border-white/30"}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`relative h-4 w-7 rounded-full transition ${slowPlayback ? "bg-cyan-200/70" : "bg-white/20"}`}
+                >
+                  <span className={`absolute top-0.5 size-3 rounded-full bg-white transition-all ${slowPlayback ? "left-3.5" : "left-0.5"}`} />
+                </span>
+                {copy.slowMode}
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col items-center gap-3 py-2">
@@ -422,7 +470,13 @@ export function ListeningTestSession({
 
           {selectedAnswer ? (
             <div className={`flex flex-col gap-4 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${feedback?.tone === "success" ? "border-cyan-100/15 bg-cyan-100/[0.07]" : "border-white/10 bg-white/[0.035]"}`}>
-              {feedback ? <ListeningFeedback tone={feedback.tone} text={feedback.text} /> : null}
+              {feedback ? (
+                <ListeningFeedback
+                  language={language}
+                  tone={feedback.tone}
+                  text={feedbackText}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={goNext}
@@ -472,7 +526,13 @@ export function ListeningTestSession({
         </div>
       ) : null}
 
-      {feedback ? <ListeningFeedback tone={feedback.tone} text={feedback.text} /> : null}
+      {feedback && !enhancedLayout ? (
+        <ListeningFeedback
+          language={language}
+          tone={feedback.tone}
+          text={feedbackText}
+        />
+      ) : null}
     </section>
   );
 }
@@ -489,13 +549,16 @@ function WordChoice({ label, word }: { label: QuizTarget; word: string }) {
 }
 
 function ListeningFeedback({
+  language,
   tone,
   text,
 }: {
+  language: Language;
   tone: FeedbackTone;
   text: string;
 }) {
-  const icon = tone === "success" ? "⭕️" : tone === "error" ? "❌" : null;
+  const icon =
+    tone === "success" ? (language === "ja" ? "○" : "✓") : tone === "error" ? "×" : null;
   const className =
     tone === "success"
       ? "border-white bg-white text-black"
@@ -505,7 +568,14 @@ function ListeningFeedback({
 
   return (
     <p className={`mt-4 flex items-center gap-2 border px-3 py-2 text-sm font-medium ${className}`}>
-      {icon ? <span aria-hidden="true">{icon}</span> : null}
+      {icon ? (
+        <span
+          aria-hidden="true"
+          className={`font-bold ${tone === "success" ? (language === "ja" ? "text-rose-500" : "text-emerald-600") : "text-rose-400"}`}
+        >
+          {icon}
+        </span>
+      ) : null}
       <span>{text}</span>
     </p>
   );
@@ -534,7 +604,9 @@ function playIncorrectSound() {
 
 function createAudioContext() {
   const AudioContextConstructor =
-    window.AudioContext ?? window.webkitAudioContext;
+    window.AudioContext ??
+    (window as Window & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
 
   if (!AudioContextConstructor) {
     return null;

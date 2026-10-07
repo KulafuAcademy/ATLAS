@@ -26,7 +26,6 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
-type EntryTarget = "learn" | "test";
 type ProgressByCategory = Record<string, TrainingProgress>;
 
 const progressStorageKey = "atlas.trainingProgress.v1";
@@ -77,9 +76,7 @@ export function TrainingCurriculum({
     const frameId = window.requestAnimationFrame(() => {
       const storedProgress = window.localStorage.getItem(progressStorageKey);
 
-      if (!storedProgress) {
-        return;
-      }
+      if (!storedProgress) return;
 
       try {
         setProgressByCategory(JSON.parse(storedProgress) as ProgressByCategory);
@@ -92,9 +89,7 @@ export function TrainingCurriculum({
   }, []);
 
   useEffect(() => {
-    if (!pendingScrollTargetId) {
-      return;
-    }
+    if (!pendingScrollTargetId) return;
 
     const frameId = window.requestAnimationFrame(() => {
       document.getElementById(pendingScrollTargetId)?.scrollIntoView({
@@ -120,29 +115,16 @@ export function TrainingCurriculum({
   }
 
   function setPracticeMode(sectionId: string, mode: PracticeMode) {
-    setPracticeModes((currentModes) => ({
-      ...currentModes,
-      [sectionId]: mode,
-    }));
+    setPracticeModes((currentModes) => ({ ...currentModes, [sectionId]: mode }));
   }
 
-  function scrollToElement(elementId: string) {
-    document.getElementById(elementId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }
-
-  function openAndScrollToSection(sectionId: string, target: EntryTarget) {
-    const targetElementId =
-      target === "test" ? `${sectionId}-test` : `${sectionId}-learn`;
-
+  function openAndScrollToLesson(sectionId: string) {
     setOpenSectionIds((currentSectionIds) =>
       currentSectionIds.includes(sectionId)
         ? currentSectionIds
         : [...currentSectionIds, sectionId],
     );
-    setPendingScrollTargetId(targetElementId);
+    setPendingScrollTargetId(`${sectionId}-learn`);
   }
 
   function recordTestProgress(sectionId: string, score: number, total: number) {
@@ -159,11 +141,7 @@ export function TrainingCurriculum({
         },
       };
 
-      window.localStorage.setItem(
-        progressStorageKey,
-        JSON.stringify(nextProgress),
-      );
-
+      window.localStorage.setItem(progressStorageKey, JSON.stringify(nextProgress));
       return nextProgress;
     });
   }
@@ -172,7 +150,7 @@ export function TrainingCurriculum({
     <div className="space-y-16">
       <TrainingCategoryOverview
         categories={categories}
-        onStart={openAndScrollToSection}
+        onStart={openAndScrollToLesson}
         progressByCategory={progressByCategory}
       />
 
@@ -250,22 +228,14 @@ export function TrainingCurriculum({
                       <button
                         type="button"
                         onClick={() => setPracticeMode(section.id, "all")}
-                        className={`${smallButtonClassName} ${
-                          practiceMode === "all"
-                            ? ""
-                            : "opacity-80 hover:opacity-100"
-                        }`}
+                        className={`${smallButtonClassName} ${practiceMode === "all" ? "" : "opacity-80 hover:opacity-100"}`}
                       >
                         {copy.allPairs}
                       </button>
                       <button
                         type="button"
                         onClick={() => setPracticeMode(section.id, "daily")}
-                        className={`${smallButtonClassName} ${
-                          practiceMode === "daily"
-                            ? ""
-                            : "opacity-80 hover:opacity-100"
-                        }`}
+                        className={`${smallButtonClassName} ${practiceMode === "daily" ? "" : "opacity-80 hover:opacity-100"}`}
                       >
                         {copy.todaysTen}
                       </button>
@@ -303,7 +273,12 @@ export function TrainingCurriculum({
                     <div className="border-t border-white/10 pt-6">
                       <button
                         type="button"
-                        onClick={() => scrollToElement("curriculum")}
+                        onClick={() =>
+                          document.getElementById("curriculum")?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          })
+                        }
                         className={smallButtonClassName}
                       >
                         {copy.backToCurriculum}
@@ -326,7 +301,6 @@ function getDailyPairs(sectionId: string, pairs: MinimalPair[]) {
       const dateKey = getLocalDateKey();
       const scoreA = hashString(`${dateKey}:${sectionId}:${pairA.id}`);
       const scoreB = hashString(`${dateKey}:${sectionId}:${pairB.id}`);
-
       return scoreA - scoreB;
     })
     .slice(0, 10);
@@ -337,16 +311,13 @@ function getLocalDateKey() {
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const date = String(today.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${date}`;
 }
 
 function hashString(value: string) {
   let hash = 0;
-
   for (let index = 0; index < value.length; index += 1) {
     hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
   }
-
   return hash;
 }
