@@ -305,13 +305,33 @@ export default function HardwareTestPage() {
             before starting training.
           </p>
           {inputs.every((device) => !device.label) ? (
-            <button
-              type="button"
-              onClick={() => void allowMicrophoneAccess()}
-              className="h-11 w-full border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white"
-            >
-              Allow microphone access
-            </button>
+            <div className="space-y-3 border border-white/30 bg-white/[0.06] p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                <span className="motion-safe:animate-bounce">👇</span>
+                Start here: allow your microphone
+              </p>
+
+              <p className="text-sm leading-6 text-white/60">
+                Your browser will ask for permission. Click "Allow" so we can
+                find your speakers and microphone.
+              </p>
+
+              <div className="relative">
+                {/* Pulsing ring behind the button */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 border-2 border-white motion-safe:animate-ping"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => void allowMicrophoneAccess()}
+                  className="relative h-12 w-full border border-white bg-white px-3 text-sm font-bold text-black shadow-[0_0_24px_rgba(255,255,255,0.45)] transition hover:bg-black hover:text-white motion-safe:animate-pulse"
+                >
+                  Allow microphone access
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
 
