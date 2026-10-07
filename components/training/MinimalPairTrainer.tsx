@@ -100,8 +100,7 @@ const trainerCopy = {
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
-    playQuizFirst:
-      "まず「クイズを再生」を押してから、聞こえたものを選んでください。",
+    playQuizFirst: "Play quiz, listen, then choose.",
     correct: "Correct.",
     listeningIncorrect: (word: string) =>
       `Not quite. The answer was "${word}".`,
@@ -141,7 +140,7 @@ const trainerCopy = {
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
-    playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
+    playQuizFirst: "「Play quiz」を押して、聞いて、選んでね。",
     correct: "正解です。",
     listeningIncorrect: (word: string) =>
       `惜しいです。正解は「${word}」でした。`,
