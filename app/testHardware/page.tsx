@@ -22,6 +22,12 @@ export default function HardwareTestPage() {
   const [micTesting, setMicTesting] = useState(false);
   const [micMessage, setMicMessage] = useState("");
 
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const [playingBack, setPlayingBack] = useState(false);
+
+  const playbackRef = useRef<HTMLAudioElement | null>(null);
+  const recordingUrlRef = useRef<string | null>(null);
+
   const micGainNodeRef = useRef<GainNode | null>(null);
 
   useEffect(() => {
@@ -38,6 +44,15 @@ export default function HardwareTestPage() {
         "devicechange",
         handleDeviceChange,
       );
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      playbackRef.current?.pause();
+      if (recordingUrlRef.current) {
+        URL.revokeObjectURL(recordingUrlRef.current);
+      }
     };
   }, []);
 
@@ -76,6 +91,49 @@ export default function HardwareTestPage() {
 
     // Permission is granted now, so labels and all devices are available.
     await loadDevices();
+  }
+
+  async function playRecording(url: string) {
+    playbackRef.current?.pause();
+
+    const audio = new Audio(url);
+    audio.volume = outputVolume;
+    playbackRef.current = audio;
+
+    // Route to the selected output when supported.
+    if (outputId && "setSinkId" in audio) {
+      try {
+        await (
+          audio as HTMLAudioElement & {
+            setSinkId: (id: string) => Promise<void>;
+          }
+        ).setSinkId(outputId);
+      } catch {
+        // Fall back to the browser's default output.
+      }
+    }
+
+    audio.onended = () => {
+      setPlayingBack(false);
+      setMicMessage(
+        "Did you hear your voice? If not, raise the volume or the input level and try again.",
+      );
+    };
+
+    audio.onerror = () => {
+      setPlayingBack(false);
+      setMicMessage("Unable to play back the recording.");
+    };
+
+    setPlayingBack(true);
+    setMicMessage("Playing back your recording...");
+
+    try {
+      await audio.play();
+    } catch {
+      setPlayingBack(false);
+      setMicMessage("Unable to play back the recording.");
+    }
   }
 
   async function playTestSound() {
@@ -164,26 +222,29 @@ export default function HardwareTestPage() {
   }
 
   async function checkMicrophone() {
-    if (micTesting) {
+    if (micTesting || playingBack) {
       return;
     }
 
+    playbackRef.current?.pause();
+
     setMicTesting(true);
-    setMicMessage("Speak into your microphone...");
+    setMicMessage("Recording... speak into your microphone.");
 
     let stream: MediaStream | null = null;
     let context: AudioContext | null = null;
     let animationFrame: number | null = null;
+    let recordedUrl: string | null = null;
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: inputId
-          ? {
-              deviceId: {
-                exact: inputId,
-              },
-            }
-          : true,
+        audio: {
+          ...(inputId ? { deviceId: { exact: inputId } } : {}),
+          // Focus on the voice and keep the input level slider predictable.
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false,
+        },
       });
 
       const AudioContextConstructor =
@@ -206,7 +267,8 @@ export default function HardwareTestPage() {
 
       const source = context.createMediaStreamSource(stream);
 
-      // Input level control: source -> gain -> analyser
+      // source -> gain -> analyser (meter)
+      //                -> destination (recorder)
       const gainNode = context.createGain();
       gainNode.gain.value = micGain;
       micGainNodeRef.current = gainNode;
@@ -214,8 +276,37 @@ export default function HardwareTestPage() {
       const analyser = context.createAnalyser();
       analyser.fftSize = 256;
 
+      const destination = context.createMediaStreamDestination();
+
       source.connect(gainNode);
       gainNode.connect(analyser);
+      gainNode.connect(destination);
+
+      // Pick a format this browser can record (Safari uses mp4).
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ].find((type) => MediaRecorder.isTypeSupported(type));
+
+      const recorder = new MediaRecorder(
+        destination.stream,
+        mimeType ? { mimeType } : undefined,
+      );
+
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      const recorderStopped = new Promise<void>((resolve) => {
+        recorder.onstop = () => resolve();
+      });
+
+      recorder.start();
 
       const data = new Uint8Array(analyser.fftSize);
 
@@ -238,9 +329,6 @@ export default function HardwareTestPage() {
         }
 
         const rms = Math.sqrt(sum / data.length);
-
-        // Amplify the value slightly so normal microphone
-        // input is easier to detect.
         const level = Math.min(1, rms * 3);
 
         maxLevel = Math.max(maxLevel, level);
@@ -262,11 +350,27 @@ export default function HardwareTestPage() {
         animationFrame = null;
       }
 
+      recorder.stop();
+      await recorderStopped;
+
+      const blob = new Blob(chunks, {
+        type: recorder.mimeType || mimeType || "audio/webm",
+      });
+
+      // Replace the previous recording.
+      if (recordingUrlRef.current) {
+        URL.revokeObjectURL(recordingUrlRef.current);
+      }
+
+      recordedUrl = URL.createObjectURL(blob);
+      recordingUrlRef.current = recordedUrl;
+      setRecordingUrl(recordedUrl);
+
       if (maxLevel >= REQUIRED_VOLUME) {
-        setMicMessage("Microphone is working correctly.");
+        setMicMessage("Microphone is working. Playing back your recording...");
       } else {
         setMicMessage(
-          "Microphone could not detect enough sound. Raise the input level or check your microphone and try again.",
+          "Microphone could not detect enough sound. Raise the input level or check your microphone. Playing back what was recorded...",
         );
       }
     } catch {
@@ -287,6 +391,11 @@ export default function HardwareTestPage() {
       micGainNodeRef.current = null;
       setMicLevel(0);
       setMicTesting(false);
+    }
+
+    // Play back after the mic is fully released.
+    if (recordedUrl) {
+      await playRecording(recordedUrl);
     }
   }
 
@@ -428,11 +537,25 @@ export default function HardwareTestPage() {
           <button
             type="button"
             onClick={() => void checkMicrophone()}
-            disabled={micTesting}
+            disabled={micTesting || playingBack}
             className="h-11 w-full border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {micTesting ? "Checking microphone..." : "Check microphone"}
+            {micTesting
+              ? "Recording..."
+              : playingBack
+                ? "Playing back..."
+                : "Check microphone"}
           </button>
+
+          {recordingUrl && !micTesting && !playingBack ? (
+            <button
+              type="button"
+              onClick={() => void playRecording(recordingUrl)}
+              className="h-11 w-full border border-white/15 px-3 text-sm font-semibold text-white transition hover:border-white"
+            >
+              Play recording again
+            </button>
+          ) : null}
 
           {micMessage ? <Feedback text={micMessage} /> : null}
         </section>
