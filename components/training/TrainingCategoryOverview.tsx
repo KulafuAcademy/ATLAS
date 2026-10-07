@@ -79,7 +79,7 @@ export function TrainingCategoryOverview({
           return (
             <article
               key={category.id}
-              className="flex min-h-[268px] flex-col justify-between gap-4 rounded-xl border border-white/[0.09] bg-gradient-to-br from-[#111] via-[#090909] to-[#050505] p-3.5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] sm:p-4"
+              className="relative flex min-h-[268px] flex-col justify-between gap-4 rounded-xl border border-white/[0.09] bg-gradient-to-br from-[#111] via-[#090909] to-[#050505] p-3.5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] transition-all duration-200 ease-out hover:z-10 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_16px_40px_rgba(0,0,0,0.42)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-4"
             >
               <div className="space-y-3.5">
                 <h3 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
