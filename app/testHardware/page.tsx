@@ -93,13 +93,19 @@ export default function HardwareTestPage() {
       // Peak loudness follows the volume slider.
       const peak = Math.max(0.0001, outputVolume * 0.8);
 
-      // Two short notes so the sound is easy to notice.
+      // A gentle rising and falling melody (C5 E5 G5 C6 G5 E5).
       const notes = [
         { frequency: 523.25, start: 0 },
-        { frequency: 659.25, start: 0.35 },
+        { frequency: 659.25, start: 0.5 },
+        { frequency: 783.99, start: 1.0 },
+        { frequency: 1046.5, start: 1.5 },
+        { frequency: 783.99, start: 2.0 },
+        { frequency: 659.25, start: 2.5 },
       ];
 
-      const noteLength = 0.3;
+      // Each note rings longer than the gap between notes,
+      // so they blend together smoothly.
+      const noteLength = 0.9;
       const now = audioContext.currentTime;
 
       notes.forEach(({ frequency, start }) => {
@@ -110,7 +116,7 @@ export default function HardwareTestPage() {
         oscillator.frequency.value = frequency;
 
         gain.gain.setValueAtTime(0.0001, now + start);
-        gain.gain.exponentialRampToValueAtTime(peak, now + start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(peak, now + start + 0.05);
         gain.gain.exponentialRampToValueAtTime(
           0.0001,
           now + start + noteLength,
