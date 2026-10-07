@@ -81,30 +81,30 @@ const trainerCopy = {
     firstTraining: "First training",
     guide: "Listen first, then try the listening or pronunciation test.",
     listenTitle: "Check the sounds",
-    listenDescription: "Start by hearing the difference between A and B.",
-    listenA: "Listen A",
-    listenB: "Listen B",
+    listenDescription: (wordA: string, wordB: string) =>
+      `Start by hearing the difference between ${wordA} and ${wordB}`,
+    listen: (word: string) => `Listen to ${word}`,
     listeningTitle: "Listening test",
-    listeningDescription: "Play a random word, then choose A or B.",
+    listeningDescription: (wordA: string, wordB: string) =>
+      `Play a random word, then choose ${wordA} or ${wordB}`,
     playQuiz: "Play quiz",
-    answerA: "I hear A",
-    answerB: "I hear B",
+    answer: (word: string) => `I hear ${word}`,
     pronunciationTitle: "Pronunciation test",
-    pronunciationDescription: "Say the target word and let AI check it.",
-    speakA: "Say A",
-    speakB: "Say B",
+    pronunciationDescription: "Say the target word and let Atlas check it.",
+    speak: (word: string) => `Say ${word}`,
     tongueTwisterTitle: "Tongue twister",
     tongueTwisterDescription:
       "Practice both sounds together inside one short sentence.",
-    listenTongueTwister: "Listen sentence",
+    listenTongueTwister: "Listen to the sentence",
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
-    playQuizFirst: "Press Play quiz first, then choose A or B.",
+    playQuizFirst:
+      "まず「クイズを再生」を押してから、聞こえたものを選んでください。",
     correct: "Correct.",
-    listeningIncorrect: (target: QuizTarget) =>
-      `Not quite. The answer was ${target}.`,
+    listeningIncorrect: (word: string) =>
+      `Not quite. The answer was "${word}".`,
     pronunciationUnsupported:
       "Pronunciation check is not supported in this browser. Try Chrome or Edge.",
     sayWord: (word: string) => `Say "${word}". AI will check what it hears.`,
@@ -121,18 +121,19 @@ const trainerCopy = {
     firstTraining: "最初のトレーニング",
     guide: "まずは単語を聞いて、聞き取りか発音を試しましょう。",
     listenTitle: "音を確認",
-    listenDescription: "まずはAとBの違いを耳で確認します。",
-    listenA: "Aを聞く",
-    listenB: "Bを聞く",
+    listenDescription: (wordA: string, wordB: string) =>
+      `まずは${wordA}と${wordB}の違いを耳で確認します。`,
+    listen: (word: string) => `${word}を聞く`,
     listeningTitle: "聞き取りテスト",
-    listeningDescription: "ランダム再生を聞いて、AかBを選びます。",
+    listeningDescription: (wordA: string, wordB: string) =>
+      `ランダム再生を聞いて、${wordA}か${wordB}を選びます。`,
     playQuiz: "クイズ再生",
-    answerA: "Aだと思う",
-    answerB: "Bだと思う",
+    answer: (word: string) => `${word}だと思う`,
     pronunciationTitle: "発音テスト",
-    pronunciationDescription: "目標の単語を発音して、AIで判定します。",
-    speakA: "Aを発音する",
-    speakB: "Bを発音する",
+    pronunciationDescription:
+      "ターゲットの単語を発音して、Atlasにチェックしてもらいましょう。",
+    speak: (word: string) => `${word}を発音する`,
+
     tongueTwisterTitle: "Tongue Twister",
     tongueTwisterDescription:
       "学んだ2つの音を、ひとつの短い文の中で練習します。",
@@ -140,10 +141,10 @@ const trainerCopy = {
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
-    playQuizFirst: "先に「クイズ再生」を押してから、AかBを選んでください。",
+    playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
     correct: "正解です。",
-    listeningIncorrect: (target: QuizTarget) =>
-      `惜しいです。正解は${target}でした。`,
+    listeningIncorrect: (word: string) =>
+      `惜しいです。正解は「${word}」でした。`,
     pronunciationUnsupported:
       "このブラウザでは発音チェックに対応していません。Chrome / Edgeで試してください。",
     sayWord: (word: string) =>
@@ -307,11 +308,8 @@ function PairPracticeCard({
       showFeedback("listening", "success", copy.correct);
     } else {
       playIncorrectSound();
-      showFeedback(
-        "listening",
-        "error",
-        copy.listeningIncorrect(activeQuiz.target),
-      );
+      const correctWord = activeQuiz.target === "A" ? pair.wordA : pair.wordB;
+      showFeedback("listening", "error", copy.listeningIncorrect(correctWord));
     }
 
     setActiveQuiz(null);
@@ -354,7 +352,7 @@ function PairPracticeCard({
       }
 
       // Stop recording immediately once we have a result.
-      recognition.abort();
+      // recognition.abort();
 
       const transcripts = getSpeechRecognitionTranscripts(event);
       const heardText = transcripts[0] ?? "";
@@ -454,22 +452,21 @@ function PairPracticeCard({
         <TestGroup
           step="1"
           title={copy.listenTitle}
-          description={copy.listenDescription}
+          description={copy.listenDescription(pair.wordA, pair.wordB)}
           feedback={getFeedback("listen")}
         >
           <ActionButton onClick={() => speak(pair.wordA)}>
-            {copy.listenA}
+            {copy.listen(pair.wordA)}
           </ActionButton>
-
           <ActionButton onClick={() => speak(pair.wordB)}>
-            {copy.listenB}
+            {copy.listen(pair.wordB)}
           </ActionButton>
         </TestGroup>
 
         <TestGroup
           step="2"
           title={copy.listeningTitle}
-          description={copy.listeningDescription}
+          description={copy.listeningDescription(pair.wordA, pair.wordB)}
           actionsClassName="grid gap-3"
           feedback={getFeedback("listening")}
         >
@@ -478,10 +475,10 @@ function PairPracticeCard({
           </ActionButton>
           <div className="grid gap-3 sm:grid-cols-2">
             <ActionButton onClick={() => answerQuiz("A")}>
-              {copy.answerA}
+              {copy.answer(pair.wordA)}
             </ActionButton>
             <ActionButton onClick={() => answerQuiz("B")}>
-              {copy.answerB}
+              {copy.answer(pair.wordB)}
             </ActionButton>
           </div>
         </TestGroup>
@@ -497,14 +494,14 @@ function PairPracticeCard({
             disabled={Boolean(aiCheckTarget)}
             onClick={() => startAiPronunciationCheck("A")}
           >
-            {copy.speakA}
+            {copy.speak(pair.wordA)}
           </ActionButton>
           <ActionButton
             intent="primary"
             disabled={Boolean(aiCheckTarget)}
             onClick={() => startAiPronunciationCheck("B")}
           >
-            {copy.speakB}
+            {copy.speak(pair.wordB)}
           </ActionButton>
           {aiCheckTarget ? <MicLevelMeter /> : null}
         </TestGroup>
