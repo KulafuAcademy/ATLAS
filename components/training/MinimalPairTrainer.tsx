@@ -82,11 +82,10 @@ const trainerCopy = {
     guide: "Listen first, then try the listening or pronunciation test.",
     listenTitle: "Check the sounds",
     listenDescription: (wordA: string, wordB: string) =>
-      `Start by hearing the difference between ${wordA} and ${wordB}`,
+      `Start by listening to the difference between ${wordA} and ${wordB}`,
     listen: (word: string) => `Listen to ${word}`,
     listeningTitle: "Listening test",
-    listeningDescription: (wordA: string, wordB: string) =>
-      `Play a random word, then choose ${wordA} or ${wordB}`,
+    listeningDescription: "Play the audio and pick the correct option below.",
     playQuiz: "Play quiz",
     answer: (word: string) => `I hear ${word}`,
     pronunciationTitle: "Pronunciation test",
@@ -124,8 +123,7 @@ const trainerCopy = {
       `まずは${wordA}と${wordB}の違いを耳で確認します。`,
     listen: (word: string) => `${word}を聞く`,
     listeningTitle: "聞き取りテスト",
-    listeningDescription: (wordA: string, wordB: string) =>
-      `ランダム再生を聞いて、${wordA}か${wordB}を選びます。`,
+    listeningDescription: "音声を聞いて、下の正しい答えを選びましょう。",
     playQuiz: "クイズ再生",
     answer: (word: string) => `${word}だと思う`,
     pronunciationTitle: "発音テスト",
@@ -140,7 +138,7 @@ const trainerCopy = {
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
-    playQuizFirst: "「Play quiz」を押して、聞いて、選んでね。",
+    playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
     correct: "正解です。",
     listeningIncorrect: (word: string) =>
       `惜しいです。正解は「${word}」でした。`,
@@ -465,7 +463,7 @@ function PairPracticeCard({
         <TestGroup
           step="2"
           title={copy.listeningTitle}
-          description={copy.listeningDescription(pair.wordA, pair.wordB)}
+          description={copy.listeningDescription}
           actionsClassName="grid gap-3"
           feedback={getFeedback("listening")}
         >
