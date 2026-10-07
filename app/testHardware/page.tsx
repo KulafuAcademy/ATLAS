@@ -25,15 +25,21 @@ export default function HardwareTestPage() {
   const micGainNodeRef = useRef<GainNode | null>(null);
 
   useEffect(() => {
-    loadDevices();
-  }, []);
+    void loadDevices();
 
-  // Apply mic gain changes live, even while the test is running.
-  useEffect(() => {
-    if (micGainNodeRef.current) {
-      micGainNodeRef.current.gain.value = micGain;
-    }
-  }, [micGain]);
+    const handleDeviceChange = () => void loadDevices();
+    navigator.mediaDevices?.addEventListener(
+      "devicechange",
+      handleDeviceChange,
+    );
+
+    return () => {
+      navigator.mediaDevices?.removeEventListener(
+        "devicechange",
+        handleDeviceChange,
+      );
+    };
+  }, []);
 
   async function loadDevices() {
     try {
@@ -42,7 +48,6 @@ export default function HardwareTestPage() {
       const audioOutputs = devices.filter(
         (device) => device.kind === "audiooutput",
       );
-
       const audioInputs = devices.filter(
         (device) => device.kind === "audioinput",
       );
@@ -50,16 +55,27 @@ export default function HardwareTestPage() {
       setOutputs(audioOutputs);
       setInputs(audioInputs);
 
-      if (!outputId) {
-        setOutputId(audioOutputs[0]?.deviceId ?? "");
-      }
-
-      if (!inputId) {
-        setInputId(audioInputs[0]?.deviceId ?? "");
-      }
+      // Functional updates avoid stale values inside the event listener.
+      setOutputId((current) => current || audioOutputs[0]?.deviceId || "");
+      setInputId((current) => current || audioInputs[0]?.deviceId || "");
     } catch {
       setAudioMessage("Unable to access your audio devices.");
     }
+  }
+
+  async function allowMicrophoneAccess() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+    } catch {
+      setMicMessage(
+        "Microphone access was denied. Allow it in your browser settings.",
+      );
+      return;
+    }
+
+    // Permission is granted now, so labels and all devices are available.
+    await loadDevices();
   }
 
   async function playTestSound() {
@@ -288,6 +304,15 @@ export default function HardwareTestPage() {
             Make sure your speakers, headphones, and microphone are working
             before starting training.
           </p>
+          {inputs.every((device) => !device.label) ? (
+            <button
+              type="button"
+              onClick={() => void allowMicrophoneAccess()}
+              className="h-11 w-full border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white"
+            >
+              Allow microphone access
+            </button>
+          ) : null}
         </div>
 
         {/* AUDIO */}
