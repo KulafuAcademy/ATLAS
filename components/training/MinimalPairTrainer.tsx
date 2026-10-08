@@ -279,6 +279,7 @@ function PairPracticeCard({
     textToSpeak: string,
     feedbackType: FeedbackType = "listen",
     audioPath?: string,
+    showPlayingFeedback = true,
   ) {
     // Stop currently playing MP3
     if (audioRef.current) {
@@ -310,10 +311,12 @@ function PairPracticeCard({
         }
 
         // Fall back to TTS
-        speakWithTts(textToSpeak, feedbackType);
+        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
       };
 
-      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+      if (showPlayingFeedback) {
+        showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+      }
 
       try {
         await audio.play();
@@ -333,13 +336,11 @@ function PairPracticeCard({
     speakWithTts(textToSpeak, feedbackType);
   }
 
-  function speakWithTts(textToSpeak: string, feedbackType: FeedbackType) {
-    if (!("speechSynthesis" in window)) {
-      playIncorrectSound();
-      showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
-      return;
-    }
-
+  function speakWithTts(
+    textToSpeak: string,
+    feedbackType: FeedbackType,
+    showPlayingFeedback = true,
+  ) {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
@@ -349,7 +350,9 @@ function PairPracticeCard({
 
     window.speechSynthesis.speak(utterance);
 
-    showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+    if (showPlayingFeedback) {
+      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+    }
   }
 
   function startQuiz() {
@@ -357,11 +360,13 @@ function PairPracticeCard({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
+    showFeedback("listening", "neutral", copy.whichWord);
 
-    speak(
+    void speak(
       word,
       "listening",
       getPublicAudioPath("words", pair.soundFocus, word),
+      false,
     );
   }
 
