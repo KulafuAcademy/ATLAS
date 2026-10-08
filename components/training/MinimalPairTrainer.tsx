@@ -280,57 +280,56 @@ function PairPracticeCard({
     feedbackType: FeedbackType = "listen",
     audioPath?: string,
   ) {
-    // Stop any currently playing MP3.
+    // Stop currently playing MP3
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
 
-    // Stop browser TTS.
+    // Stop browser TTS
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
 
-    // If an MP3 path was supplied, try it first.
+    // Try MP3 first
     if (audioPath) {
-      try {
-        const response = await fetch(audioPath, {
-          method: "HEAD",
-          cache: "no-store",
-        });
+      const audio = new Audio(audioPath);
 
-        if (response.ok) {
-          const audio = new Audio(audioPath);
+      audioRef.current = audio;
 
-          audioRef.current = audio;
-
-          audio.onended = () => {
-            if (audioRef.current === audio) {
-              audioRef.current = null;
-            }
-          };
-
-          audio.onerror = () => {
-            if (audioRef.current === audio) {
-              audioRef.current = null;
-            }
-
-            // Fall back to TTS if the MP3 cannot be played.
-            speakWithTts(textToSpeak, feedbackType);
-          };
-
-          showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
-
-          await audio.play();
-          return;
+      audio.onended = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
         }
+      };
+
+      audio.onerror = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        // Fall back to TTS
+        speakWithTts(textToSpeak, feedbackType);
+      };
+
+      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+
+      try {
+        await audio.play();
+        return;
       } catch {
-        // MP3 does not exist or could not be loaded.
-        // Fall through to browser TTS.
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        // Fall back to TTS
+        speakWithTts(textToSpeak, feedbackType);
+        return;
       }
     }
 
+    // No MP3 path supplied
     speakWithTts(textToSpeak, feedbackType);
   }
 
@@ -358,8 +357,12 @@ function PairPracticeCard({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word, "listen", getPublicAudioPath("words", pair.soundFocus, word));
-    showFeedback("listening", "neutral", copy.whichWord);
+
+    speak(
+      word,
+      "listening",
+      getPublicAudioPath("words", pair.soundFocus, word),
+    );
   }
 
   function answerQuiz(answer: QuizTarget) {
