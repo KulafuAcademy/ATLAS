@@ -205,6 +205,14 @@ export function MinimalPairTrainer({
   );
 }
 
+function getPublicAudioPath(
+  folder: "words" | "twisters",
+  soundFocus: string,
+  filename: string,
+) {
+  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
+}
+
 function PairPracticeCard({
   copy,
   language,
@@ -221,6 +229,7 @@ function PairPracticeCard({
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const tongueTwister = getTongueTwister(pair);
 
   useEffect(() => {
@@ -266,7 +275,66 @@ function PairPracticeCard({
     return cardFeedback;
   }
 
-  function speak(word: string, feedbackType: FeedbackType = "listen") {
+  async function speak(
+    textToSpeak: string,
+    feedbackType: FeedbackType = "listen",
+    audioPath?: string,
+  ) {
+    // Stop any currently playing MP3.
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
+    // Stop browser TTS.
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // If an MP3 path was supplied, try it first.
+    if (audioPath) {
+      try {
+        const response = await fetch(audioPath, {
+          method: "HEAD",
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          const audio = new Audio(audioPath);
+
+          audioRef.current = audio;
+
+          audio.onended = () => {
+            if (audioRef.current === audio) {
+              audioRef.current = null;
+            }
+          };
+
+          audio.onerror = () => {
+            if (audioRef.current === audio) {
+              audioRef.current = null;
+            }
+
+            // Fall back to TTS if the MP3 cannot be played.
+            speakWithTts(textToSpeak, feedbackType);
+          };
+
+          showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+
+          await audio.play();
+          return;
+        }
+      } catch {
+        // MP3 does not exist or could not be loaded.
+        // Fall through to browser TTS.
+      }
+    }
+
+    speakWithTts(textToSpeak, feedbackType);
+  }
+
+  function speakWithTts(textToSpeak: string, feedbackType: FeedbackType) {
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
       showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
@@ -275,13 +343,14 @@ function PairPracticeCard({
 
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(word);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "en-US";
     utterance.rate = 0.85;
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    showFeedback(feedbackType, "neutral", copy.playing(word));
+
+    showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
   }
 
   function startQuiz() {
@@ -289,7 +358,7 @@ function PairPracticeCard({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word);
+    speak(word, "listen", getPublicAudioPath("words", pair.soundFocus, word));
     showFeedback("listening", "neutral", copy.whichWord);
   }
 
@@ -452,10 +521,27 @@ function PairPracticeCard({
           description={copy.listenDescription(pair.wordA, pair.wordB)}
           feedback={getFeedback("listen")}
         >
-          <ActionButton onClick={() => speak(pair.wordA)}>
+          <ActionButton
+            onClick={() =>
+              speak(
+                pair.wordA,
+                "listen",
+                getPublicAudioPath("words", pair.soundFocus, pair.wordA),
+              )
+            }
+          >
             {copy.listen(pair.wordA)}
           </ActionButton>
-          <ActionButton onClick={() => speak(pair.wordB)}>
+
+          <ActionButton
+            onClick={() =>
+              speak(
+                pair.wordB,
+                "listen",
+                getPublicAudioPath("words", pair.soundFocus, pair.wordB),
+              )
+            }
+          >
             {copy.listen(pair.wordB)}
           </ActionButton>
         </TestGroup>
@@ -519,7 +605,13 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
-            onClick={() => speak(tongueTwister.text, "tongueTwister")}
+            onClick={() =>
+              speak(
+                tongueTwister.text,
+                "tongueTwister",
+                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+              )
+            }
           >
             {copy.listenTongueTwister}
           </ActionButton>
