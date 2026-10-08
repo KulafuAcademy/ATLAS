@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 const REQUIRED_VOLUME = 0.15;
 const MICROPHONE_TEST_DURATION = 3000;
 
-const hardwareCopy = {
+export const hardwareCopy = {
   en: {
     hardwareTest: "Hardware test",
     title: "Check your audio",

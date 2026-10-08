@@ -23,7 +23,8 @@ import {
 } from "./mobileHardwareCopy";
 
 /**
- * iPhone / iPad version.
+ * iPhone / iPad version (pass device="ipad" for iPadOS; only the wording
+ * changes, the audio logic is the same).
  *
  * What is different from desktop:
  * - No output device picker (iOS never lists speakers / has no setSinkId).
@@ -37,9 +38,14 @@ import {
  * - The recording is the raw microphone stream (audio/mp4), no Web Audio gain
  *   node in the recording path.
  */
-export default function IosHardwareTest() {
+export default function IosHardwareTest({
+  device = "iphone",
+}: {
+  device?: "iphone" | "ipad";
+}) {
   const { language } = useLanguage();
   const copy: MobileHardwareCopy = mobileHardwareCopy[language];
+  const isIpad = device === "ipad";
 
   const [micLevel, setMicLevel] = useState(0);
 
@@ -342,15 +348,17 @@ export default function IosHardwareTest() {
     <HardwareShell
       eyebrow={copy.hardwareTest}
       title={copy.title}
-      description={copy.description}
+      description={isIpad ? copy.descriptionIpad : copy.description}
       notice={inAppBrowser ? copy.inAppBrowserWarning("Safari") : undefined}
     >
       <HardwareSection
         label={copy.speakerSection}
         title={copy.speakerTitle}
-        description={copy.speakerDescription}
+        description={
+          isIpad ? copy.speakerDescriptionIpad : copy.speakerDescription
+        }
       >
-        <Feedback text={copy.iosSoundTip} />
+        <Feedback text={isIpad ? copy.ipadSoundTip : copy.iosSoundTip} />
 
         <PrimaryButton onClick={playTestSound} disabled={audioPlaying}>
           {audioPlaying ? copy.playing : copy.testAudio}

@@ -7,25 +7,43 @@ export const MICROPHONE_TEST_DURATION = 3000;
 /* Platform detection (call on the client only, e.g. inside useEffect)         */
 /* -------------------------------------------------------------------------- */
 
-export type Platform = "ios" | "android" | "desktop";
+export type Platform = "iphone" | "ipad" | "android" | "mac" | "desktop";
 
 export function detectPlatform(): Platform {
   const ua = navigator.userAgent;
 
-  // iPadOS 13+ reports itself as a Mac, but it has a touch screen.
-  const isIpadOs = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
-
   // Every browser on iPhone/iPad (Safari, Chrome, Edge...) uses WebKit,
   // so they all behave like iOS Safari.
-  if (/iPhone|iPad|iPod/.test(ua) || isIpadOs) {
-    return "ios";
+  if (/iPhone|iPod/.test(ua)) {
+    return "iphone";
+  }
+
+  // iPadOS 13+ reports itself as a Mac ("Macintosh") but has a touch screen.
+  // A real Mac has no touch points, which is how the two are told apart.
+  const isIpadOs = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+
+  if (/iPad/.test(ua) || isIpadOs) {
+    return "ipad";
   }
 
   if (/Android/i.test(ua)) {
     return "android";
   }
 
+  if (/Macintosh/.test(ua)) {
+    return "mac";
+  }
+
   return "desktop";
+}
+
+/** True for Safari only (not Chrome, Edge, Firefox or Opera). */
+export function isSafari(): boolean {
+  const ua = navigator.userAgent;
+
+  return (
+    /Safari/.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Android/.test(ua)
+  );
 }
 
 export function isInAppBrowser(): boolean {

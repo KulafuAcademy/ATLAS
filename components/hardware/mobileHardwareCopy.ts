@@ -13,6 +13,12 @@ export const mobileHardwareCopy = {
       "Tip: use the buttons on the side of your phone to raise the media volume too.",
     iosSoundTip:
       "Use the volume buttons on the side of your iPhone. No sound? Make sure silent mode is off (the switch on the side).",
+    descriptionIpad:
+      "Make sure your iPad's speaker and microphone are working before starting training.",
+    speakerDescriptionIpad:
+      "Turn up your iPad's volume, then press the button to play a short melody.",
+    ipadSoundTip:
+      "Use the volume buttons on the edge of your iPad. No sound? If your iPad has a side switch, make sure it is not set to mute, and check the volume slider in Control Center.",
     volume: "Volume",
     testAudio: "Play test sound",
     playing: "Playing...",
@@ -68,6 +74,12 @@ export const mobileHardwareCopy = {
       "ヒント：スマートフォンの側面のボタンでメディア音量も上げてください。",
     iosSoundTip:
       "iPhoneの側面の音量ボタンで音量を調整してください。音が出ない場合は、サイレントモード（側面のスイッチ）がオフになっているか確認してください。",
+    descriptionIpad:
+      "トレーニングを始める前に、iPadのスピーカーとマイクが正常に動作することを確認してください。",
+    speakerDescriptionIpad:
+      "iPadの音量を上げて、ボタンを押すと短いメロディーが流れます。",
+    ipadSoundTip:
+      "iPadの音量ボタンで音量を調整してください。音が出ない場合は、iPadに側面スイッチがある場合はミュートになっていないか確認し、コントロールセンターの音量スライダも確認してください。",
     volume: "音量",
     testAudio: "テスト音を再生",
     playing: "再生中...",
