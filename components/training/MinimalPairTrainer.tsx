@@ -158,6 +158,10 @@ const trainerCopy = {
   },
 };
 
+function isTouchDevice() {
+  return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+}
+
 export function MinimalPairTrainer({
   id,
   title,
@@ -500,7 +504,7 @@ function PairPracticeCard({
           >
             {copy.speak(pair.wordB)}
           </ActionButton>
-          {aiCheckTarget ? <MicLevelMeter /> : null}
+          {aiCheckTarget && !isTouchDevice() ? <MicLevelMeter /> : null}
         </TestGroup>
 
         <TestGroup
