@@ -447,17 +447,17 @@ export const bVsVPairs: MinimalPair[] = [
     wordB: "curve",
   },
   {
-    id: "lib-live",
+    id: "blew-view",
     soundFocus: "B vs V",
     tongueTwister: {
-      text: "Libs live in the lib, and libs live there still.",
+      text: "Bay breeze blew by a vivid view.",
       note: {
-        en: "Keep the vowel short in both words and change only the ending.",
-        ja: "どちらも短い母音を保ち、語末だけを変えます。",
+        en: "Keep the BL cluster in blew clear, then switch to the V plus the 'yoo' glide in view.",
+        ja: "blew の子音連結BLをはっきり言い、view のVと「ユー」の響きに切り替えます。",
       },
     },
-    wordA: "lib",
-    wordB: "live",
+    wordA: "blew",
+    wordB: "view",
   },
   {
     id: "jibe-jive",
