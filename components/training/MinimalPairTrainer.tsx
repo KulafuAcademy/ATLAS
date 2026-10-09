@@ -114,11 +114,11 @@ const trainerCopy = {
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
-    speakTongueTwister: "Say the sentence",
-    sayTongueTwister: "Say the whole sentence. AI will check what it hears.",
-    tongueTwisterCorrect: "Correct. Perfect sentence.",
-    tongueTwisterRetry: (heardText: string) =>
-      `Try again. Heard: "${heardText}"`,
+    saySentence: "Say the sentence",
+    saySentenceInstruction: "Say the whole sentence. AI will check every word.",
+    sentenceCorrect: (heardText: string) => `Correct. Heard: "${heardText}"`,
+    sentenceRetry: (heardText: string) => `Try again. Heard: "${heardText}"`,
+    sentenceCouldNotHear: "I could not hear the sentence. Try again.",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -160,11 +160,14 @@ const trainerCopy = {
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
       "発音チェックを開始できませんでした。もう一度試してください。",
-    speakTongueTwister: "文を発音する",
-    sayTongueTwister: "文全体を発音してください。聞き取れたら判定します。",
-    tongueTwisterCorrect: "正解です。完璧です。",
-    tongueTwisterRetry: (heardText: string) =>
+    saySentence: "文を発音する",
+    saySentenceInstruction:
+      "文全体を発音してください。すべての単語が一致するか判定します。",
+    sentenceCorrect: (heardText: string) =>
+      `正解です。聞こえた文: "${heardText}"`,
+    sentenceRetry: (heardText: string) =>
       `もう一度。聞こえた文: "${heardText}"`,
+    sentenceCouldNotHear: "文を聞き取れませんでした。もう一度試してください。",
   },
 };
 
@@ -227,13 +230,9 @@ function PairPracticeCard({
   text: (value: LocalizedText) => string;
 }) {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
-  const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
+  const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null); //for pronunciation test
+  const [isSentenceChecking, setIsSentenceChecking] = useState(false); // for tongue twister test
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
-  const [isTongueTwisterChecking, setIsTongueTwisterChecking] = useState(false);
-  const tongueTwisterRunIdRef = useRef(0);
-  const tongueTwisterRecognitionRef = useRef<BrowserSpeechRecognition | null>(
-    null,
-  );
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const tongueTwister = getTongueTwister(pair);
@@ -244,11 +243,7 @@ function PairPracticeCard({
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
       setAiCheckTarget(null);
-
-      tongueTwisterRunIdRef.current += 1;
-      tongueTwisterRecognitionRef.current?.abort();
-      tongueTwisterRecognitionRef.current = null;
-      setIsTongueTwisterChecking(false);
+      setIsSentenceChecking(false);
     }
 
     window.addEventListener(stopPronunciationCheckEvent, stopRecognition);
@@ -452,7 +447,8 @@ function PairPracticeCard({
     }
   }
 
-  function startTongueTwisterCheck() {
+  function startSentencePronunciationCheck() {
+    const targetSentence = tongueTwister.text;
     const SpeechRecognitionConstructor =
       window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
@@ -462,54 +458,56 @@ function PairPracticeCard({
       return;
     }
 
-    // Stop any other running check (pronunciation or other cards) and playback.
+    // Stops any other active check (word or sentence) before starting.
     window.dispatchEvent(new Event(stopPronunciationCheckEvent));
     window.speechSynthesis?.cancel();
 
-    const targetSentence = tongueTwister.text;
     const recognition = new SpeechRecognitionConstructor();
-    const runId = tongueTwisterRunIdRef.current + 1;
+    const recognitionRunId = speechRecognitionRunIdRef.current + 1;
+    let hasHandledResult = false;
 
     recognition.lang = "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-    tongueTwisterRunIdRef.current = runId;
-    tongueTwisterRecognitionRef.current = recognition;
-    setIsTongueTwisterChecking(true);
-    showFeedback("tongueTwister", "neutral", copy.sayTongueTwister);
+    speechRecognitionRunIdRef.current = recognitionRunId;
+    speechRecognitionRef.current = recognition;
+    setIsSentenceChecking(true);
+    showFeedback("tongueTwister", "neutral", copy.saySentenceInstruction);
 
     function finish() {
-      setIsTongueTwisterChecking(false);
-      tongueTwisterRecognitionRef.current = null;
+      setIsSentenceChecking(false);
+      speechRecognitionRef.current = null;
     }
 
     recognition.onresult = (event) => {
-      if (tongueTwisterRunIdRef.current !== runId) return;
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) return;
 
-      const heardText = getSpeechRecognitionTranscripts(event)[0] ?? "";
+      hasHandledResult = true;
 
-      if (!normalizeRecognizedText(heardText)) {
+      const transcripts = getSpeechRecognitionTranscripts(event);
+      const heardSentence = transcripts[0] ?? "";
+
+      if (!normalizeRecognizedText(heardSentence)) {
         playIncorrectSound();
-        showFeedback("tongueTwister", "error", copy.couldNotHear);
+        showFeedback("tongueTwister", "error", copy.sentenceCouldNotHear);
         finish();
         return;
       }
 
-      // Exact match only: the whole sentence must match word for word.
-      const isCorrect =
-        normalizeRecognizedText(heardText) ===
-        normalizeRecognizedText(targetSentence);
-
-      if (isCorrect) {
+      if (sentenceMatchesExactly(heardSentence, targetSentence)) {
         playCorrectSound();
-        showFeedback("tongueTwister", "success", copy.tongueTwisterCorrect);
+        showFeedback(
+          "tongueTwister",
+          "success",
+          copy.sentenceCorrect(heardSentence),
+        );
       } else {
         playIncorrectSound();
         showFeedback(
           "tongueTwister",
           "error",
-          copy.tongueTwisterRetry(heardText),
+          copy.sentenceRetry(heardSentence),
         );
       }
 
@@ -517,31 +515,39 @@ function PairPracticeCard({
     };
 
     recognition.onerror = () => {
-      if (tongueTwisterRunIdRef.current !== runId) return;
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) return;
 
+      hasHandledResult = true;
       playIncorrectSound();
-      showFeedback("tongueTwister", "error", copy.couldNotHear);
+      showFeedback("tongueTwister", "error", copy.sentenceCouldNotHear);
       finish();
     };
 
     recognition.onnomatch = () => {
-      if (tongueTwisterRunIdRef.current !== runId) return;
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) return;
 
+      hasHandledResult = true;
       playIncorrectSound();
-      showFeedback("tongueTwister", "error", copy.couldNotHear);
+      showFeedback("tongueTwister", "error", copy.sentenceCouldNotHear);
       finish();
     };
 
     recognition.onend = () => {
-      if (tongueTwisterRunIdRef.current === runId) {
-        finish();
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) return;
+
+      // Ended with no result (e.g. silence).
+      if (!hasHandledResult) {
+        playIncorrectSound();
+        showFeedback("tongueTwister", "error", copy.sentenceCouldNotHear);
       }
+
+      finish();
     };
 
     try {
       recognition.start();
     } catch {
-      if (tongueTwisterRunIdRef.current !== runId) return;
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) return;
 
       playIncorrectSound();
       showFeedback("tongueTwister", "error", copy.checkCouldNotStart);
@@ -635,18 +641,19 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
+            disabled={isSentenceChecking || Boolean(aiCheckTarget)}
             onClick={() => speak(tongueTwister.text, "tongueTwister")}
           >
             {copy.listenTongueTwister}
           </ActionButton>
           <ActionButton
             intent="primary"
-            disabled={isTongueTwisterChecking}
-            onClick={startTongueTwisterCheck}
+            disabled={isSentenceChecking || Boolean(aiCheckTarget)}
+            onClick={startSentencePronunciationCheck}
           >
-            {copy.speakTongueTwister}
+            {copy.saySentence}
           </ActionButton>
-          {isTongueTwisterChecking ? <MicLevelMeter /> : null}
+          {isSentenceChecking ? <MicLevelMeter /> : null}
         </TestGroup>
       </div>
     </article>
@@ -946,6 +953,15 @@ function transcriptMatchesWord(transcript: string, targetWord: string) {
   const normalizedTarget = normalizeRecognizedText(targetWord);
 
   return normalizedTranscript === normalizedTarget;
+}
+
+// Exact match: every word, in order, no extra or missing words.
+// Case and punctuation are ignored (the recognizer doesn't reliably return them).
+function sentenceMatchesExactly(transcript: string, targetSentence: string) {
+  return (
+    normalizeRecognizedText(transcript) ===
+    normalizeRecognizedText(targetSentence)
+  );
 }
 
 function normalizeRecognizedText(text: string) {
