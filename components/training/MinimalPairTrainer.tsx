@@ -205,6 +205,17 @@ export function MinimalPairTrainer({
   );
 }
 
+// Builds the public MP3 path for a word or tongue-twister audio file.
+// Files are stored under /public/{folder}/{soundFocus}/{filename}.mp3.
+// Example : /public/words/R vs L/alive.mp3
+function getPublicAudioPath(
+  folder: "words" | "twisters",
+  soundFocus: string,
+  filename: string,
+) {
+  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
+}
+
 function PairPracticeCard({
   copy,
   language,
@@ -221,6 +232,7 @@ function PairPracticeCard({
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const tongueTwister = getTongueTwister(pair);
 
   useEffect(() => {
@@ -266,22 +278,84 @@ function PairPracticeCard({
     return cardFeedback;
   }
 
-  function speak(word: string, feedbackType: FeedbackType = "listen") {
-    if (!("speechSynthesis" in window)) {
-      playIncorrectSound();
-      showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
-      return;
+  async function speak(
+    textToSpeak: string,
+    feedbackType: FeedbackType = "listen",
+    audioPath?: string,
+    showPlayingFeedback = true,
+  ) {
+    // Stop currently playing MP3
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
 
+    // Stop browser TTS
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Try MP3 first
+    if (audioPath) {
+      const audio = new Audio(audioPath);
+
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+      };
+
+      audio.onerror = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        // Fall back to TTS
+        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
+      };
+
+      if (showPlayingFeedback) {
+        showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+      }
+
+      try {
+        await audio.play();
+        return;
+      } catch {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        // Fall back to TTS
+        speakWithTts(textToSpeak, feedbackType);
+        return;
+      }
+    }
+
+    // No MP3 path supplied
+    speakWithTts(textToSpeak, feedbackType);
+  }
+
+  function speakWithTts(
+    textToSpeak: string,
+    feedbackType: FeedbackType,
+    showPlayingFeedback = true,
+  ) {
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(word);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "en-US";
     utterance.rate = 0.85;
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    showFeedback(feedbackType, "neutral", copy.playing(word));
+
+    if (showPlayingFeedback) {
+      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+    }
   }
 
   function startQuiz() {
@@ -289,8 +363,14 @@ function PairPracticeCard({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word);
     showFeedback("listening", "neutral", copy.whichWord);
+
+    void speak(
+      word,
+      "listening",
+      getPublicAudioPath("words", pair.soundFocus, word),
+      false,
+    );
   }
 
   function answerQuiz(answer: QuizTarget) {
@@ -452,10 +532,27 @@ function PairPracticeCard({
           description={copy.listenDescription(pair.wordA, pair.wordB)}
           feedback={getFeedback("listen")}
         >
-          <ActionButton onClick={() => speak(pair.wordA)}>
+          <ActionButton
+            onClick={() =>
+              speak(
+                pair.wordA,
+                "listen",
+                getPublicAudioPath("words", pair.soundFocus, pair.wordA),
+              )
+            }
+          >
             {copy.listen(pair.wordA)}
           </ActionButton>
-          <ActionButton onClick={() => speak(pair.wordB)}>
+
+          <ActionButton
+            onClick={() =>
+              speak(
+                pair.wordB,
+                "listen",
+                getPublicAudioPath("words", pair.soundFocus, pair.wordB),
+              )
+            }
+          >
             {copy.listen(pair.wordB)}
           </ActionButton>
         </TestGroup>
@@ -519,7 +616,13 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
-            onClick={() => speak(tongueTwister.text, "tongueTwister")}
+            onClick={() =>
+              speak(
+                tongueTwister.text,
+                "tongueTwister",
+                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+              )
+            }
           >
             {copy.listenTongueTwister}
           </ActionButton>
