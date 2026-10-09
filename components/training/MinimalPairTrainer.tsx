@@ -299,6 +299,18 @@ function PairPracticeCard({
     // Try MP3 first
     if (audioPath) {
       const audio = new Audio(audioPath);
+      let fellBack = false;
+
+      const fallbackToTts = () => {
+        if (fellBack) return;
+        fellBack = true;
+
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
+      };
 
       audioRef.current = audio;
 
@@ -308,14 +320,7 @@ function PairPracticeCard({
         }
       };
 
-      audio.onerror = () => {
-        if (audioRef.current === audio) {
-          audioRef.current = null;
-        }
-
-        // Fall back to TTS
-        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
-      };
+      audio.onerror = fallbackToTts;
 
       if (showPlayingFeedback) {
         showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
@@ -325,18 +330,13 @@ function PairPracticeCard({
         await audio.play();
         return;
       } catch {
-        if (audioRef.current === audio) {
-          audioRef.current = null;
-        }
-
-        // Fall back to TTS
-        speakWithTts(textToSpeak, feedbackType);
+        fallbackToTts();
         return;
       }
     }
 
     // No MP3 path supplied
-    speakWithTts(textToSpeak, feedbackType);
+    speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
   }
 
   function speakWithTts(
