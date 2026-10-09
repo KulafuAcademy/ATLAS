@@ -264,28 +264,263 @@ export const rVsLPairs: MinimalPair[] = [
 ];
 
 export const bVsVPairs: MinimalPair[] = [
-  { id: "ban-van", soundFocus: "B vs V", wordA: "ban", wordB: "van" },
-  { id: "bat-vat", soundFocus: "B vs V", wordA: "bat", wordB: "vat" },
-  { id: "bet-vet", soundFocus: "B vs V", wordA: "bet", wordB: "vet" },
-  { id: "berry-very", soundFocus: "B vs V", wordA: "berry", wordB: "very" },
-  { id: "best-vest", soundFocus: "B vs V", wordA: "best", wordB: "vest" },
-  { id: "boat-vote", soundFocus: "B vs V", wordA: "boat", wordB: "vote" },
-  { id: "bow-vow", soundFocus: "B vs V", wordA: "bow", wordB: "vow" },
-  { id: "bail-veil", soundFocus: "B vs V", wordA: "bail", wordB: "veil" },
-  { id: "beer-veer", soundFocus: "B vs V", wordA: "beer", wordB: "veer" },
-  { id: "bent-vent", soundFocus: "B vs V", wordA: "bent", wordB: "vent" },
-  { id: "bolt-volt", soundFocus: "B vs V", wordA: "bolt", wordB: "volt" },
-  { id: "base-vase", soundFocus: "B vs V", wordA: "base", wordB: "vase" },
-  { id: "robe-rove", soundFocus: "B vs V", wordA: "robe", wordB: "rove" },
-  { id: "curb-curve", soundFocus: "B vs V", wordA: "curb", wordB: "curve" },
-  { id: "lib-live", soundFocus: "B vs V", wordA: "lib", wordB: "live" },
-  { id: "jibe-jive", soundFocus: "B vs V", wordA: "jibe", wordB: "jive" },
-  { id: "rebel-revel", soundFocus: "B vs V", wordA: "rebel", wordB: "revel" },
-  { id: "fiber-fiver", soundFocus: "B vs V", wordA: "fiber", wordB: "fiver" },
-  { id: "bile-vile", soundFocus: "B vs V", wordA: "bile", wordB: "vile" },
+  {
+    id: "ban-van",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Ban the van, then ban the next van.",
+      note: {
+        en: "Close both lips for B in ban. Touch your top teeth to your lower lip for V in van.",
+        ja: "banは両唇を閉じ、vanは上の歯を下唇に軽く当てて言います。",
+      },
+    },
+    wordA: "ban",
+    wordB: "van",
+  },
+  {
+    id: "bat-vat",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "A bat sat on the vat, and the vat shook the bat.",
+      note: {
+        en: "Keep the final T crisp while switching B and V at the start.",
+        ja: "語末のTをはっきり保ちながら、語頭のBとVを切り替えます。",
+      },
+    },
+    wordA: "bat",
+    wordB: "vat",
+  },
+  {
+    id: "bet-vet",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "I bet the vet will be back by seven.",
+      note: {
+        en: "Make the first sound decide the meaning of bet and vet.",
+        ja: "最初の音だけで bet と vet の意味が変わることを意識します。",
+      },
+    },
+    wordA: "bet",
+    wordB: "vet",
+  },
+  {
+    id: "berry-very",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Very ripe berries are very, very sweet.",
+      note: {
+        en: "Alternate the initial V in very with the initial B in berries.",
+        ja: "very の語頭のVと berries の語頭のBを交互に切り替えます。",
+      },
+    },
+    wordA: "berry",
+    wordB: "very",
+  },
+  {
+    id: "best-vest",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "The best vest was bought by Victor.",
+      note: {
+        en: "Keep the final ST clear in both words after the B and V contrast.",
+        ja: "BとVを区別したあと、どちらも語末のSTをはっきり言います。",
+      },
+    },
+    wordA: "best",
+    wordB: "vest",
+  },
+  {
+    id: "boat-vote",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Vote for the boat, then boat to the vote.",
+      note: {
+        en: "Do not let the V in vote turn into B. Keep the long vowel in both words.",
+        ja: "vote のVがBにならないようにし、両方の長い母音も保ちます。",
+      },
+    },
+    wordA: "boat",
+    wordB: "vote",
+  },
+  {
+    id: "bow-vow",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bow now, then vow to bow no more.",
+      note: {
+        en: "Hold the shared vowel steady and change only the first consonant.",
+        ja: "共通する母音を安定させ、最初の子音だけを変えます。",
+      },
+    },
+    wordA: "bow",
+    wordB: "vow",
+  },
+  {
+    id: "bail-veil",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bail out before the veil falls.",
+      note: {
+        en: "Keep the vowel and the final L the same. Only the first sound changes.",
+        ja: "母音と語末のLは同じに保ち、最初の音だけを変えます。",
+      },
+    },
+    wordA: "bail",
+    wordB: "veil",
+  },
+  {
+    id: "beer-veer",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Veer left at the beer van.",
+      note: {
+        en: "Keep the vowel-plus-R ending the same, and switch only the first consonant.",
+        ja: "母音+Rの響きは同じに保ち、語頭の子音だけを切り替えます。",
+      },
+    },
+    wordA: "beer",
+    wordB: "veer",
+  },
+  {
+    id: "bent-vent",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "A bent vent blew a bent bolt.",
+      note: {
+        en: "Keep N and T crisp after the B and V at the start.",
+        ja: "語頭のBとVのあとも、NとTをはっきり言います。",
+      },
+    },
+    wordA: "bent",
+    wordB: "vent",
+  },
+  {
+    id: "bolt-volt",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bolt the volt box, then check the volts.",
+      note: {
+        en: "Practice B and V before a rounded vowel and a final L.",
+        ja: "丸い母音と語末のLの前で、BとVを切り替えます。",
+      },
+    },
+    wordA: "bolt",
+    wordB: "volt",
+  },
+  {
+    id: "base-vase",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Put the vase on the base of the table.",
+      note: {
+        en: "Both words share the same vowel and ending. Let the first sound carry the difference.",
+        ja: "母音と語末は同じなので、最初の音で違いを出します。",
+      },
+    },
+    wordA: "base",
+    wordB: "vase",
+  },
+  {
+    id: "robe-rove",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Rove in a robe, and rove in a robe again.",
+      note: {
+        en: "Keep B and V voiced at the end of the word. Do not drop them.",
+        ja: "語末のBとVも声を出したまま、消さずに言います。",
+      },
+    },
+    wordA: "robe",
+    wordB: "rove",
+  },
+  {
+    id: "curb-curve",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Curb the curve before the next curb.",
+      note: {
+        en: "Practice final B and V after the R-colored vowel.",
+        ja: "Rの響きを持つ母音のあとで、語末のBとVを区別します。",
+      },
+    },
+    wordA: "curb",
+    wordB: "curve",
+  },
+  {
+    id: "lib-live",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Libs live in the lib, and libs live there still.",
+      note: {
+        en: "Keep the vowel short in both words and change only the ending.",
+        ja: "どちらも短い母音を保ち、語末だけを変えます。",
+      },
+    },
+    wordA: "lib",
+    wordB: "live",
+  },
+  {
+    id: "jibe-jive",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Jibe with the jive, and jive with the jibe.",
+      note: {
+        en: "Keep the vowel the same and switch only the final B and V.",
+        ja: "母音は同じに保ち、語末のBとVだけを切り替えます。",
+      },
+    },
+    wordA: "jibe",
+    wordB: "jive",
+  },
+  {
+    id: "rebel-revel",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "The rebels revel by the river.",
+      note: {
+        en: "Practice B and V in the middle of two-syllable words.",
+        ja: "2音節の単語の中ほどで、BとVを切り替えます。",
+      },
+    },
+    wordA: "rebel",
+    wordB: "revel",
+  },
+  {
+    id: "fiber-fiver",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "A fiver for fiber, and fiber for a fiver.",
+      note: {
+        en: "Keep the stress on the first syllable and switch only the middle B and V.",
+        ja: "第1音節を強く保ち、語中のBとVだけを切り替えます。",
+      },
+    },
+    wordA: "fiber",
+    wordB: "fiver",
+  },
+  {
+    id: "bile-vile",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Vile bile is a very bad brew.",
+      note: {
+        en: "Alternate the V in vile with the B in bile while keeping the vowel steady.",
+        ja: "母音を安定させたまま、vile のVと bile のBを交互に言います。",
+      },
+    },
+    wordA: "bile",
+    wordB: "vile",
+  },
   {
     id: "dribble-drivel",
     soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Do not dribble drivel on the table.",
+      note: {
+        en: "Practice middle B and V before a final L, and keep the L light.",
+        ja: "語中のBとVを区別し、語末のLは軽く出します。",
+      },
+    },
     wordA: "dribble",
     wordB: "drivel",
   },
