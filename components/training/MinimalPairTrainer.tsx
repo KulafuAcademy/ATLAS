@@ -114,6 +114,11 @@ const trainerCopy = {
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
+    speakTongueTwister: "Say the sentence",
+    sayTongueTwister: "Say the whole sentence. AI will check what it hears.",
+    tongueTwisterCorrect: "Correct. Perfect sentence.",
+    tongueTwisterRetry: (heardText: string) =>
+      `Try again. Heard: "${heardText}"`,
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -155,6 +160,11 @@ const trainerCopy = {
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
       "発音チェックを開始できませんでした。もう一度試してください。",
+    speakTongueTwister: "文を発音する",
+    sayTongueTwister: "文全体を発音してください。聞き取れたら判定します。",
+    tongueTwisterCorrect: "正解です。完璧です。",
+    tongueTwisterRetry: (heardText: string) =>
+      `もう一度。聞こえた文: "${heardText}"`,
   },
 };
 
@@ -219,6 +229,11 @@ function PairPracticeCard({
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
+  const [isTongueTwisterChecking, setIsTongueTwisterChecking] = useState(false);
+  const tongueTwisterRunIdRef = useRef(0);
+  const tongueTwisterRecognitionRef = useRef<BrowserSpeechRecognition | null>(
+    null,
+  );
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const tongueTwister = getTongueTwister(pair);
@@ -229,6 +244,11 @@ function PairPracticeCard({
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
       setAiCheckTarget(null);
+
+      tongueTwisterRunIdRef.current += 1;
+      tongueTwisterRecognitionRef.current?.abort();
+      tongueTwisterRecognitionRef.current = null;
+      setIsTongueTwisterChecking(false);
     }
 
     window.addEventListener(stopPronunciationCheckEvent, stopRecognition);
@@ -432,6 +452,102 @@ function PairPracticeCard({
     }
   }
 
+  function startTongueTwisterCheck() {
+    const SpeechRecognitionConstructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionConstructor) {
+      playIncorrectSound();
+      showFeedback("tongueTwister", "error", copy.pronunciationUnsupported);
+      return;
+    }
+
+    // Stop any other running check (pronunciation or other cards) and playback.
+    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+    window.speechSynthesis?.cancel();
+
+    const targetSentence = tongueTwister.text;
+    const recognition = new SpeechRecognitionConstructor();
+    const runId = tongueTwisterRunIdRef.current + 1;
+
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    tongueTwisterRunIdRef.current = runId;
+    tongueTwisterRecognitionRef.current = recognition;
+    setIsTongueTwisterChecking(true);
+    showFeedback("tongueTwister", "neutral", copy.sayTongueTwister);
+
+    function finish() {
+      setIsTongueTwisterChecking(false);
+      tongueTwisterRecognitionRef.current = null;
+    }
+
+    recognition.onresult = (event) => {
+      if (tongueTwisterRunIdRef.current !== runId) return;
+
+      const heardText = getSpeechRecognitionTranscripts(event)[0] ?? "";
+
+      if (!normalizeRecognizedText(heardText)) {
+        playIncorrectSound();
+        showFeedback("tongueTwister", "error", copy.couldNotHear);
+        finish();
+        return;
+      }
+
+      // Exact match only: the whole sentence must match word for word.
+      const isCorrect =
+        normalizeRecognizedText(heardText) ===
+        normalizeRecognizedText(targetSentence);
+
+      if (isCorrect) {
+        playCorrectSound();
+        showFeedback("tongueTwister", "success", copy.tongueTwisterCorrect);
+      } else {
+        playIncorrectSound();
+        showFeedback(
+          "tongueTwister",
+          "error",
+          copy.tongueTwisterRetry(heardText),
+        );
+      }
+
+      finish();
+    };
+
+    recognition.onerror = () => {
+      if (tongueTwisterRunIdRef.current !== runId) return;
+
+      playIncorrectSound();
+      showFeedback("tongueTwister", "error", copy.couldNotHear);
+      finish();
+    };
+
+    recognition.onnomatch = () => {
+      if (tongueTwisterRunIdRef.current !== runId) return;
+
+      playIncorrectSound();
+      showFeedback("tongueTwister", "error", copy.couldNotHear);
+      finish();
+    };
+
+    recognition.onend = () => {
+      if (tongueTwisterRunIdRef.current === runId) {
+        finish();
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      if (tongueTwisterRunIdRef.current !== runId) return;
+
+      playIncorrectSound();
+      showFeedback("tongueTwister", "error", copy.checkCouldNotStart);
+      finish();
+    }
+  }
   return (
     <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
       <div className="space-y-5">
@@ -523,6 +639,14 @@ function PairPracticeCard({
           >
             {copy.listenTongueTwister}
           </ActionButton>
+          <ActionButton
+            intent="primary"
+            disabled={isTongueTwisterChecking}
+            onClick={startTongueTwisterCheck}
+          >
+            {copy.speakTongueTwister}
+          </ActionButton>
+          {isTongueTwisterChecking ? <MicLevelMeter /> : null}
         </TestGroup>
       </div>
     </article>
