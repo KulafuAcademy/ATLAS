@@ -217,6 +217,7 @@ function PairPracticeCard({
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const stopRequestedRef = useRef(false);
   const [countdown, setCountdown] = useState<CountdownState>(null);
   const countdownRef = useRef<CountdownState>(null);
   const countdownTimerRef = useRef<number | null>(null);
@@ -428,7 +429,10 @@ function PairPracticeCard({
       "pronunciation",
       pronunciationAnswerSeconds,
       () => startAiPronunciationCheck(target),
-      () => speechRecognitionRef.current?.stop(),
+      () => {
+        stopRequestedRef.current = true;
+        speechRecognitionRef.current?.stop();
+      },
     );
   }
 
@@ -449,11 +453,12 @@ function PairPracticeCard({
     const recognitionRunId = speechRecognitionRunIdRef.current + 1;
 
     recognition.lang = "en-US";
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     speechRecognitionRunIdRef.current = recognitionRunId;
     speechRecognitionRef.current = recognition;
+    stopRequestedRef.current = false;
     setAiCheckTarget(word);
     showFeedback("pronunciation", "neutral", copy.sayWord(word));
 
@@ -463,37 +468,34 @@ function PairPracticeCard({
       return normalized.split(" ")[0] ?? "";
     }
 
-    let handled = false;
+    let finished = false;
+    // Transcripts from earlier recognizer sessions, plus the current one.
+    let collected: string[] = [];
+    let sessionTranscripts: string[] = [];
 
-    recognition.onresult = (event) => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+    function evaluate() {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId || finished) {
         return;
       }
 
-      handled = true;
-
-      // Stop recording immediately once we have a result.
-      // recognition.abort();
-
-      const transcripts = getSpeechRecognitionTranscripts(event);
-      const heardText = transcripts[0] ?? "";
+      finished = true;
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
 
       // Speech recognition may return something like:
       // "Road Hello. Hello, hello."
       // Only use the first recognized word.
-      const heardWord = getFirstRecognizedWord(heardText);
+      const heardWord = getFirstRecognizedWord(
+        [...collected, ...sessionTranscripts].join(" "),
+      );
 
       if (!heardWord) {
         playIncorrectSound();
         showFeedback("pronunciation", "error", copy.couldNotHear);
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
         return;
       }
 
-      const isCorrect = transcriptMatchesWord(heardWord, word);
-
-      if (isCorrect) {
+      if (transcriptMatchesWord(heardWord, word)) {
         playCorrectSound();
         showFeedback(
           "pronunciation",
@@ -508,45 +510,59 @@ function PairPracticeCard({
           copy.pronunciationRetry(heardWord, word),
         );
       }
+    }
 
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
-    };
-
-    recognition.onerror = () => {
+    // Results only accumulate; the answer is judged when the countdown ends.
+    recognition.onresult = (event) => {
       if (speechRecognitionRunIdRef.current !== recognitionRunId) {
         return;
       }
 
-      handled = true;
-      playIncorrectSound();
-      showFeedback("pronunciation", "error", copy.couldNotHear);
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
+      const transcripts: string[] = [];
+
+      for (let index = 0; index < event.results.length; index += 1) {
+        const transcript = event.results[index]?.[0]?.transcript.trim();
+
+        if (transcript) {
+          transcripts.push(transcript);
+        }
+      }
+
+      sessionTranscripts = transcripts;
+    };
+
+    recognition.onerror = (event) => {
+      // Silence or a dropped session is not the end; onend restarts listening.
+      if (event.error === "no-speech" || event.error === "aborted") {
+        return;
+      }
+
+      evaluate();
     };
 
     recognition.onnomatch = () => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
-        return;
-      }
-
-      handled = true;
-      playIncorrectSound();
-      showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
+      // Keep listening; the countdown decides when the answer is judged.
     };
 
     recognition.onend = () => {
-      if (speechRecognitionRunIdRef.current === recognitionRunId) {
-        if (!handled) {
-          // Ended with no result, e.g. the answer time limit hit in silence.
-          playIncorrectSound();
-          showFeedback("pronunciation", "error", copy.couldNotHear);
-        }
+      if (speechRecognitionRunIdRef.current !== recognitionRunId || finished) {
+        return;
+      }
 
-        setAiCheckTarget(null);
-        speechRecognitionRef.current = null;
+      if (stopRequestedRef.current) {
+        evaluate();
+        return;
+      }
+
+      // The browser ended the session early (e.g. the user paused). Keep
+      // listening until the countdown asks us to stop.
+      collected = [...collected, ...sessionTranscripts];
+      sessionTranscripts = [];
+
+      try {
+        recognition.start();
+      } catch {
+        evaluate();
       }
     };
 
