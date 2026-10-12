@@ -323,6 +323,7 @@ function PairPracticeCard({
         speakWithTts(textToSpeak, feedbackType, showPlayingFeedback, slow);
       };
 
+      // MP3 files in the public folder are recorded at normal speed (100%).
       audio.playbackRate = slow ? slowPlaybackRate : 1;
       audioRef.current = audio;
 
