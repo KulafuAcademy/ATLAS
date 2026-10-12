@@ -583,7 +583,7 @@ export const sVsShPairs: MinimalPair[] = [
     id: "sake-shake",
     soundFocus: "S vs SH",
     tongueTwister: {
-      text: "Shake the milk shake for my sake.",
+      text: "Shake the milkshake for my sake.",
       note: {
         en: "Keep the S crisp in sake. Flare your lips to say shake.",
         ja: "sakeのSは歯切れよく、shakeは唇を丸く広げるようにして言います。",
