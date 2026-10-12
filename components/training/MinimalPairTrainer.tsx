@@ -769,21 +769,65 @@ function CountdownDisplay({
   }
 
   const isPrepare = countdown.phase === "prepare";
+  const totalSeconds = isPrepare
+    ? prepareSeconds
+    : kind === "tongueTwister"
+      ? tongueTwisterAnswerSeconds
+      : pronunciationAnswerSeconds;
 
   return (
-    <p
-      role="status"
-      aria-live="polite"
-      className={`col-span-full flex h-11 items-center justify-center border text-sm font-semibold tabular-nums ${
-        isPrepare
-          ? "border-white/10 bg-white/[0.02] text-white/70"
-          : "border-white bg-white text-black"
-      }`}
+    <div className="col-span-full space-y-2">
+      <p
+        role="status"
+        aria-live="polite"
+        className={`flex h-11 items-center justify-center border text-sm font-semibold tabular-nums ${
+          isPrepare
+            ? "border-white/10 bg-white/[0.02] text-white/70"
+            : "border-white bg-white text-black"
+        }`}
+      >
+        {isPrepare
+          ? copy.getReady(countdown.remaining)
+          : copy.speakNow(countdown.remaining)}
+      </p>
+      <CountdownBar
+        key={countdown.phase}
+        seconds={totalSeconds}
+        highlight={!isPrepare}
+      />
+    </div>
+  );
+}
+
+// Drains from full to empty over `seconds`; remount (via key) to restart.
+function CountdownBar({
+  seconds,
+  highlight,
+}: {
+  seconds: number;
+  highlight: boolean;
+}) {
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => setStarted(true));
+
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  return (
+    <div
+      aria-hidden="true"
+      className="h-1.5 w-full overflow-hidden border border-white/10"
     >
-      {isPrepare
-        ? copy.getReady(countdown.remaining)
-        : copy.speakNow(countdown.remaining)}
-    </p>
+      <div
+        className={`h-full ${highlight ? "bg-white" : "bg-white/40"}`}
+        style={{
+          width: started ? "0%" : "100%",
+          transition: `width ${seconds}s linear`,
+        }}
+      />
+    </div>
   );
 }
 
