@@ -7,47 +7,17 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
 import type { MinimalPair } from "@/types/training";
 
-declare global {
-  interface Window {
-    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
-    webkitAudioContext?: typeof AudioContext;
-    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
-  }
-}
+import type {
+  BrowserSpeechRecognition,
+  BrowserSpeechRecognitionResultEvent,
+} from "./speechRecognitionTypes";
+import {
+  stopPronunciationCheckEvent,
+  useSentenceCheck,
+  type SentenceCheckResult,
+} from "./useSentenceCheck";
 
 type QuizTarget = "A" | "B";
-
-type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
-
-type BrowserSpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  abort: () => void;
-  start: () => void;
-  onend: (() => void) | null;
-  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
-  onnomatch: (() => void) | null;
-  onresult: ((event: BrowserSpeechRecognitionResultEvent) => void) | null;
-};
-
-type BrowserSpeechRecognitionErrorEvent = Event & {
-  error?: string;
-};
-
-type BrowserSpeechRecognitionResultEvent = Event & {
-  results: {
-    length: number;
-    [index: number]: {
-      isFinal: boolean;
-      length: number;
-      [index: number]: {
-        transcript: string;
-      };
-    };
-  };
-};
 
 type ActiveQuiz = {
   pairId: string;
@@ -66,8 +36,6 @@ type CardFeedback = {
 } | null;
 
 type TrainerCopy = typeof trainerCopy.en;
-
-const stopPronunciationCheckEvent = "atlas:stop-pronunciation-check";
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -95,6 +63,11 @@ const trainerCopy = {
     tongueTwisterDescription:
       "Practice both sounds together inside one short sentence.",
     listenTongueTwister: "Listen to the sentence",
+    saySentence: "Say the sentence",
+    saySentencePrompt: "Say the whole sentence. Every word must be correct.",
+    sentenceCorrect: "Perfect. You said the whole sentence correctly.",
+    sentenceRetry: (heardText: string) =>
+      `Not 100% yet. Heard: "${heardText}". Try again.`,
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
@@ -135,6 +108,11 @@ const trainerCopy = {
     tongueTwisterDescription:
       "学んだ2つの音を、ひとつの短い文の中で練習します。",
     listenTongueTwister: "文を聞く",
+    saySentence: "文を発音する",
+    saySentencePrompt: "文全体を発音してください。すべての単語が正しい必要があります。",
+    sentenceCorrect: "完璧です。文全体を正しく発音できました。",
+    sentenceRetry: (heardText: string) =>
+      `まだ100%ではありません。聞こえた文: "${heardText}"。もう一度試してください。`,
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
@@ -287,6 +265,42 @@ function PairPracticeCard({
     window.speechSynthesis.speak(utterance);
     showFeedback(feedbackType, "neutral", copy.playing(word));
   }
+
+  // Tongue twister "say the sentence" check. Kept separate from the
+  // single-word pronunciation test above (see useSentenceCheck.ts).
+  function handleSentenceResult(result: SentenceCheckResult) {
+    switch (result.status) {
+      case "listening":
+        showFeedback("tongueTwister", "neutral", copy.saySentencePrompt);
+        return;
+      case "correct":
+        playCorrectSound();
+        showFeedback("tongueTwister", "success", copy.sentenceCorrect);
+        return;
+      case "incorrect":
+        playIncorrectSound();
+        showFeedback(
+          "tongueTwister",
+          "error",
+          copy.sentenceRetry(result.heardText),
+        );
+        return;
+      case "unsupported":
+        playIncorrectSound();
+        showFeedback("tongueTwister", "error", copy.pronunciationUnsupported);
+        return;
+      case "failedToStart":
+        playIncorrectSound();
+        showFeedback("tongueTwister", "error", copy.checkCouldNotStart);
+        return;
+      case "nothingHeard":
+        playIncorrectSound();
+        showFeedback("tongueTwister", "error", copy.couldNotHear);
+        return;
+    }
+  }
+
+  const sentenceCheck = useSentenceCheck(handleSentenceResult);
 
   function startQuiz() {
     const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
@@ -527,6 +541,19 @@ function PairPracticeCard({
           >
             {copy.listenTongueTwister}
           </ActionButton>
+          <ActionButton
+            intent="primary"
+            disabled={sentenceCheck.isListening || Boolean(aiCheckTarget)}
+            onClick={() => {
+              window.speechSynthesis?.cancel();
+              sentenceCheck.start(tongueTwister.text);
+            }}
+          >
+            {copy.saySentence}
+          </ActionButton>
+          {sentenceCheck.isListening && !isTouchDevice() ? (
+            <MicLevelMeter />
+          ) : null}
         </TestGroup>
       </div>
     </article>
