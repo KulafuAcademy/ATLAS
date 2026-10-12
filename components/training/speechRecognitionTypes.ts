@@ -8,6 +8,7 @@ export type BrowserSpeechRecognition = {
   maxAlternatives: number;
   abort: () => void;
   start: () => void;
+  stop: () => void;
   onend: (() => void) | null;
   onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
   onnomatch: (() => void) | null;

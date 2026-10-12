@@ -35,7 +35,17 @@ type CardFeedback = {
   language: "en" | "ja";
 } | null;
 
+type CountdownState = {
+  kind: "pronunciation" | "tongueTwister";
+  phase: "prepare" | "answer";
+  remaining: number;
+} | null;
+
 type TrainerCopy = typeof trainerCopy.en;
+
+const prepareSeconds = 3;
+const pronunciationAnswerSeconds = 3;
+const tongueTwisterAnswerSeconds = 8;
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -87,6 +97,8 @@ const trainerCopy = {
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
+    getReady: (seconds: number) => `Get ready... ${seconds}`,
+    speakNow: (seconds: number) => `Speak now! ${seconds}s left`,
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -133,6 +145,8 @@ const trainerCopy = {
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
       "発音チェックを開始できませんでした。もう一度試してください。",
+    getReady: (seconds: number) => `準備してください... ${seconds}`,
+    speakNow: (seconds: number) => `今話してください！ 残り${seconds}秒`,
   },
 };
 
@@ -203,10 +217,69 @@ function PairPracticeCard({
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const [countdown, setCountdown] = useState<CountdownState>(null);
+  const countdownRef = useRef<CountdownState>(null);
+  const countdownTimerRef = useRef<number | null>(null);
   const tongueTwister = getTongueTwister(pair);
+
+  function updateCountdown(next: CountdownState) {
+    countdownRef.current = next;
+    setCountdown(next);
+  }
+
+  function clearCountdown() {
+    if (countdownTimerRef.current !== null) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+
+    updateCountdown(null);
+  }
+
+  // Runs a "get ready" countdown, then calls begin() and runs the answer
+  // time limit, calling endAnswer() when it runs out.
+  function startCountdown(
+    kind: NonNullable<CountdownState>["kind"],
+    answerSeconds: number,
+    begin: () => void,
+    endAnswer: () => void,
+  ) {
+    clearCountdown();
+
+    let phase: "prepare" | "answer" = "prepare";
+    let remaining = prepareSeconds;
+
+    updateCountdown({ kind, phase, remaining });
+
+    countdownTimerRef.current = window.setInterval(() => {
+      remaining -= 1;
+
+      if (remaining > 0) {
+        updateCountdown({ kind, phase, remaining });
+        return;
+      }
+
+      if (phase === "prepare") {
+        phase = "answer";
+        remaining = answerSeconds;
+        updateCountdown({ kind, phase, remaining });
+        begin();
+        return;
+      }
+
+      clearCountdown();
+      endAnswer();
+    }, 1000);
+  }
 
   useEffect(() => {
     function stopRecognition() {
+      // Another check starting cancels a pending "get ready" countdown. The
+      // card's own countdown is already in its answer phase when it dispatches.
+      if (countdownRef.current?.phase === "prepare") {
+        clearCountdown();
+      }
+
       speechRecognitionRunIdRef.current += 1;
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
@@ -217,10 +290,13 @@ function PairPracticeCard({
 
     return () => {
       window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
+      clearCountdown();
       stopRecognition();
       window.speechSynthesis?.cancel();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   function showFeedback(
     type: FeedbackType,
@@ -302,6 +378,19 @@ function PairPracticeCard({
 
   const sentenceCheck = useSentenceCheck(handleSentenceResult);
 
+  const isChecking =
+    countdown?.kind === "tongueTwister"
+      ? sentenceCheck.isListening
+      : Boolean(aiCheckTarget);
+
+  // The answer countdown ends as soon as the recognizer finishes or fails.
+  useEffect(() => {
+    if (countdown?.phase === "answer" && !isChecking) {
+      clearCountdown();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown, isChecking]);
+
   function startQuiz() {
     const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
     const word = target === "A" ? pair.wordA : pair.wordB;
@@ -328,6 +417,19 @@ function PairPracticeCard({
     }
 
     setActiveQuiz(null);
+  }
+
+  const isBusy =
+    countdown !== null || sentenceCheck.isListening || Boolean(aiCheckTarget);
+
+  function startPronunciationTest(target: QuizTarget) {
+    window.speechSynthesis?.cancel();
+    startCountdown(
+      "pronunciation",
+      pronunciationAnswerSeconds,
+      () => startAiPronunciationCheck(target),
+      () => speechRecognitionRef.current?.stop(),
+    );
   }
 
   function startAiPronunciationCheck(target: QuizTarget) {
@@ -361,10 +463,14 @@ function PairPracticeCard({
       return normalized.split(" ")[0] ?? "";
     }
 
+    let handled = false;
+
     recognition.onresult = (event) => {
       if (speechRecognitionRunIdRef.current !== recognitionRunId) {
         return;
       }
+
+      handled = true;
 
       // Stop recording immediately once we have a result.
       // recognition.abort();
@@ -412,6 +518,7 @@ function PairPracticeCard({
         return;
       }
 
+      handled = true;
       playIncorrectSound();
       showFeedback("pronunciation", "error", copy.couldNotHear);
       setAiCheckTarget(null);
@@ -423,6 +530,7 @@ function PairPracticeCard({
         return;
       }
 
+      handled = true;
       playIncorrectSound();
       showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
       setAiCheckTarget(null);
@@ -431,6 +539,12 @@ function PairPracticeCard({
 
     recognition.onend = () => {
       if (speechRecognitionRunIdRef.current === recognitionRunId) {
+        if (!handled) {
+          // Ended with no result, e.g. the answer time limit hit in silence.
+          playIncorrectSound();
+          showFeedback("pronunciation", "error", copy.couldNotHear);
+        }
+
         setAiCheckTarget(null);
         speechRecognitionRef.current = null;
       }
@@ -506,18 +620,23 @@ function PairPracticeCard({
         >
           <ActionButton
             intent="primary"
-            disabled={Boolean(aiCheckTarget)}
-            onClick={() => startAiPronunciationCheck("A")}
+            disabled={isBusy}
+            onClick={() => startPronunciationTest("A")}
           >
             {copy.speak(pair.wordA)}
           </ActionButton>
           <ActionButton
             intent="primary"
-            disabled={Boolean(aiCheckTarget)}
-            onClick={() => startAiPronunciationCheck("B")}
+            disabled={isBusy}
+            onClick={() => startPronunciationTest("B")}
           >
             {copy.speak(pair.wordB)}
           </ActionButton>
+          <CountdownDisplay
+            copy={copy}
+            countdown={countdown}
+            kind="pronunciation"
+          />
           {aiCheckTarget && !isTouchDevice() ? <MicLevelMeter /> : null}
         </TestGroup>
 
@@ -543,14 +662,24 @@ function PairPracticeCard({
           </ActionButton>
           <ActionButton
             intent="primary"
-            disabled={sentenceCheck.isListening || Boolean(aiCheckTarget)}
+            disabled={isBusy}
             onClick={() => {
               window.speechSynthesis?.cancel();
-              sentenceCheck.start(tongueTwister.text);
+              startCountdown(
+                "tongueTwister",
+                tongueTwisterAnswerSeconds,
+                () => sentenceCheck.start(tongueTwister.text),
+                () => sentenceCheck.finishListening(),
+              );
             }}
           >
             {copy.saySentence}
           </ActionButton>
+          <CountdownDisplay
+            copy={copy}
+            countdown={countdown}
+            kind="tongueTwister"
+          />
           {sentenceCheck.isListening && !isTouchDevice() ? (
             <MicLevelMeter />
           ) : null}
@@ -624,6 +753,38 @@ function getTongueTwister(pair: MinimalPair) {
       ja: "学んだ2つの音を、ひとつの短い文の中で練習します。",
     },
   };
+}
+
+function CountdownDisplay({
+  copy,
+  countdown,
+  kind,
+}: {
+  copy: TrainerCopy;
+  countdown: CountdownState;
+  kind: NonNullable<CountdownState>["kind"];
+}) {
+  if (!countdown || countdown.kind !== kind) {
+    return null;
+  }
+
+  const isPrepare = countdown.phase === "prepare";
+
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      className={`col-span-full flex h-11 items-center justify-center border text-sm font-semibold tabular-nums ${
+        isPrepare
+          ? "border-white/10 bg-white/[0.02] text-white/70"
+          : "border-white bg-white text-black"
+      }`}
+    >
+      {isPrepare
+        ? copy.getReady(countdown.remaining)
+        : copy.speakNow(countdown.remaining)}
+    </p>
+  );
 }
 
 const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];

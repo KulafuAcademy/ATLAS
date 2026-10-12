@@ -89,11 +89,14 @@ export function useSentenceCheck(
     setIsListening(true);
     onResultRef.current({ status: "listening" });
 
+    let finished = false;
+
     function finish(result: SentenceCheckResult) {
-      if (runIdRef.current !== runId) {
+      if (runIdRef.current !== runId || finished) {
         return;
       }
 
+      finished = true;
       recognitionRef.current = null;
       setIsListening(false);
       onResultRef.current(result);
@@ -132,10 +135,8 @@ export function useSentenceCheck(
     recognition.onnomatch = () => finish({ status: "nothingHeard" });
 
     recognition.onend = () => {
-      if (runIdRef.current === runId) {
-        recognitionRef.current = null;
-        setIsListening(false);
-      }
+      // Ended without a result (e.g. the answer time limit hit with silence).
+      finish({ status: "nothingHeard" });
     };
 
     try {
@@ -145,5 +146,10 @@ export function useSentenceCheck(
     }
   }
 
-  return { isListening, start, stop };
+  /** Ends recording but still lets the recognizer deliver what it heard. */
+  function finishListening() {
+    recognitionRef.current?.stop();
+  }
+
+  return { isListening, start, stop, finishListening };
 }
