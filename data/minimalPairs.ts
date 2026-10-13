@@ -1047,5 +1047,3 @@ export const finalConsonantPairs: MinimalPair[] = [
     wordB: "prove",
   },
 ];
-
-//test push only
