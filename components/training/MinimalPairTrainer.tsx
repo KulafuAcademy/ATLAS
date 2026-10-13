@@ -834,7 +834,7 @@ function CountdownDisplay({
       <div
         role="status"
         aria-live="polite"
-        className="col-span-full flex flex-col items-center justify-center gap-3 border border-white/10 bg-black px-4 py-8"
+        className="col-span-full flex flex-col items-center justify-center gap-2 border border-white/10 bg-black px-4 py-5"
       >
         <p className="text-xs uppercase tracking-[0.3em] text-white/50">
           {copy.getReady}
