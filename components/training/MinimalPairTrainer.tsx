@@ -102,8 +102,12 @@ const trainerCopy = {
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
-    getReady: (seconds: number) => `Get ready... ${seconds}`,
-    speakNow: (seconds: number) => `Speak now! ${seconds}s left`,
+    getReady: "Get ready...",
+    speakNow: "Speak now",
+    secondsLeft: (seconds: number) => `${seconds}s`,
+    sayAfterCountdown: (word: string) =>
+      `Say "${word}" after countdown ends.`,
+    saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -150,8 +154,13 @@ const trainerCopy = {
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
       "発音チェックを開始できませんでした。もう一度試してください。",
-    getReady: (seconds: number) => `準備してください... ${seconds}`,
-    speakNow: (seconds: number) => `今話してください！ 残り${seconds}秒`,
+    getReady: "準備してください...",
+    speakNow: "今話してください",
+    secondsLeft: (seconds: number) => `${seconds}秒`,
+    sayAfterCountdown: (word: string) =>
+      `カウントダウン後に「${word}」を発音してください。`,
+    saySentenceAfterCountdown:
+      "カウントダウン後に文全体を発音してください。",
   },
 };
 
@@ -430,6 +439,11 @@ function PairPracticeCard({
 
   function startPronunciationTest(target: QuizTarget) {
     window.speechSynthesis?.cancel();
+    showFeedback(
+      "pronunciation",
+      "neutral",
+      copy.sayAfterCountdown(target === "A" ? pair.wordA : pair.wordB),
+    );
     startCountdown(
       "pronunciation",
       pronunciationAnswerSeconds,
@@ -692,6 +706,11 @@ function PairPracticeCard({
             disabled={isBusy}
             onClick={() => {
               window.speechSynthesis?.cancel();
+              showFeedback(
+                "tongueTwister",
+                "neutral",
+                copy.saySentenceAfterCountdown,
+              );
               startCountdown(
                 "tongueTwister",
                 tongueTwisterAnswerSeconds,
@@ -803,26 +822,36 @@ function CountdownDisplay({
       ? tongueTwisterAnswerSeconds
       : pronunciationAnswerSeconds;
 
-  return (
-    <div className="col-span-full space-y-2">
-      <p
+  if (isPrepare) {
+    return (
+      <div
         role="status"
         aria-live="polite"
-        className={`flex h-11 items-center justify-center border text-sm font-semibold tabular-nums ${
-          isPrepare
-            ? "border-white/10 bg-white/[0.02] text-white/70"
-            : "border-white bg-white text-black"
-        }`}
+        className="col-span-full flex flex-col items-center justify-center gap-3 border border-white/10 bg-black px-4 py-8"
       >
-        {isPrepare
-          ? copy.getReady(countdown.remaining)
-          : copy.speakNow(countdown.remaining)}
-      </p>
-      <CountdownBar
-        key={countdown.phase}
-        seconds={totalSeconds}
-        highlight={!isPrepare}
-      />
+        <p className="text-xs uppercase tracking-[0.3em] text-white/50">
+          {copy.getReady}
+        </p>
+        <p className="text-5xl font-bold leading-none tabular-nums text-white">
+          {countdown.remaining}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="col-span-full space-y-2">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center justify-between text-sm"
+      >
+        <span className="text-white/70">{copy.speakNow}</span>
+        <span className="font-semibold tabular-nums text-white">
+          {copy.secondsLeft(countdown.remaining)}
+        </span>
+      </div>
+      <CountdownBar key={countdown.phase} seconds={totalSeconds} highlight />
     </div>
   );
 }
