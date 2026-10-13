@@ -105,8 +105,7 @@ const trainerCopy = {
     getReady: "Get ready...",
     speakNow: "Speak now",
     secondsLeft: (seconds: number) => `${seconds}s`,
-    sayAfterCountdown: (word: string) =>
-      `Say "${word}" after countdown ends.`,
+    sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
   },
   ja: {
@@ -130,7 +129,8 @@ const trainerCopy = {
       "学んだ2つの音を、ひとつの短い文の中で練習します。",
     listenTongueTwister: "文を聞く",
     saySentence: "文を発音する",
-    saySentencePrompt: "文全体を発音してください。すべての単語が正しい必要があります。",
+    saySentencePrompt:
+      "文全体を発音してください。すべての単語が正しい必要があります。",
     sentenceCorrect: "完璧です。文全体を正しく発音できました。",
     sentenceRetry: (heardText: string) =>
       `まだ100%ではありません。聞こえた文: "${heardText}"。もう一度試してください。`,
@@ -159,14 +159,18 @@ const trainerCopy = {
     secondsLeft: (seconds: number) => `${seconds}秒`,
     sayAfterCountdown: (word: string) =>
       `カウントダウン後に「${word}」を発音してください。`,
-    saySentenceAfterCountdown:
-      "カウントダウン後に文全体を発音してください。",
+    saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
   },
 };
 
 function isTouchDevice() {
   return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
 }
+
+/**
+ * Section wrapper for one minimal pair training set (e.g. R vs L).
+ * Renders the heading and one PairPracticeCard per word pair.
+ */
 
 export function MinimalPairTrainer({
   id,
@@ -215,6 +219,19 @@ export function MinimalPairTrainer({
   );
 }
 
+/**
+ * One word pair with four practice steps:
+ *   1. Listen: hear each word via speech synthesis.
+ *   2. Listening test: hear a random word, pick A or B.
+ *   3. Pronunciation test: say one word after a countdown; the first
+ *      recognized word is compared to the target.
+ *   4. Tongue twister: say a whole sentence after a countdown; judged by
+ *      useSentenceCheck and must match 100%.
+ *
+ * Only one mic session runs at a time. Steps 3 and 4 share the countdown
+ * state, and `isBusy` disables their buttons while either is active.
+ */
+
 function PairPracticeCard({
   copy,
   language,
@@ -251,8 +268,10 @@ function PairPracticeCard({
     updateCountdown(null);
   }
 
-  // Runs a "get ready" countdown, then calls begin() and runs the answer
-  // time limit, calling endAnswer() when it runs out.
+  // Runs the two-phase countdown shared by steps 3 and 4:
+  //   "prepare" (get ready ticks) -> begin() starts the mic -> "answer"
+  //   (speak window) -> endAnswer() asks the recognizer to stop and judge.
+  // Any countdown already running is cancelled first.
   function startCountdown(
     kind: NonNullable<CountdownState>["kind"],
     answerSeconds: number,
@@ -318,7 +337,6 @@ function PairPracticeCard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   function showFeedback(
     type: FeedbackType,
@@ -462,6 +480,11 @@ function PairPracticeCard({
     );
   }
 
+  // Single-word recognition for step 3. Listens continuously during the
+  // answer window, restarting if the browser ends the session early, and
+  // judges only the first recognized word when the countdown calls stop().
+  // Note: this duplicates the recognizer loop in useSentenceCheck.ts; the
+  // difference is first-word-only matching instead of whole-sentence matching.
   function startAiPronunciationCheck(target: QuizTarget) {
     const word = target === "A" ? pair.wordA : pair.wordB;
     const SpeechRecognitionConstructor =
@@ -736,7 +759,9 @@ function PairPracticeCard({
           {sentenceCheck.isListening && !isTouchDevice() ? (
             <MicLevelMeter />
           ) : null}
-          {answerFeedback ? <FeedbackMessage feedback={answerFeedback} /> : null}
+          {answerFeedback ? (
+            <FeedbackMessage feedback={answerFeedback} />
+          ) : null}
         </TestGroup>
       </div>
     </article>
@@ -809,6 +834,8 @@ function getTongueTwister(pair: MinimalPair) {
   };
 }
 
+// Shows the big "get ready" number, then a "speak now" timer bar.
+// Renders only for the step whose countdown is active (`kind`).
 function CountdownDisplay({
   copy,
   countdown,
@@ -897,6 +924,13 @@ function CountdownBar({
 
 const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
 
+/**
+ * Animated 5-bar mic level indicator shown while recording.
+ * Opens its own getUserMedia stream and reads volume (RMS) through an
+ * AnalyserNode, updating bar heights directly via refs to avoid re-renders.
+ * Purely visual: if mic access fails, recognition still works.
+ * Hidden on touch devices, where a second mic stream can conflict with speech recognition.
+ */
 function MicLevelMeter() {
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
 

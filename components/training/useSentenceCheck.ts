@@ -1,3 +1,10 @@
+/**
+ * Minimal hand-written types for the browser Web Speech API
+ * (SpeechRecognition), which is missing from TypeScript's DOM lib.
+ * Chrome and Safari expose it as `webkitSpeechRecognition`; the global
+ * augmentation at the bottom adds both names to `Window`.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
