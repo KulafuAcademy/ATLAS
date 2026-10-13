@@ -93,7 +93,7 @@ const trainerCopy = {
       `Not quite. The answer was "${word}".`,
     pronunciationUnsupported:
       "Pronunciation check is not supported in this browser. Try Chrome or Edge.",
-    sayWord: (word: string) => `Say "${word}". AI will check what it hears.`,
+    sayWord: (word: string) => `Say "${word}". Atlas will check what it hears.`,
     pronunciationCorrect: (heardText: string) =>
       `Correct. Heard: "${heardText}"`,
     pronunciationRetry: (heardText: string, word: string) =>
@@ -144,7 +144,7 @@ const trainerCopy = {
     pronunciationUnsupported:
       "このブラウザでは発音チェックに対応していません。Chrome / Edgeで試してください。",
     sayWord: (word: string) =>
-      `「${word}」を発音してください。聞き取れたら判定します。`,
+      `「${word}」を発音してください。Atlasが聞き取った内容を判定します。`,
     pronunciationCorrect: (heardText: string) =>
       `正解です。聞こえた単語: "${heardText}"`,
     pronunciationRetry: (heardText: string, word: string) =>
