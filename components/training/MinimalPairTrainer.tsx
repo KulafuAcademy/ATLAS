@@ -24,7 +24,12 @@ type ActiveQuiz = {
   target: QuizTarget;
 } | null;
 
-type FeedbackType = "listen" | "listening" | "pronunciation" | "tongueTwister";
+type FeedbackType =
+  | "listen"
+  | "listening"
+  | "pronunciation"
+  | "tongueTwister"
+  | "tongueTwisterPlayback";
 type FeedbackTone = "neutral" | "success" | "error";
 
 type CardFeedback = {
@@ -580,6 +585,9 @@ function PairPracticeCard({
     }
   }
 
+  const playbackFeedback = getFeedback("tongueTwisterPlayback");
+  const answerFeedback = getFeedback("tongueTwister");
+
   return (
     <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
       <div className="space-y-5">
@@ -661,7 +669,7 @@ function PairPracticeCard({
           title={copy.tongueTwisterTitle}
           description={copy.tongueTwisterDescription}
           actionsClassName="grid gap-3"
-          feedback={getFeedback("tongueTwister")}
+          feedback={null}
         >
           <div className="border border-white/10 bg-black px-4 py-3">
             <p className="text-lg font-semibold leading-8 text-white">
@@ -672,10 +680,13 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
-            onClick={() => speak(tongueTwister.text, "tongueTwister")}
+            onClick={() => speak(tongueTwister.text, "tongueTwisterPlayback")}
           >
             {copy.listenTongueTwister}
           </ActionButton>
+          {playbackFeedback ? (
+            <FeedbackMessage feedback={playbackFeedback} />
+          ) : null}
           <ActionButton
             intent="primary"
             disabled={isBusy}
@@ -699,6 +710,7 @@ function PairPracticeCard({
           {sentenceCheck.isListening && !isTouchDevice() ? (
             <MicLevelMeter />
           ) : null}
+          {answerFeedback ? <FeedbackMessage feedback={answerFeedback} /> : null}
         </TestGroup>
       </div>
     </article>
