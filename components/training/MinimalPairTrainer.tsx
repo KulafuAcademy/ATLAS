@@ -265,12 +265,18 @@ function PairPracticeCard({
     let remaining = prepareSeconds;
 
     updateCountdown({ kind, phase, remaining });
+    playCountdownTick();
 
     countdownTimerRef.current = window.setInterval(() => {
       remaining -= 1;
 
       if (remaining > 0) {
         updateCountdown({ kind, phase, remaining });
+
+        if (phase === "prepare") {
+          playCountdownTick();
+        }
+
         return;
       }
 
@@ -278,6 +284,7 @@ function PairPracticeCard({
         phase = "answer";
         remaining = answerSeconds;
         updateCountdown({ kind, phase, remaining });
+        playCountdownGo();
         begin();
         return;
       }
@@ -1134,6 +1141,39 @@ function playCorrectSound() {
 
   playTone(audioContext, 660, 0, 0.12, "sine");
   playTone(audioContext, 880, 0.13, 0.16, "sine");
+}
+
+let countdownAudioContext: AudioContext | null = null;
+
+// Shared context so the per-second ticks don't open a new one each time.
+function getCountdownAudioContext() {
+  if (!countdownAudioContext || countdownAudioContext.state === "closed") {
+    countdownAudioContext = createAudioContext();
+  }
+
+  if (countdownAudioContext?.state === "suspended") {
+    void countdownAudioContext.resume();
+  }
+
+  return countdownAudioContext;
+}
+
+// Short, soft tick for each "get ready" second.
+function playCountdownTick() {
+  const audioContext = getCountdownAudioContext();
+
+  if (audioContext) {
+    playTone(audioContext, 660, 0, 0.09, "sine");
+  }
+}
+
+// Higher, slightly longer beep when it's time to speak.
+function playCountdownGo() {
+  const audioContext = getCountdownAudioContext();
+
+  if (audioContext) {
+    playTone(audioContext, 1320, 0, 0.2, "sine");
+  }
 }
 
 function playIncorrectSound() {
