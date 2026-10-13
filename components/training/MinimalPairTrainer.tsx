@@ -68,6 +68,7 @@ type CardFeedback = {
 type TrainerCopy = typeof trainerCopy.en;
 
 const stopPronunciationCheckEvent = "atlas:stop-pronunciation-check";
+const slowPlaybackRate = 0.75;
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -97,6 +98,9 @@ const trainerCopy = {
     listenTongueTwister: "Listen to the sentence",
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
+    speedLabel: "Playback speed",
+    speedNormal: "Normal",
+    speedSlow: "Slow (0.75x)",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
     playQuizFirst: "Play quiz, listen, then choose.",
@@ -136,6 +140,9 @@ const trainerCopy = {
       "学んだ2つの音を、ひとつの短い文の中で練習します。",
     listenTongueTwister: "文を聞く",
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
+    speedLabel: "再生速度",
+    speedNormal: "通常",
+    speedSlow: "ゆっくり (0.75倍)",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
     playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
@@ -206,7 +213,7 @@ export function MinimalPairTrainer({
 }
 
 // Builds the public MP3 path for a word or tongue-twister audio file.
-// Files are stored under /public/{folder}/{soundFocus}/{filename}.mp3.
+// Files are fetched under /public/(soundFocus)/(id)/(filename).mp3 or
 // Example : /public/words/R vs L/alive.mp3
 function getPublicAudioPath(
   folder: "words" | "twisters",
@@ -233,6 +240,9 @@ function PairPracticeCard({
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Separate speed settings: words (steps 1-2) and the tongue twister (step 4).
+  const [wordSlow, setWordSlow] = useState(false);
+  const [twisterSlow, setTwisterSlow] = useState(false);
   const tongueTwister = getTongueTwister(pair);
 
   useEffect(() => {
@@ -283,6 +293,7 @@ function PairPracticeCard({
     feedbackType: FeedbackType = "listen",
     audioPath?: string,
     showPlayingFeedback = true,
+    slow = false,
   ) {
     // Stop currently playing MP3
     if (audioRef.current) {
@@ -309,9 +320,11 @@ function PairPracticeCard({
           audioRef.current = null;
         }
 
-        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
+        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback, slow);
       };
 
+      // MP3 files in the public folder are recorded at normal speed (100%).
+      audio.playbackRate = slow ? slowPlaybackRate : 1;
       audioRef.current = audio;
 
       audio.onended = () => {
@@ -336,19 +349,20 @@ function PairPracticeCard({
     }
 
     // No MP3 path supplied
-    speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
+    speakWithTts(textToSpeak, feedbackType, showPlayingFeedback, slow);
   }
 
   function speakWithTts(
     textToSpeak: string,
     feedbackType: FeedbackType,
     showPlayingFeedback = true,
+    slow = false,
   ) {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "en-US";
-    utterance.rate = 0.85;
+    utterance.rate = slow ? 0.85 * slowPlaybackRate : 0.85;
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
@@ -370,6 +384,7 @@ function PairPracticeCard({
       "listening",
       getPublicAudioPath("words", pair.soundFocus, word),
       false,
+      wordSlow,
     );
   }
 
@@ -526,6 +541,11 @@ function PairPracticeCard({
       </div>
 
       <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
+        <SpeedToggle
+          copy={copy}
+          slow={wordSlow}
+          onToggle={() => setWordSlow((value) => !value)}
+        />
         <TestGroup
           step="1"
           title={copy.listenTitle}
@@ -538,6 +558,8 @@ function PairPracticeCard({
                 pair.wordA,
                 "listen",
                 getPublicAudioPath("words", pair.soundFocus, pair.wordA),
+                true,
+                wordSlow,
               )
             }
           >
@@ -550,6 +572,8 @@ function PairPracticeCard({
                 pair.wordB,
                 "listen",
                 getPublicAudioPath("words", pair.soundFocus, pair.wordB),
+                true,
+                wordSlow,
               )
             }
           >
@@ -600,6 +624,11 @@ function PairPracticeCard({
           {aiCheckTarget ? <MicLevelMeter /> : null}
         </TestGroup>
 
+        <SpeedToggle
+          copy={copy}
+          slow={twisterSlow}
+          onToggle={() => setTwisterSlow((value) => !value)}
+        />
         <TestGroup
           step="4"
           title={copy.tongueTwisterTitle}
@@ -621,6 +650,8 @@ function PairPracticeCard({
                 tongueTwister.text,
                 "tongueTwister",
                 getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+                true,
+                twisterSlow,
               )
             }
           >
@@ -790,6 +821,44 @@ function MicLevelMeter() {
           style={{ transform: "scaleY(0.12)" }}
         />
       ))}
+    </div>
+  );
+}
+
+function SpeedToggle({
+  copy,
+  slow,
+  onToggle,
+}: {
+  copy: TrainerCopy;
+  slow: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm text-white/50">
+      <span>{copy.speedLabel}</span>
+      <div className="flex items-center gap-3">
+        <span className="font-semibold text-white">
+          {slow ? copy.speedSlow : copy.speedNormal}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={slow}
+          aria-label={copy.speedLabel}
+          onClick={onToggle}
+          className={`relative h-8 w-14 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+            slow ? "bg-[#3498db]" : "bg-white/20"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-[#ecf0f1] transition-transform ${
+              slow ? "translate-x-6" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
