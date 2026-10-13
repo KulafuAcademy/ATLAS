@@ -264,54 +264,529 @@ export const rVsLPairs: MinimalPair[] = [
 ];
 
 export const bVsVPairs: MinimalPair[] = [
-  { id: "ban-van", soundFocus: "B vs V", wordA: "ban", wordB: "van" },
-  { id: "bat-vat", soundFocus: "B vs V", wordA: "bat", wordB: "vat" },
-  { id: "bet-vet", soundFocus: "B vs V", wordA: "bet", wordB: "vet" },
-  { id: "berry-very", soundFocus: "B vs V", wordA: "berry", wordB: "very" },
-  { id: "best-vest", soundFocus: "B vs V", wordA: "best", wordB: "vest" },
-  { id: "boat-vote", soundFocus: "B vs V", wordA: "boat", wordB: "vote" },
-  { id: "bow-vow", soundFocus: "B vs V", wordA: "bow", wordB: "vow" },
-  { id: "bail-veil", soundFocus: "B vs V", wordA: "bail", wordB: "veil" },
-  { id: "beer-veer", soundFocus: "B vs V", wordA: "beer", wordB: "veer" },
-  { id: "bent-vent", soundFocus: "B vs V", wordA: "bent", wordB: "vent" },
-  { id: "bolt-volt", soundFocus: "B vs V", wordA: "bolt", wordB: "volt" },
-  { id: "base-vase", soundFocus: "B vs V", wordA: "base", wordB: "vase" },
-  { id: "robe-rove", soundFocus: "B vs V", wordA: "robe", wordB: "rove" },
-  { id: "curb-curve", soundFocus: "B vs V", wordA: "curb", wordB: "curve" },
-  { id: "lib-live", soundFocus: "B vs V", wordA: "lib", wordB: "live" },
-  { id: "jibe-jive", soundFocus: "B vs V", wordA: "jibe", wordB: "jive" },
-  { id: "rebel-revel", soundFocus: "B vs V", wordA: "rebel", wordB: "revel" },
-  { id: "fiber-fiver", soundFocus: "B vs V", wordA: "fiber", wordB: "fiver" },
-  { id: "bile-vile", soundFocus: "B vs V", wordA: "bile", wordB: "vile" },
+  {
+    id: "ban-van",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Ban the van, then ban the next van.",
+      note: {
+        en: "Close both lips for B in ban. Touch your top teeth to your lower lip for V in van.",
+        ja: "banは両唇を閉じ、vanは上の歯を下唇に軽く当てて言います。",
+      },
+    },
+    wordA: "ban",
+    wordB: "van",
+  },
+  {
+    id: "bat-vat",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "A bat sat on the vat, and the vat shook the bat.",
+      note: {
+        en: "Keep the final T crisp while switching B and V at the start.",
+        ja: "語末のTをはっきり保ちながら、語頭のBとVを切り替えます。",
+      },
+    },
+    wordA: "bat",
+    wordB: "vat",
+  },
+  {
+    id: "bet-vet",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "I bet the vet will be back by seven.",
+      note: {
+        en: "Make the first sound decide the meaning of bet and vet.",
+        ja: "最初の音だけで bet と vet の意味が変わることを意識します。",
+      },
+    },
+    wordA: "bet",
+    wordB: "vet",
+  },
+  {
+    id: "berry-very",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Very ripe berries are very, very sweet.",
+      note: {
+        en: "Alternate the initial V in very with the initial B in berries.",
+        ja: "very の語頭のVと berries の語頭のBを交互に切り替えます。",
+      },
+    },
+    wordA: "berry",
+    wordB: "very",
+  },
+  {
+    id: "best-vest",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "The best vest was bought by Victor.",
+      note: {
+        en: "Keep the final ST clear in both words after the B and V contrast.",
+        ja: "BとVを区別したあと、どちらも語末のSTをはっきり言います。",
+      },
+    },
+    wordA: "best",
+    wordB: "vest",
+  },
+  {
+    id: "boat-vote",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Vote for the boat, then boat to the vote.",
+      note: {
+        en: "Do not let the V in vote turn into B. Keep the long vowel in both words.",
+        ja: "vote のVがBにならないようにし、両方の長い母音も保ちます。",
+      },
+    },
+    wordA: "boat",
+    wordB: "vote",
+  },
+  {
+    id: "bow-vow",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bow now, then vow to bow no more.",
+      note: {
+        en: "Hold the shared vowel steady and change only the first consonant.",
+        ja: "共通する母音を安定させ、最初の子音だけを変えます。",
+      },
+    },
+    wordA: "bow",
+    wordB: "vow",
+  },
+  {
+    id: "bail-veil",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bail out before the veil falls.",
+      note: {
+        en: "Keep the vowel and the final L the same. Only the first sound changes.",
+        ja: "母音と語末のLは同じに保ち、最初の音だけを変えます。",
+      },
+    },
+    wordA: "bail",
+    wordB: "veil",
+  },
+  {
+    id: "beer-veer",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Veer left at the beer van.",
+      note: {
+        en: "Keep the vowel-plus-R ending the same, and switch only the first consonant.",
+        ja: "母音+Rの響きは同じに保ち、語頭の子音だけを切り替えます。",
+      },
+    },
+    wordA: "beer",
+    wordB: "veer",
+  },
+  {
+    id: "bent-vent",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "A bent vent blew a bent bolt.",
+      note: {
+        en: "Keep N and T crisp after the B and V at the start.",
+        ja: "語頭のBとVのあとも、NとTをはっきり言います。",
+      },
+    },
+    wordA: "bent",
+    wordB: "vent",
+  },
+  {
+    id: "bolt-volt",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bolt the volt box, then check the volts.",
+      note: {
+        en: "Practice B and V before a rounded vowel and a final L.",
+        ja: "丸い母音と語末のLの前で、BとVを切り替えます。",
+      },
+    },
+    wordA: "bolt",
+    wordB: "volt",
+  },
+  {
+    id: "base-vase",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Put the vase on the base of the table.",
+      note: {
+        en: "Both words share the same vowel and ending. Let the first sound carry the difference.",
+        ja: "母音と語末は同じなので、最初の音で違いを出します。",
+      },
+    },
+    wordA: "base",
+    wordB: "vase",
+  },
+  {
+    id: "robe-rove",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Rove in a robe, and rove in a robe again.",
+      note: {
+        en: "Keep B and V voiced at the end of the word. Do not drop them.",
+        ja: "語末のBとVも声を出したまま、消さずに言います。",
+      },
+    },
+    wordA: "robe",
+    wordB: "rove",
+  },
+  {
+    id: "curb-curve",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Curb the curve before the next curb.",
+      note: {
+        en: "Practice final B and V after the R-colored vowel.",
+        ja: "Rの響きを持つ母音のあとで、語末のBとVを区別します。",
+      },
+    },
+    wordA: "curb",
+    wordB: "curve",
+  },
+  {
+    id: "blew-view",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Bay breeze blew by a vivid view.",
+      note: {
+        en: "Keep the BL cluster in blew clear, then switch to the V plus the 'yoo' glide in view.",
+        ja: "blew の子音連結BLをはっきり言い、view のVと「ユー」の響きに切り替えます。",
+      },
+    },
+    wordA: "blew",
+    wordB: "view",
+  },
+  {
+    id: "jibe-jive",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Jibe with the jive, and jive with the jibe.",
+      note: {
+        en: "Keep the vowel the same and switch only the final B and V.",
+        ja: "母音は同じに保ち、語末のBとVだけを切り替えます。",
+      },
+    },
+    wordA: "jibe",
+    wordB: "jive",
+  },
+  {
+    id: "rebel-revel",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "The rebels revel by the river.",
+      note: {
+        en: "Practice B and V in the middle of two-syllable words.",
+        ja: "2音節の単語の中ほどで、BとVを切り替えます。",
+      },
+    },
+    wordA: "rebel",
+    wordB: "revel",
+  },
+  {
+    id: "fiber-fiver",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "A fiver for fiber, and fiber for a fiver.",
+      note: {
+        en: "Keep the stress on the first syllable and switch only the middle B and V.",
+        ja: "第1音節を強く保ち、語中のBとVだけを切り替えます。",
+      },
+    },
+    wordA: "fiber",
+    wordB: "fiver",
+  },
+  {
+    id: "bile-vile",
+    soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Vile bile is a very bad brew.",
+      note: {
+        en: "Alternate the V in vile with the B in bile while keeping the vowel steady.",
+        ja: "母音を安定させたまま、vile のVと bile のBを交互に言います。",
+      },
+    },
+    wordA: "bile",
+    wordB: "vile",
+  },
   {
     id: "dribble-drivel",
     soundFocus: "B vs V",
+    tongueTwister: {
+      text: "Do not dribble drivel on the table.",
+      note: {
+        en: "Practice middle B and V before a final L, and keep the L light.",
+        ja: "語中のBとVを区別し、語末のLは軽く出します。",
+      },
+    },
     wordA: "dribble",
     wordB: "drivel",
   },
 ];
 
 export const sVsShPairs: MinimalPair[] = [
-  { id: "see-she", soundFocus: "S vs SH", wordA: "see", wordB: "she" },
-  { id: "sip-ship", soundFocus: "S vs SH", wordA: "sip", wordB: "ship" },
-  { id: "sell-shell", soundFocus: "S vs SH", wordA: "sell", wordB: "shell" },
-  { id: "seat-sheet", soundFocus: "S vs SH", wordA: "seat", wordB: "sheet" },
-  { id: "sake-shake", soundFocus: "S vs SH", wordA: "sake", wordB: "shake" },
-  { id: "save-shave", soundFocus: "S vs SH", wordA: "save", wordB: "shave" },
-  { id: "same-shame", soundFocus: "S vs SH", wordA: "same", wordB: "shame" },
-  { id: "sign-shine", soundFocus: "S vs SH", wordA: "sign", wordB: "shine" },
-  { id: "sort-short", soundFocus: "S vs SH", wordA: "sort", wordB: "short" },
-  { id: "sock-shock", soundFocus: "S vs SH", wordA: "sock", wordB: "shock" },
-  { id: "sew-show", soundFocus: "S vs SH", wordA: "sew", wordB: "show" },
-  { id: "sore-shore", soundFocus: "S vs SH", wordA: "sore", wordB: "shore" },
-  { id: "sack-shack", soundFocus: "S vs SH", wordA: "sack", wordB: "shack" },
-  { id: "seep-sheep", soundFocus: "S vs SH", wordA: "seep", wordB: "sheep" },
-  { id: "said-shed", soundFocus: "S vs SH", wordA: "said", wordB: "shed" },
-  { id: "sue-shoe", soundFocus: "S vs SH", wordA: "Sue", wordB: "shoe" },
-  { id: "so-show", soundFocus: "S vs SH", wordA: "so", wordB: "show" },
-  { id: "seal-she'll", soundFocus: "S vs SH", wordA: "seal", wordB: "she'll" },
-  { id: "sin-shin", soundFocus: "S vs SH", wordA: "sin", wordB: "shin" },
-  { id: "sigh-shy", soundFocus: "S vs SH", wordA: "sigh", wordB: "shy" },
+  {
+    id: "see-she",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "She can see the sea she wants to see.",
+      note: {
+        en: "Smile for the S in see. Round your lips for the SH in she.",
+        ja: "seのSは口角を引いて笑顔で、sheのSHは唇を丸めて言います。",
+      },
+    },
+    wordA: "see",
+    wordB: "she",
+  },
+  {
+    id: "sip-ship",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "She will sip her soup on the ship.",
+      note: {
+        en: "Keep the S in sip sharp. Push your lips forward for the SH in ship.",
+        ja: "sipのSは鋭く、shipのSHは唇を前に突き出して言います。",
+      },
+    },
+    wordA: "sip",
+    wordB: "ship",
+  },
+  {
+    id: "sell-shell",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "I will sell one shell and sell another shell.",
+      note: {
+        en: "Press your tongue behind your teeth for sell. Round your lips to say shell.",
+        ja: "sellは舌を歯の裏に近づけ、shellは唇を丸めて言います。",
+      },
+    },
+    wordA: "sell",
+    wordB: "shell",
+  },
+  {
+    id: "seat-sheet",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Keep the sheet on the seat, a clean sheet.",
+      note: {
+        en: "Keep a tight smile for seat. Push your lips out to start sheet.",
+        ja: "seatは口をしっかり横に引き、sheetは唇を突き出して始めます。",
+      },
+    },
+    wordA: "seat",
+    wordB: "sheet",
+  },
+  {
+    id: "sake-shake",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Shake the milkshake for my sake.",
+      note: {
+        en: "Keep the S crisp in sake. Flare your lips to say shake.",
+        ja: "sakeのSは歯切れよく、shakeは唇を丸く広げるようにして言います。",
+      },
+    },
+    wordA: "sake",
+    wordB: "shake",
+  },
+  {
+    id: "save-shave",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Shave well to save the gel, save and shave.",
+      note: {
+        en: "Pull your lips back for save. Round your lips outward for shave.",
+        ja: "saveは唇を横に引き、shaveは唇を丸めて前に出します。",
+      },
+    },
+    wordA: "save",
+    wordB: "shave",
+  },
+  {
+    id: "same-shame",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "It is a shame we have the same name.",
+      note: {
+        en: "Keep your mouth wide for same. Push your lips forward for shame.",
+        ja: "sameは口を横に広く、shameは唇を前に突き出して言います。",
+      },
+    },
+    wordA: "same",
+    wordB: "shame",
+  },
+  {
+    id: "sign-shine",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Sign the sign to make it shine.",
+      note: {
+        en: "Smile for the S in sign. Make a quiet shh sound to start shine.",
+        ja: "signのSは笑顔で、shineは静かに「シー」と息を出すように始めます。",
+      },
+    },
+    wordA: "sign",
+    wordB: "shine",
+  },
+  {
+    id: "sort-short",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Sort the short pants then sort the short socks.",
+      note: {
+        en: "Keep your tongue forward for sort. Pull your tongue back for short.",
+        ja: "sortは舌を前に、shortは舌を少し後ろに引いて言います。",
+      },
+    },
+    wordA: "sort",
+    wordB: "short",
+  },
+  {
+    id: "sock-shock",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "The red sock gave the clown a big shock!",
+      note: {
+        en: "Keep the S sound thin in sock. Push your lips out for shock.",
+        ja: "sockのSは細く鋭く、shockは唇を突き出して言います。",
+      },
+    },
+    wordA: "sock",
+    wordB: "shock",
+  },
+  {
+    id: "sew-show",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Sew the dress and show it at the show.",
+      note: {
+        en: "Keep your teeth together for sew. Push your lips forward for show.",
+        ja: "sewは歯を閉じ気味にして、showは唇を前に突き出して言います。",
+      },
+    },
+    wordA: "sew",
+    wordB: "show",
+  },
+  {
+    id: "sore-shore",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "My feet are sore on the sandy shore.",
+      note: {
+        en: "Let the S slide out for sore. Make a round mouth for shore.",
+        ja: "soreはSをすっと出し、shoreは口を丸くして言います。",
+      },
+    },
+    wordA: "sore",
+    wordB: "shore",
+  },
+  {
+    id: "sack-shack",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "The shack has a sack, a short soft sack.",
+      note: {
+        en: "Keep the air steady for sack. Push the air strongly for shack.",
+        ja: "sackは息を一定に保ち、shackは息を強く押し出して言います。",
+      },
+    },
+    wordA: "sack",
+    wordB: "shack",
+  },
+  {
+    id: "seep-sheep",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "See the water seep near the sleeping sheep.",
+      note: {
+        en: "Smile wide for seep. Flare your lips out for sheep.",
+        ja: "seepは口を横に大きく引き、sheepは唇を丸く突き出して言います。",
+      },
+    },
+    wordA: "seep",
+    wordB: "sheep",
+  },
+  {
+    id: "said-shed",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "She said to save the red van in the shed.",
+      note: {
+        en: "Start with a crisp S in said. Start with a round lip for shed.",
+        ja: "saidは歯切れのよいSで、shedは唇を丸めて始めます。",
+      },
+    },
+    wordA: "said",
+    wordB: "shed",
+  },
+  {
+    id: "sue-shoe",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "Sue lost one shoe, so Sue bought a new shoe.",
+      note: {
+        en: "Keep your tongue near your teeth for Sue. Pull it back for shoe.",
+        ja: "Sueは舌を歯の近くに置き、shoeは舌を後ろに引いて言います。",
+      },
+    },
+    wordA: "Sue",
+    wordB: "shoe",
+  },
+  {
+    id: "so-show",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "So show the show, so I know what to show.",
+      note: {
+        en: "Smile for the S in so. Push your lips out for the SH in show.",
+        ja: "soのSは笑顔で、showのSHは唇を突き出して言います。",
+      },
+    },
+    wordA: "so",
+    wordB: "show",
+  },
+  {
+    id: "seal-she'll",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "She'll see a seal then she'll save the seal.",
+      note: {
+        en: "Smile wide to start seal. Round your lips to start she'll.",
+        ja: "sealは口を横に広く引いて、she'llは唇を丸めて始めます。",
+      },
+    },
+    wordA: "seal",
+    wordB: "she'll",
+  },
+  {
+    id: "sin-shin",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "It is a sin to kick his shin.",
+      note: {
+        en: "Keep your tongue close to your teeth for sin. Pull it back for shin.",
+        ja: "sinは舌を歯の近くに置き、shinは舌を後ろに引いて言います。",
+      },
+    },
+    wordA: "sin",
+    wordB: "shin",
+  },
+  {
+    id: "sigh-shy",
+    soundFocus: "S vs SH",
+    tongueTwister: {
+      text: "The shy girl let out a big sad sigh.",
+      note: {
+        en: "Start with a smiling S in sigh. Start with a rounded lip in shy.",
+        ja: "sighは笑顔のSで、shyは唇を丸めて始めます。",
+      },
+    },
+    wordA: "sigh",
+    wordB: "shy",
+  },
 ];
 
 export const shortIVsLongEPairs: MinimalPair[] = [
