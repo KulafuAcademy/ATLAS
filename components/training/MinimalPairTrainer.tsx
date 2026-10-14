@@ -6,48 +6,13 @@ import type { ReactNode } from "react";
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
 import type { MinimalPair } from "@/types/training";
-
-declare global {
-  interface Window {
-    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
-    webkitAudioContext?: typeof AudioContext;
-    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
-  }
-}
+import type {
+  BrowserSpeechRecognition,
+  BrowserSpeechRecognitionErrorEvent,
+  BrowserSpeechRecognitionResultEvent,
+} from "./speechRecognitionTypes";
 
 type QuizTarget = "A" | "B";
-
-type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
-
-type BrowserSpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  abort: () => void;
-  start: () => void;
-  onend: (() => void) | null;
-  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
-  onnomatch: (() => void) | null;
-  onresult: ((event: BrowserSpeechRecognitionResultEvent) => void) | null;
-};
-
-type BrowserSpeechRecognitionErrorEvent = Event & {
-  error?: string;
-};
-
-type BrowserSpeechRecognitionResultEvent = Event & {
-  results: {
-    length: number;
-    [index: number]: {
-      isFinal: boolean;
-      length: number;
-      [index: number]: {
-        transcript: string;
-      };
-    };
-  };
-};
 
 type ActiveQuiz = {
   pairId: string;
@@ -205,7 +170,7 @@ export function MinimalPairTrainer({
   );
 }
 
-// Builds the public MP3 path for a word or tongue-twister audio file.
+// Builds the public MP3 path for a word or tongue-twister audio .
 // Files are stored under /public/{folder}/{soundFocus}/{filename}.mp3.
 // Example : /public/words/R vs L/alive.mp3
 function getPublicAudioPath(
