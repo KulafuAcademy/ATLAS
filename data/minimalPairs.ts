@@ -1053,53 +1053,263 @@ export const shortIVsLongEPairs: MinimalPair[] = [
 ];
 
 export const thPairs: MinimalPair[] = [
-  { id: "think-sink", soundFocus: "TH sounds", wordA: "think", wordB: "sink" },
-  { id: "thin-sin", soundFocus: "TH sounds", wordA: "thin", wordB: "sin" },
-  { id: "thank-sank", soundFocus: "TH sounds", wordA: "thank", wordB: "sank" },
-  { id: "thick-sick", soundFocus: "TH sounds", wordA: "thick", wordB: "sick" },
-  { id: "thigh-sigh", soundFocus: "TH sounds", wordA: "thigh", wordB: "sigh" },
+  {
+    id: "think-sink",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "I think the ship will sink, I think.",
+      note: {
+        en: "Put your tongue between your teeth for TH in think. Keep teeth together for S in sink.",
+        ja: "thinkは舌を歯の間に入れ、sinkは歯を閉じてSの音を出します。",
+      },
+    },
+    wordA: "think",
+    wordB: "sink",
+  },
+  {
+    id: "thin-sin",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Is it a sin to be so thin?",
+      note: {
+        en: "Put your tongue between your teeth for TH in thin. Keep teeth together for S in sin.",
+        ja: "thinは舌を歯の間に入れ、sinは歯を閉じてSの音を出します。",
+      },
+    },
+    wordA: "thin",
+    wordB: "sin",
+  },
+  {
+    id: "thank-sank",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Thank the diver for the treasure that sank.",
+      note: {
+        en: "Stick your tongue tip out for TH in thank. Keep your mouth closed slightly for S in sank.",
+        ja: "thankは舌先を少し出し、sankは口を軽く閉じてSの音を出します。",
+      },
+    },
+    wordA: "thank",
+    wordB: "sank",
+  },
+  {
+    id: "thick-sick",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "A thick coat kept the sick sheep warm.",
+      note: {
+        en: "Put your tongue between your teeth for TH in thick. Keep teeth together for S in sick.",
+        ja: "thickは舌を歯の間に入れ、sickは歯を閉じてSの音を出します。",
+      },
+    },
+    wordA: "thick",
+    wordB: "sick",
+  },
+  {
+    id: "thigh-sight",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Run on strong thighs, what a wonderful sight!",
+      note: {
+        en: "Put your tongue between your teeth for TH in thigh. Blow air through your teeth for S in sight.",
+        ja: "thighは舌を歯の間に入れ、sightは歯の間から息を出してSの音を出します。",
+      },
+    },
+    wordA: "thigh",
+    wordB: "sight",
+  },
   {
     id: "thought-sought",
     soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "She thought of the spot she sought.",
+      note: {
+        en: "Start with your tongue between your teeth for thought. Start with a smiling S sound for sought.",
+        ja: "thoughtは舌を歯の間に入れて始め、soughtは口を横に引いたSの音で始めます。",
+      },
+    },
     wordA: "thought",
     wordB: "sought",
   },
-  { id: "thaw-saw", soundFocus: "TH sounds", wordA: "thaw", wordB: "saw" },
-  { id: "thumb-sum", soundFocus: "TH sounds", wordA: "thumb", wordB: "sum" },
-  { id: "three-free", soundFocus: "TH sounds", wordA: "three", wordB: "free" },
+  {
+    id: "thaw-saw",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "I saw the ice thaw, yes, I saw it thaw!",
+      note: {
+        en: "Put your tongue between your teeth for thaw. Pull your tongue back for saw.",
+        ja: "thawは舌を歯の間に入れ、sawは舌を後ろに引いて言います。",
+      },
+    },
+    wordA: "thaw",
+    wordB: "saw",
+  },
+  {
+    id: "thumb-sum",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Use your thumb to add the sum.",
+      note: {
+        en: "Stick your tongue tip out for thumb. Keep your teeth close together for sum.",
+        ja: "thumbは舌先を少し出し、sumは歯を近づけて言います。",
+      },
+    },
+    wordA: "thumb",
+    wordB: "sum",
+  },
+  {
+    id: "three-free",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Three green frogs are free to flee, all three free.",
+      note: {
+        en: "Put your tongue between your teeth for TH in three. Touch your top teeth to your lower lip for F in free.",
+        ja: "threeは舌を歯の間に入れ、freeは上の歯を下唇に当ててFの音を出します。",
+      },
+    },
+    wordA: "three",
+    wordB: "free",
+  },
   {
     id: "thread-shred",
     soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "She shred the thin red thread!",
+      note: {
+        en: "Put your tongue between your teeth for TH in thread. Round your lips outward for SH in shred.",
+        ja: "threadは舌を歯の間に入れ、shredは唇を丸く前に突き出してSHの音を出します。",
+      },
+    },
     wordA: "thread",
     wordB: "shred",
   },
-  { id: "they-day", soundFocus: "TH sounds", wordA: "they", wordB: "day" },
-  { id: "then-den", soundFocus: "TH sounds", wordA: "then", wordB: "den" },
+  {
+    id: "they-day",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "They play all day, yes, they play all day.",
+      note: {
+        en: "Vibrate your tongue between your teeth for TH in they. Tap behind your top teeth for D in day.",
+        ja: "theyは舌を歯の間で振動させ、dayは上の歯の裏を舌で軽くはじいてDの音を出します。",
+      },
+    },
+    wordA: "they",
+    wordB: "day",
+  },
+  {
+    id: "then-den",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "The hen then ran out of the den.",
+      note: {
+        en: "Vibrate your tongue between your teeth for TH in then. Tap the roof of your mouth for D in den.",
+        ja: "thenは舌を歯の間で振動させ、denは上あごを舌で軽くはじいてDの音を出します。",
+      },
+    },
+    wordA: "then",
+    wordB: "den",
+  },
   {
     id: "though-dough",
     soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Though the dough won't thaw, to the oven it goes.",
+      note: {
+        en: "Vibrate your tongue between your teeth for TH in though. Tap behind your top teeth for D in dough.",
+        ja: "thoughは舌を歯の間で振動させ、doughは上の歯の裏を舌で軽くはじいてDの音を出します。",
+      },
+    },
     wordA: "though",
     wordB: "dough",
   },
-  { id: "those-doze", soundFocus: "TH sounds", wordA: "those", wordB: "doze" },
-  { id: "there-dare", soundFocus: "TH sounds", wordA: "there", wordB: "dare" },
-  { id: "than-dan", soundFocus: "TH sounds", wordA: "than", wordB: "Dan" },
+  {
+    id: "those-doze",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "There are those that doze when smelling a rose.",
+      note: {
+        en: "Put your tongue between your teeth for TH in those. Tap behind your top teeth for D in doze.",
+        ja: "thoseは舌を歯の間に入れ、dozeは上の歯の裏を舌で軽くはじいてDの音を出します。",
+      },
+    },
+    wordA: "those",
+    wordB: "doze",
+  },
+  {
+    id: "there-dare",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Do not dare to go over there!",
+      note: {
+        en: "Vibrate your tongue between your teeth for TH in there. Tap behind your top teeth for D in dare.",
+        ja: "thereは舌を歯の間で振動させ、dareは上の歯の裏を舌で軽くはじいてDの音を出します。",
+      },
+    },
+    wordA: "there",
+    wordB: "dare",
+  },
+  {
+    id: "than-dan",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Dan ran faster than the red van!",
+      note: {
+        en: "Vibrate your tongue between your teeth for TH in than. Tap firmly behind your teeth for D in Dan.",
+        ja: "thanは舌を歯の間で振動させ、Danは歯の裏をしっかりはじいてDの音を出します。",
+      },
+    },
+    wordA: "than",
+    wordB: "Dan",
+  },
   {
     id: "breathe-breed",
     soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "Don't breathe near the rare dragon breed.",
+      note: {
+        en: "Keep the voiced TH buzzing at the end of breathe. Tap a crisp D at the end of breed.",
+        ja: "breatheは語末の有声TH音を震わせ続け、breedは語末でDをはっきりはじきます。",
+      },
+    },
     wordA: "breathe",
     wordB: "breed",
   },
-  { id: "bathe-bade", soundFocus: "TH sounds", wordA: "bathe", wordB: "bade" },
+  {
+    id: "bathe-bade",
+    soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "She bade him bathe before he went to bed.",
+      note: {
+        en: "Buzz your tongue between your teeth for TH in bathe. Tap your tongue for D at the end of bade.",
+        ja: "batheは舌を歯の間で震わせ、badeは語末で舌をはじいてDの音を出します。",
+      },
+    },
+    wordA: "bathe",
+    wordB: "bade",
+  },
   {
     id: "other-udder",
     soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "The cow had a huge udder, like no other.",
+      note: {
+        en: "Vibrate your tongue between your teeth in the middle of other. Tap the roof of your mouth for DD in udder.",
+        ja: "otherは語の中ほどで舌を歯の間で振動させ、udderは上あごを舌ではじいてDDの音を出します。",
+      },
+    },
     wordA: "other",
     wordB: "udder",
   },
   {
     id: "worthy-wordy",
     soundFocus: "TH sounds",
+    tongueTwister: {
+      text: "A worthy apology shouldn't be too wordy.",
+      note: {
+        en: "Slide your tongue between your teeth for TH in worthy. Tap your tongue behind your top teeth for RD in wordy.",
+        ja: "worthyは舌を歯の間にすべらせ、wordyは上の歯の裏を舌ではじいてRDの音を出します。",
+      },
+    },
     wordA: "worthy",
     wordB: "wordy",
   },
