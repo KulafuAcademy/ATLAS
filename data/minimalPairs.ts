@@ -1059,7 +1059,7 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "I think the ship will sink, I think.",
       note: {
-        en: "Put your tongue between your teeth for TH in think. Keep teeth together for S in sink.",
+        en: "Tongue between teeth for TH; teeth together for S.",
         ja: "thinkは舌を歯の間に入れ、sinkは歯を閉じてSの音を出します。",
       },
     },
@@ -1072,7 +1072,7 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Is it a sin to be so thin?",
       note: {
-        en: "Put your tongue between your teeth for TH in thin. Keep teeth together for S in sin.",
+        en: "Tongue between teeth for TH; teeth together for S.",
         ja: "thinは舌を歯の間に入れ、sinは歯を閉じてSの音を出します。",
       },
     },
@@ -1085,8 +1085,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Thank the diver for the treasure that sank.",
       note: {
-        en: "Stick your tongue tip out for TH in thank. Keep your mouth closed slightly for S in sank.",
-        ja: "thankは舌先を少し出し、sankは口を軽く閉じてSの音を出します。",
+        en: "Tongue between teeth for TH; teeth together for S.",
+        ja: "thankは舌を歯の間に入れ、sankは歯を閉じてSの音を出します。",
       },
     },
     wordA: "thank",
@@ -1098,7 +1098,7 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "A thick coat kept the sick sheep warm.",
       note: {
-        en: "Put your tongue between your teeth for TH in thick. Keep teeth together for S in sick.",
+        en: "Tongue between teeth for TH; teeth together for S.",
         ja: "thickは舌を歯の間に入れ、sickは歯を閉じてSの音を出します。",
       },
     },
@@ -1111,8 +1111,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Run on strong thighs, what a wonderful sight!",
       note: {
-        en: "Put your tongue between your teeth for TH in thigh. Blow air through your teeth for S in sight.",
-        ja: "thighは舌を歯の間に入れ、sightは歯の間から息を出してSの音を出します。",
+        en: "Tongue between teeth for TH; teeth together for S.",
+        ja: "thighは舌を歯の間に入れ、sightは歯を閉じてSの音を出します。",
       },
     },
     wordA: "thigh",
@@ -1124,8 +1124,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "She thought of the spot she sought.",
       note: {
-        en: "Start with your tongue between your teeth for thought. Start with a smiling S sound for sought.",
-        ja: "thoughtは舌を歯の間に入れて始め、soughtは口を横に引いたSの音で始めます。",
+        en: "Tongue between teeth for TH; start sought with S.",
+        ja: "thoughtは舌を歯の間に入れ、soughtはSの音で始めます。",
       },
     },
     wordA: "thought",
@@ -1137,7 +1137,7 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "I saw the ice thaw, yes, I saw it thaw!",
       note: {
-        en: "Put your tongue between your teeth for thaw. Pull your tongue back for saw.",
+        en: "Tongue between teeth for TH; pull tongue back for S.",
         ja: "thawは舌を歯の間に入れ、sawは舌を後ろに引いて言います。",
       },
     },
@@ -1150,7 +1150,7 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Use your thumb to add the sum.",
       note: {
-        en: "Stick your tongue tip out for thumb. Keep your teeth close together for sum.",
+        en: "Tongue tip out for TH; teeth close for S.",
         ja: "thumbは舌先を少し出し、sumは歯を近づけて言います。",
       },
     },
@@ -1163,7 +1163,7 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Three green frogs are free to flee, all three free.",
       note: {
-        en: "Put your tongue between your teeth for TH in three. Touch your top teeth to your lower lip for F in free.",
+        en: "Tongue between teeth for TH; top teeth touch lower lip for F.",
         ja: "threeは舌を歯の間に入れ、freeは上の歯を下唇に当ててFの音を出します。",
       },
     },
@@ -1176,8 +1176,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "She shred the thin red thread!",
       note: {
-        en: "Put your tongue between your teeth for TH in thread. Round your lips outward for SH in shred.",
-        ja: "threadは舌を歯の間に入れ、shredは唇を丸く前に突き出してSHの音を出します。",
+        en: "Tongue between teeth for TH; round lips for SH.",
+        ja: "threadは舌を歯の間に入れ、shredは唇を丸めてSHの音を出します。",
       },
     },
     wordA: "thread",
@@ -1189,8 +1189,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "They play all day, yes, they play all day.",
       note: {
-        en: "Vibrate your tongue between your teeth for TH in they. Tap behind your top teeth for D in day.",
-        ja: "theyは舌を歯の間で振動させ、dayは上の歯の裏を舌で軽くはじいてDの音を出します。",
+        en: "Tongue between teeth for voiced TH; tap tongue for D.",
+        ja: "theyは舌を歯の間に入れて声を震わせ、dayは舌先ではじいてDの音を出します。",
       },
     },
     wordA: "they",
@@ -1202,8 +1202,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "The hen then ran out of the den.",
       note: {
-        en: "Vibrate your tongue between your teeth for TH in then. Tap the roof of your mouth for D in den.",
-        ja: "thenは舌を歯の間で振動させ、denは上あごを舌で軽くはじいてDの音を出します。",
+        en: "Tongue between teeth for voiced TH; tap tongue for D.",
+        ja: "thenは舌を歯の間に入れて声を震わせ、denは舌先ではじいてDの音を出します。",
       },
     },
     wordA: "then",
@@ -1215,8 +1215,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Though the dough won't thaw, to the oven it goes.",
       note: {
-        en: "Vibrate your tongue between your teeth for TH in though. Tap behind your top teeth for D in dough.",
-        ja: "thoughは舌を歯の間で振動させ、doughは上の歯の裏を舌で軽くはじいてDの音を出します。",
+        en: "Tongue between teeth for voiced TH; tap tongue for D.",
+        ja: "thoughは舌を歯の間に入れて声を震わせ、doughは舌先ではじいてDの音を出します。",
       },
     },
     wordA: "though",
@@ -1228,8 +1228,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "There are those that doze when smelling a rose.",
       note: {
-        en: "Put your tongue between your teeth for TH in those. Tap behind your top teeth for D in doze.",
-        ja: "thoseは舌を歯の間に入れ、dozeは上の歯の裏を舌で軽くはじいてDの音を出します。",
+        en: "Tongue between teeth for voiced TH; tap tongue for D.",
+        ja: "thoseは舌を歯の間に入れて声を震わせ、dozeは舌先ではじいてDの音を出します。",
       },
     },
     wordA: "those",
@@ -1241,8 +1241,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Do not dare to go over there!",
       note: {
-        en: "Vibrate your tongue between your teeth for TH in there. Tap behind your top teeth for D in dare.",
-        ja: "thereは舌を歯の間で振動させ、dareは上の歯の裏を舌で軽くはじいてDの音を出します。",
+        en: "Tongue between teeth for voiced TH; tap tongue for D.",
+        ja: "thereは舌を歯の間に入れて声を震わせ、dareは舌先ではじいてDの音を出します。",
       },
     },
     wordA: "there",
@@ -1254,8 +1254,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Dan ran faster than the red van!",
       note: {
-        en: "Vibrate your tongue between your teeth for TH in than. Tap firmly behind your teeth for D in Dan.",
-        ja: "thanは舌を歯の間で振動させ、Danは歯の裏をしっかりはじいてDの音を出します。",
+        en: "Tongue between teeth for voiced TH; tap tongue for D.",
+        ja: "thanは舌を歯の間に入れて声を震わせ、danは舌先ではじいてDの音を出します。",
       },
     },
     wordA: "than",
@@ -1267,8 +1267,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "Don't breathe near the rare dragon breed.",
       note: {
-        en: "Keep the voiced TH buzzing at the end of breathe. Tap a crisp D at the end of breed.",
-        ja: "breatheは語末の有声TH音を震わせ続け、breedは語末でDをはっきりはじきます。",
+        en: "Keep final TH voiced; make final D crisp.",
+        ja: "breatheは語末の有声THを震わせ続け、breedは語末のDをはっきり出します。",
       },
     },
     wordA: "breathe",
@@ -1280,8 +1280,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "She bade him bathe before he went to bed.",
       note: {
-        en: "Buzz your tongue between your teeth for TH in bathe. Tap your tongue for D at the end of bade.",
-        ja: "batheは舌を歯の間で震わせ、badeは語末で舌をはじいてDの音を出します。",
+        en: "Buzz voiced TH; tap tongue for D.",
+        ja: "batheは舌を歯の間で震わせ、badeは舌をはじいてDの音を出します。",
       },
     },
     wordA: "bathe",
@@ -1293,8 +1293,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "The cow had a huge udder, like no other.",
       note: {
-        en: "Vibrate your tongue between your teeth in the middle of other. Tap the roof of your mouth for DD in udder.",
-        ja: "otherは語の中ほどで舌を歯の間で振動させ、udderは上あごを舌ではじいてDDの音を出します。",
+        en: "Voiced TH in other; tongue tap for DD in udder.",
+        ja: "otherは有声のTH、udderは舌をはじいてDDの音を出します。",
       },
     },
     wordA: "other",
@@ -1306,8 +1306,8 @@ export const thPairs: MinimalPair[] = [
     tongueTwister: {
       text: "A worthy apology shouldn't be too wordy.",
       note: {
-        en: "Slide your tongue between your teeth for TH in worthy. Tap your tongue behind your top teeth for RD in wordy.",
-        ja: "worthyは舌を歯の間にすべらせ、wordyは上の歯の裏を舌ではじいてRDの音を出します。",
+        en: "Tongue between teeth for TH; tap tongue for RD.",
+        ja: "worthyは舌を歯の間に入れ、wordyは舌をはじいてRDの音を出します。",
       },
     },
     wordA: "worthy",
@@ -1316,88 +1316,263 @@ export const thPairs: MinimalPair[] = [
 ];
 
 export const finalConsonantPairs: MinimalPair[] = [
-  { id: "cap-cab", soundFocus: "Final consonants", wordA: "cap", wordB: "cab" },
+  {
+    id: "cap-cab",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Leave your red cap in the yellow cab.",
+      note: {
+        en: "Close lips; P is unvoiced, B is voiced.",
+        ja: "唇を閉じて、capの語末のPは無声音、cabのBは有声音です。",
+      },
+    },
+    wordA: "cap",
+    wordB: "cab",
+  },
   {
     id: "back-bag",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Carry the red bag on your back.",
+      note: {
+        en: "Use the back of your tongue; K is unvoiced, G is voiced.",
+        ja: "舌の奥を使い、backの語末のKは無声音、bagのGは有声音です。",
+      },
+    },
     wordA: "back",
     wordB: "bag",
   },
   {
     id: "rice-rise",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Watch the sun rise as you eat rice.",
+      note: {
+        en: "Keep teeth together; S is unvoiced, Z is voiced.",
+        ja: "歯を閉じて、riceの語末のSは無声音、riseのZは有声音です。",
+      },
+    },
     wordA: "rice",
     wordB: "rise",
   },
   {
     id: "pick-pig",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Pick a sweet red apple for the little pig.",
+      note: {
+        en: "Use the back of your tongue; K is unvoiced, G is voiced.",
+        ja: "舌の奥を使い、pickの語末のKは無声音、pigのGは有声音です。",
+      },
+    },
     wordA: "pick",
     wordB: "pig",
   },
-  { id: "bet-bed", soundFocus: "Final consonants", wordA: "bet", wordB: "bed" },
+  {
+    id: "bet-bed",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "I bet you love your warm cozy bed.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、betの語末のTは無声音、bedのDは有声音です。",
+      },
+    },
+    wordA: "bet",
+    wordB: "bed",
+  },
   {
     id: "leaf-leave",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Look at that green leaf before we leave.",
+      note: {
+        en: "Top teeth on lower lip; F is unvoiced, V is voiced.",
+        ja: "上の歯を下唇に当てて、leafの語末のFは無声音、leaveのVは有声音です。",
+      },
+    },
     wordA: "leaf",
     wordB: "leave",
   },
   {
     id: "safe-save",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Save the little bird and keep it safe!",
+      note: {
+        en: "Top teeth on lower lip; F is unvoiced, V is voiced.",
+        ja: "上の歯を下唇に当てて、safeの語末のFは無声音、saveのVは有声音です。",
+      },
+    },
     wordA: "safe",
     wordB: "save",
   },
   {
     id: "rope-robe",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Tie the long rope around your warm robe.",
+      note: {
+        en: "Close lips; P is unvoiced, B is voiced.",
+        ja: "唇を閉じて、ropeの語末のPは無声音、robeのBは有声音です。",
+      },
+    },
     wordA: "rope",
     wordB: "robe",
   },
   {
     id: "seat-seed",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Take a seat to plant your lucky seed.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、seatの語末のTは無声音、seedのDは有声音です。",
+      },
+    },
     wordA: "seat",
     wordB: "seed",
   },
   {
     id: "cart-card",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "The cart has a card, the card has a cart.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、cartの語末のTは無声音、cardのDは有声音です。",
+      },
+    },
     wordA: "cart",
     wordB: "card",
   },
   {
     id: "dock-dog",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "The dog dashed down the dock.",
+      note: {
+        en: "Use the back of your tongue; K is unvoiced, G is voiced.",
+        ja: "舌の奥を使い、dockの語末のKは無声音、dogのGは有声音です。",
+      },
+    },
     wordA: "dock",
     wordB: "dog",
   },
   {
     id: "lock-log",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Lock the big gate by the wooden log.",
+      note: {
+        en: "Use the back of your tongue; K is unvoiced, G is voiced.",
+        ja: "舌の奥を使い、lockの語末のKは無声音、logのGは有声音です。",
+      },
+    },
     wordA: "lock",
     wordB: "log",
   },
   {
     id: "buck-bug",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "A little bug sat on the brave buck.",
+      note: {
+        en: "Use the back of your tongue; K is unvoiced, G is voiced.",
+        ja: "舌の奥を使い、buckの語末のKは無声音、bugのGは有声音です。",
+      },
+    },
     wordA: "buck",
     wordB: "bug",
   },
-  { id: "bat-bad", soundFocus: "Final consonants", wordA: "bat", wordB: "bad" },
-  { id: "hit-hid", soundFocus: "Final consonants", wordA: "hit", wordB: "hid" },
   {
-    id: "coat-code",
+    id: "bat-bad",
     soundFocus: "Final consonants",
-    wordA: "coat",
-    wordB: "code",
+    tongueTwister: {
+      text: "A little brown bat is not so bad.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、batの語末のTは無声音、badのDは有声音です。",
+      },
+    },
+    wordA: "bat",
+    wordB: "bad",
   },
-  { id: "mat-mad", soundFocus: "Final consonants", wordA: "mat", wordB: "mad" },
-  { id: "cup-cub", soundFocus: "Final consonants", wordA: "cup", wordB: "cub" },
-  { id: "lap-lab", soundFocus: "Final consonants", wordA: "lap", wordB: "lab" },
+  {
+    id: "hit-hid",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "She hit the ball then hid by the tree.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、hitの語末のTは無声音、hidのDは有声音です。",
+      },
+    },
+    wordA: "hit",
+    wordB: "hid",
+  },
+  {
+    id: "coat-cod",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "I'll fish for cod, so get my coat.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、coatの語末のTは無声音、codのDは有声音です。",
+      },
+    },
+    wordA: "coat",
+    wordB: "cod",
+  },
+  {
+    id: "mat-mad",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Don't be mad, your hat is on the mat.",
+      note: {
+        en: "Tap behind top teeth; T is unvoiced, D is voiced.",
+        ja: "上の歯の裏を舌ではじいて、matの語末のTは無声音、madのDは有声音です。",
+      },
+    },
+    wordA: "mat",
+    wordB: "mad",
+  },
+  {
+    id: "cup-cub",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "A cute bear cub is on my cup.",
+      note: {
+        en: "Close lips; P is unvoiced, B is voiced.",
+        ja: "唇を閉じて、cupの語末のPは無声音、cubのBは有声音です。",
+      },
+    },
+    wordA: "cup",
+    wordB: "cub",
+  },
+  {
+    id: "lap-lab",
+    soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Put the computer lab laptop on your lap.",
+      note: {
+        en: "Close lips; P is unvoiced, B is voiced.",
+        ja: "唇を閉じて、lapの語末のPは無声音、labのBは有声音です。",
+      },
+    },
+    wordA: "lap",
+    wordB: "lab",
+  },
   {
     id: "proof-prove",
     soundFocus: "Final consonants",
+    tongueTwister: {
+      text: "Show the proof to prove that you have proof.",
+      note: {
+        en: "Top teeth on lower lip; F is unvoiced, V is voiced.",
+        ja: "上の歯を下唇に当てて、proofの語末のFは無声音、proveのVは有声音です。",
+      },
+    },
     wordA: "proof",
     wordB: "prove",
   },
