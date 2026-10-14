@@ -7,29 +7,54 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
 import type { MinimalPair } from "@/types/training";
 
-import type {
-  BrowserSpeechRecognition,
-  BrowserSpeechRecognitionResultEvent,
-} from "./speechRecognitionTypes";
-import {
-  stopPronunciationCheckEvent,
-  useSentenceCheck,
-  type SentenceCheckResult,
-} from "./useSentenceCheck";
+declare global {
+  interface Window {
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitAudioContext?: typeof AudioContext;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  }
+}
 
 type QuizTarget = "A" | "B";
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  abort: () => void;
+  start: () => void;
+  onend: (() => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onnomatch: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionResultEvent) => void) | null;
+};
+
+type BrowserSpeechRecognitionErrorEvent = Event & {
+  error?: string;
+};
+
+type BrowserSpeechRecognitionResultEvent = Event & {
+  results: {
+    length: number;
+    [index: number]: {
+      isFinal: boolean;
+      length: number;
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+};
 
 type ActiveQuiz = {
   pairId: string;
   target: QuizTarget;
 } | null;
 
-type FeedbackType =
-  | "listen"
-  | "listening"
-  | "pronunciation"
-  | "tongueTwister"
-  | "tongueTwisterPlayback";
+type FeedbackType = "listen" | "listening" | "pronunciation" | "tongueTwister";
 type FeedbackTone = "neutral" | "success" | "error";
 
 type CardFeedback = {
@@ -40,17 +65,9 @@ type CardFeedback = {
   language: "en" | "ja";
 } | null;
 
-type CountdownState = {
-  kind: "pronunciation" | "tongueTwister";
-  phase: "prepare" | "answer";
-  remaining: number;
-} | null;
-
 type TrainerCopy = typeof trainerCopy.en;
 
-const prepareSeconds = 3;
-const pronunciationAnswerSeconds = 3;
-const tongueTwisterAnswerSeconds = 8;
+const stopPronunciationCheckEvent = "atlas:stop-pronunciation-check";
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -78,11 +95,6 @@ const trainerCopy = {
     tongueTwisterDescription:
       "Practice both sounds together inside one short sentence.",
     listenTongueTwister: "Listen to the sentence",
-    saySentence: "Say the sentence",
-    saySentencePrompt: "Say the whole sentence. Every word must be correct.",
-    sentenceCorrect: "Perfect. You said the whole sentence correctly.",
-    sentenceRetry: (heardText: string) =>
-      `Not 100% yet. Heard: "${heardText}". Try again.`,
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
     playing: (word: string) => `Playing: ${word}`,
@@ -93,7 +105,7 @@ const trainerCopy = {
       `Not quite. The answer was "${word}".`,
     pronunciationUnsupported:
       "Pronunciation check is not supported in this browser. Try Chrome or Edge.",
-    sayWord: (word: string) => `Say "${word}". Atlas will check what it hears.`,
+    sayWord: (word: string) => `Say "${word}". AI will check what it hears.`,
     pronunciationCorrect: (heardText: string) =>
       `Correct. Heard: "${heardText}"`,
     pronunciationRetry: (heardText: string, word: string) =>
@@ -102,11 +114,6 @@ const trainerCopy = {
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
-    getReady: "Get ready...",
-    speakNow: "Speak now",
-    secondsLeft: (seconds: number) => `${seconds}s`,
-    sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
-    saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -128,12 +135,6 @@ const trainerCopy = {
     tongueTwisterDescription:
       "学んだ2つの音を、ひとつの短い文の中で練習します。",
     listenTongueTwister: "文を聞く",
-    saySentence: "文を発音する",
-    saySentencePrompt:
-      "文全体を発音してください。すべての単語が正しい必要があります。",
-    sentenceCorrect: "完璧です。文全体を正しく発音できました。",
-    sentenceRetry: (heardText: string) =>
-      `まだ100%ではありません。聞こえた文: "${heardText}"。もう一度試してください。`,
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
@@ -144,7 +145,7 @@ const trainerCopy = {
     pronunciationUnsupported:
       "このブラウザでは発音チェックに対応していません。Chrome / Edgeで試してください。",
     sayWord: (word: string) =>
-      `「${word}」を発音してください。Atlasが聞き取った内容を判定します。`,
+      `「${word}」を発音してください。聞き取れたら判定します。`,
     pronunciationCorrect: (heardText: string) =>
       `正解です。聞こえた単語: "${heardText}"`,
     pronunciationRetry: (heardText: string, word: string) =>
@@ -154,23 +155,8 @@ const trainerCopy = {
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
       "発音チェックを開始できませんでした。もう一度試してください。",
-    getReady: "準備してください...",
-    speakNow: "今話してください",
-    secondsLeft: (seconds: number) => `${seconds}秒`,
-    sayAfterCountdown: (word: string) =>
-      `カウントダウン後に「${word}」を発音してください。`,
-    saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
   },
 };
-
-function isTouchDevice() {
-  return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
-}
-
-/**
- * Section wrapper for one minimal pair training set (e.g. R vs L).
- * Renders the heading and one PairPracticeCard per word pair.
- */
 
 export function MinimalPairTrainer({
   id,
@@ -219,18 +205,16 @@ export function MinimalPairTrainer({
   );
 }
 
-/**
- * One word pair with four practice steps:
- *   1. Listen: hear each word via speech synthesis.
- *   2. Listening test: hear a random word, pick A or B.
- *   3. Pronunciation test: say one word after a countdown; the first
- *      recognized word is compared to the target.
- *   4. Tongue twister: say a whole sentence after a countdown; judged by
- *      useSentenceCheck and must match 100%.
- *
- * Only one mic session runs at a time. Steps 3 and 4 share the countdown
- * state, and `isBusy` disables their buttons while either is active.
- */
+// Builds the public MP3 path for a word or tongue-twister audio file.
+// Files are stored under /public/{folder}/{soundFocus}/{filename}.mp3.
+// Example : /public/words/R vs L/alive.mp3
+function getPublicAudioPath(
+  folder: "words" | "twisters",
+  soundFocus: string,
+  filename: string,
+) {
+  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
+}
 
 function PairPracticeCard({
   copy,
@@ -248,79 +232,11 @@ function PairPracticeCard({
   const [cardFeedback, setCardFeedback] = useState<CardFeedback>(null);
   const speechRecognitionRunIdRef = useRef(0);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const stopRequestedRef = useRef(false);
-  const [countdown, setCountdown] = useState<CountdownState>(null);
-  const countdownRef = useRef<CountdownState>(null);
-  const countdownTimerRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const tongueTwister = getTongueTwister(pair);
-
-  function updateCountdown(next: CountdownState) {
-    countdownRef.current = next;
-    setCountdown(next);
-  }
-
-  function clearCountdown() {
-    if (countdownTimerRef.current !== null) {
-      window.clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-
-    updateCountdown(null);
-  }
-
-  // Runs the two-phase countdown shared by steps 3 and 4:
-  //   "prepare" (get ready ticks) -> begin() starts the mic -> "answer"
-  //   (speak window) -> endAnswer() asks the recognizer to stop and judge.
-  // Any countdown already running is cancelled first.
-  function startCountdown(
-    kind: NonNullable<CountdownState>["kind"],
-    answerSeconds: number,
-    begin: () => void,
-    endAnswer: () => void,
-  ) {
-    clearCountdown();
-
-    let phase: "prepare" | "answer" = "prepare";
-    let remaining = prepareSeconds;
-
-    updateCountdown({ kind, phase, remaining });
-    playCountdownTick();
-
-    countdownTimerRef.current = window.setInterval(() => {
-      remaining -= 1;
-
-      if (remaining > 0) {
-        updateCountdown({ kind, phase, remaining });
-
-        if (phase === "prepare") {
-          playCountdownTick();
-        }
-
-        return;
-      }
-
-      if (phase === "prepare") {
-        phase = "answer";
-        remaining = answerSeconds;
-        updateCountdown({ kind, phase, remaining });
-        playCountdownGo();
-        begin();
-        return;
-      }
-
-      clearCountdown();
-      endAnswer();
-    }, 1000);
-  }
 
   useEffect(() => {
     function stopRecognition() {
-      // Another check starting cancels a pending "get ready" countdown. The
-      // card's own countdown is already in its answer phase when it dispatches.
-      if (countdownRef.current?.phase === "prepare") {
-        clearCountdown();
-      }
-
       speechRecognitionRunIdRef.current += 1;
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
@@ -331,11 +247,9 @@ function PairPracticeCard({
 
     return () => {
       window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
-      clearCountdown();
       stopRecognition();
       window.speechSynthesis?.cancel();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function showFeedback(
@@ -364,80 +278,99 @@ function PairPracticeCard({
     return cardFeedback;
   }
 
-  function speak(word: string, feedbackType: FeedbackType = "listen") {
-    if (!("speechSynthesis" in window)) {
-      playIncorrectSound();
-      showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
-      return;
+  async function speak(
+    textToSpeak: string,
+    feedbackType: FeedbackType = "listen",
+    audioPath?: string,
+    showPlayingFeedback = true,
+  ) {
+    // Stop currently playing MP3
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
 
+    // Stop browser TTS
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Try MP3 first
+    if (audioPath) {
+      const audio = new Audio(audioPath);
+      let fellBack = false;
+
+      const fallbackToTts = () => {
+        if (fellBack) return;
+        fellBack = true;
+
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
+      };
+
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+      };
+
+      audio.onerror = fallbackToTts;
+
+      if (showPlayingFeedback) {
+        showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+      }
+
+      try {
+        await audio.play();
+        return;
+      } catch {
+        fallbackToTts();
+        return;
+      }
+    }
+
+    // No MP3 path supplied
+    speakWithTts(textToSpeak, feedbackType, showPlayingFeedback);
+  }
+
+  function speakWithTts(
+    textToSpeak: string,
+    feedbackType: FeedbackType,
+    showPlayingFeedback = true,
+  ) {
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(word);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "en-US";
     utterance.rate = 0.85;
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    showFeedback(feedbackType, "neutral", copy.playing(word));
-  }
 
-  // Tongue twister "say the sentence" check. Kept separate from the
-  // single-word pronunciation test above (see useSentenceCheck.ts).
-  function handleSentenceResult(result: SentenceCheckResult) {
-    switch (result.status) {
-      case "listening":
-        showFeedback("tongueTwister", "neutral", copy.saySentencePrompt);
-        return;
-      case "correct":
-        playCorrectSound();
-        showFeedback("tongueTwister", "success", copy.sentenceCorrect);
-        return;
-      case "incorrect":
-        playIncorrectSound();
-        showFeedback(
-          "tongueTwister",
-          "error",
-          copy.sentenceRetry(result.heardText),
-        );
-        return;
-      case "unsupported":
-        playIncorrectSound();
-        showFeedback("tongueTwister", "error", copy.pronunciationUnsupported);
-        return;
-      case "failedToStart":
-        playIncorrectSound();
-        showFeedback("tongueTwister", "error", copy.checkCouldNotStart);
-        return;
-      case "nothingHeard":
-        playIncorrectSound();
-        showFeedback("tongueTwister", "error", copy.couldNotHear);
-        return;
+    if (showPlayingFeedback) {
+      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
     }
   }
-
-  const sentenceCheck = useSentenceCheck(handleSentenceResult);
-
-  const isChecking =
-    countdown?.kind === "tongueTwister"
-      ? sentenceCheck.isListening
-      : Boolean(aiCheckTarget);
-
-  // The answer countdown ends as soon as the recognizer finishes or fails.
-  useEffect(() => {
-    if (countdown?.phase === "answer" && !isChecking) {
-      clearCountdown();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countdown, isChecking]);
 
   function startQuiz() {
     const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word);
     showFeedback("listening", "neutral", copy.whichWord);
+
+    void speak(
+      word,
+      "listening",
+      getPublicAudioPath("words", pair.soundFocus, word),
+      false,
+    );
   }
 
   function answerQuiz(answer: QuizTarget) {
@@ -459,32 +392,6 @@ function PairPracticeCard({
     setActiveQuiz(null);
   }
 
-  const isBusy =
-    countdown !== null || sentenceCheck.isListening || Boolean(aiCheckTarget);
-
-  function startPronunciationTest(target: QuizTarget) {
-    window.speechSynthesis?.cancel();
-    showFeedback(
-      "pronunciation",
-      "neutral",
-      copy.sayAfterCountdown(target === "A" ? pair.wordA : pair.wordB),
-    );
-    startCountdown(
-      "pronunciation",
-      pronunciationAnswerSeconds,
-      () => startAiPronunciationCheck(target),
-      () => {
-        stopRequestedRef.current = true;
-        speechRecognitionRef.current?.stop();
-      },
-    );
-  }
-
-  // Single-word recognition for step 3. Listens continuously during the
-  // answer window, restarting if the browser ends the session early, and
-  // judges only the first recognized word when the countdown calls stop().
-  // Note: this duplicates the recognizer loop in useSentenceCheck.ts; the
-  // difference is first-word-only matching instead of whole-sentence matching.
   function startAiPronunciationCheck(target: QuizTarget) {
     const word = target === "A" ? pair.wordA : pair.wordB;
     const SpeechRecognitionConstructor =
@@ -502,12 +409,11 @@ function PairPracticeCard({
     const recognitionRunId = speechRecognitionRunIdRef.current + 1;
 
     recognition.lang = "en-US";
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     speechRecognitionRunIdRef.current = recognitionRunId;
     speechRecognitionRef.current = recognition;
-    stopRequestedRef.current = false;
     setAiCheckTarget(word);
     showFeedback("pronunciation", "neutral", copy.sayWord(word));
 
@@ -517,34 +423,33 @@ function PairPracticeCard({
       return normalized.split(" ")[0] ?? "";
     }
 
-    let finished = false;
-    // Transcripts from earlier recognizer sessions, plus the current one.
-    let collected: string[] = [];
-    let sessionTranscripts: string[] = [];
-
-    function evaluate() {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId || finished) {
+    recognition.onresult = (event) => {
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
         return;
       }
 
-      finished = true;
-      setAiCheckTarget(null);
-      speechRecognitionRef.current = null;
+      // Stop recording immediately once we have a result.
+      // recognition.abort();
+
+      const transcripts = getSpeechRecognitionTranscripts(event);
+      const heardText = transcripts[0] ?? "";
 
       // Speech recognition may return something like:
       // "Road Hello. Hello, hello."
       // Only use the first recognized word.
-      const heardWord = getFirstRecognizedWord(
-        [...collected, ...sessionTranscripts].join(" "),
-      );
+      const heardWord = getFirstRecognizedWord(heardText);
 
       if (!heardWord) {
         playIncorrectSound();
         showFeedback("pronunciation", "error", copy.couldNotHear);
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
         return;
       }
 
-      if (transcriptMatchesWord(heardWord, word)) {
+      const isCorrect = transcriptMatchesWord(heardWord, word);
+
+      if (isCorrect) {
         playCorrectSound();
         showFeedback(
           "pronunciation",
@@ -559,59 +464,37 @@ function PairPracticeCard({
           copy.pronunciationRetry(heardWord, word),
         );
       }
-    }
 
-    // Results only accumulate; the answer is judged when the countdown ends.
-    recognition.onresult = (event) => {
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.onerror = () => {
       if (speechRecognitionRunIdRef.current !== recognitionRunId) {
         return;
       }
 
-      const transcripts: string[] = [];
-
-      for (let index = 0; index < event.results.length; index += 1) {
-        const transcript = event.results[index]?.[0]?.transcript.trim();
-
-        if (transcript) {
-          transcripts.push(transcript);
-        }
-      }
-
-      sessionTranscripts = transcripts;
-    };
-
-    recognition.onerror = (event) => {
-      // Silence or a dropped session is not the end; onend restarts listening.
-      if (event.error === "no-speech" || event.error === "aborted") {
-        return;
-      }
-
-      evaluate();
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.couldNotHear);
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
     };
 
     recognition.onnomatch = () => {
-      // Keep listening; the countdown decides when the answer is judged.
+      if (speechRecognitionRunIdRef.current !== recognitionRunId) {
+        return;
+      }
+
+      playIncorrectSound();
+      showFeedback("pronunciation", "error", copy.couldNotRecognize(word));
+      setAiCheckTarget(null);
+      speechRecognitionRef.current = null;
     };
 
     recognition.onend = () => {
-      if (speechRecognitionRunIdRef.current !== recognitionRunId || finished) {
-        return;
-      }
-
-      if (stopRequestedRef.current) {
-        evaluate();
-        return;
-      }
-
-      // The browser ended the session early (e.g. the user paused). Keep
-      // listening until the countdown asks us to stop.
-      collected = [...collected, ...sessionTranscripts];
-      sessionTranscripts = [];
-
-      try {
-        recognition.start();
-      } catch {
-        evaluate();
+      if (speechRecognitionRunIdRef.current === recognitionRunId) {
+        setAiCheckTarget(null);
+        speechRecognitionRef.current = null;
       }
     };
 
@@ -628,9 +511,6 @@ function PairPracticeCard({
       speechRecognitionRef.current = null;
     }
   }
-
-  const playbackFeedback = getFeedback("tongueTwisterPlayback");
-  const answerFeedback = getFeedback("tongueTwister");
 
   return (
     <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
@@ -652,10 +532,27 @@ function PairPracticeCard({
           description={copy.listenDescription(pair.wordA, pair.wordB)}
           feedback={getFeedback("listen")}
         >
-          <ActionButton onClick={() => speak(pair.wordA)}>
+          <ActionButton
+            onClick={() =>
+              speak(
+                pair.wordA,
+                "listen",
+                getPublicAudioPath("words", pair.soundFocus, pair.wordA),
+              )
+            }
+          >
             {copy.listen(pair.wordA)}
           </ActionButton>
-          <ActionButton onClick={() => speak(pair.wordB)}>
+
+          <ActionButton
+            onClick={() =>
+              speak(
+                pair.wordB,
+                "listen",
+                getPublicAudioPath("words", pair.soundFocus, pair.wordB),
+              )
+            }
+          >
             {copy.listen(pair.wordB)}
           </ActionButton>
         </TestGroup>
@@ -688,24 +585,19 @@ function PairPracticeCard({
         >
           <ActionButton
             intent="primary"
-            disabled={isBusy}
-            onClick={() => startPronunciationTest("A")}
+            disabled={Boolean(aiCheckTarget)}
+            onClick={() => startAiPronunciationCheck("A")}
           >
             {copy.speak(pair.wordA)}
           </ActionButton>
           <ActionButton
             intent="primary"
-            disabled={isBusy}
-            onClick={() => startPronunciationTest("B")}
+            disabled={Boolean(aiCheckTarget)}
+            onClick={() => startAiPronunciationCheck("B")}
           >
             {copy.speak(pair.wordB)}
           </ActionButton>
-          <CountdownDisplay
-            copy={copy}
-            countdown={countdown}
-            kind="pronunciation"
-          />
-          {aiCheckTarget && !isTouchDevice() ? <MicLevelMeter /> : null}
+          {aiCheckTarget ? <MicLevelMeter /> : null}
         </TestGroup>
 
         <TestGroup
@@ -713,7 +605,7 @@ function PairPracticeCard({
           title={copy.tongueTwisterTitle}
           description={copy.tongueTwisterDescription}
           actionsClassName="grid gap-3"
-          feedback={null}
+          feedback={getFeedback("tongueTwister")}
         >
           <div className="border border-white/10 bg-black px-4 py-3">
             <p className="text-lg font-semibold leading-8 text-white">
@@ -724,44 +616,16 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
-            onClick={() => speak(tongueTwister.text, "tongueTwisterPlayback")}
+            onClick={() =>
+              speak(
+                tongueTwister.text,
+                "tongueTwister",
+                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+              )
+            }
           >
             {copy.listenTongueTwister}
           </ActionButton>
-          {playbackFeedback ? (
-            <FeedbackMessage feedback={playbackFeedback} />
-          ) : null}
-          <ActionButton
-            intent="primary"
-            disabled={isBusy}
-            onClick={() => {
-              window.speechSynthesis?.cancel();
-              showFeedback(
-                "tongueTwister",
-                "neutral",
-                copy.saySentenceAfterCountdown,
-              );
-              startCountdown(
-                "tongueTwister",
-                tongueTwisterAnswerSeconds,
-                () => sentenceCheck.start(tongueTwister.text),
-                () => sentenceCheck.finishListening(),
-              );
-            }}
-          >
-            {copy.saySentence}
-          </ActionButton>
-          <CountdownDisplay
-            copy={copy}
-            countdown={countdown}
-            kind="tongueTwister"
-          />
-          {sentenceCheck.isListening && !isTouchDevice() ? (
-            <MicLevelMeter />
-          ) : null}
-          {answerFeedback ? (
-            <FeedbackMessage feedback={answerFeedback} />
-          ) : null}
         </TestGroup>
       </div>
     </article>
@@ -834,103 +698,8 @@ function getTongueTwister(pair: MinimalPair) {
   };
 }
 
-// Shows the big "get ready" number, then a "speak now" timer bar.
-// Renders only for the step whose countdown is active (`kind`).
-function CountdownDisplay({
-  copy,
-  countdown,
-  kind,
-}: {
-  copy: TrainerCopy;
-  countdown: CountdownState;
-  kind: NonNullable<CountdownState>["kind"];
-}) {
-  if (!countdown || countdown.kind !== kind) {
-    return null;
-  }
-
-  const isPrepare = countdown.phase === "prepare";
-  const totalSeconds = isPrepare
-    ? prepareSeconds
-    : kind === "tongueTwister"
-      ? tongueTwisterAnswerSeconds
-      : pronunciationAnswerSeconds;
-
-  if (isPrepare) {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        className="col-span-full flex flex-col items-center justify-center gap-2 border border-white/10 bg-black px-4 py-5"
-      >
-        <p className="text-xs uppercase tracking-[0.3em] text-white/50">
-          {copy.getReady}
-        </p>
-        <p className="text-5xl font-bold leading-none tabular-nums text-white">
-          {countdown.remaining}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="col-span-full space-y-2">
-      <div
-        role="status"
-        aria-live="polite"
-        className="flex items-center justify-between text-sm"
-      >
-        <span className="text-white/70">{copy.speakNow}</span>
-        <span className="font-semibold tabular-nums text-white">
-          {copy.secondsLeft(countdown.remaining)}
-        </span>
-      </div>
-      <CountdownBar key={countdown.phase} seconds={totalSeconds} highlight />
-    </div>
-  );
-}
-
-// Drains from full to empty over `seconds`; remount (via key) to restart.
-function CountdownBar({
-  seconds,
-  highlight,
-}: {
-  seconds: number;
-  highlight: boolean;
-}) {
-  const [started, setStarted] = useState(false);
-
-  useEffect(() => {
-    const frameId = requestAnimationFrame(() => setStarted(true));
-
-    return () => cancelAnimationFrame(frameId);
-  }, []);
-
-  return (
-    <div
-      aria-hidden="true"
-      className="h-1.5 w-full overflow-hidden border border-white/10"
-    >
-      <div
-        className={`h-full ${highlight ? "bg-white" : "bg-white/40"}`}
-        style={{
-          width: started ? "0%" : "100%",
-          transition: `width ${seconds}s linear`,
-        }}
-      />
-    </div>
-  );
-}
-
 const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
 
-/**
- * Animated 5-bar mic level indicator shown while recording.
- * Opens its own getUserMedia stream and reads volume (RMS) through an
- * AnalyserNode, updating bar heights directly via refs to avoid re-renders.
- * Purely visual: if mic access fails, recognition still works.
- * Hidden on touch devices, where a second mic stream can conflict with speech recognition.
- */
 function MicLevelMeter() {
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
@@ -1175,39 +944,6 @@ function playCorrectSound() {
 
   playTone(audioContext, 660, 0, 0.12, "sine");
   playTone(audioContext, 880, 0.13, 0.16, "sine");
-}
-
-let countdownAudioContext: AudioContext | null = null;
-
-// Shared context so the per-second ticks don't open a new one each time.
-function getCountdownAudioContext() {
-  if (!countdownAudioContext || countdownAudioContext.state === "closed") {
-    countdownAudioContext = createAudioContext();
-  }
-
-  if (countdownAudioContext?.state === "suspended") {
-    void countdownAudioContext.resume();
-  }
-
-  return countdownAudioContext;
-}
-
-// Short, soft tick for each "get ready" second.
-function playCountdownTick() {
-  const audioContext = getCountdownAudioContext();
-
-  if (audioContext) {
-    playTone(audioContext, 660, 0, 0.09, "sine");
-  }
-}
-
-// Higher, slightly longer beep when it's time to speak.
-function playCountdownGo() {
-  const audioContext = getCountdownAudioContext();
-
-  if (audioContext) {
-    playTone(audioContext, 1320, 0, 0.2, "sine");
-  }
 }
 
 function playIncorrectSound() {

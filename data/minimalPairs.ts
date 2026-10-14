@@ -793,115 +793,260 @@ export const shortIVsLongEPairs: MinimalPair[] = [
   {
     id: "sit-seat",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Sit on the red seat, please sit.",
+      note: {
+        en: "Relax your mouth for sit. Smile wide for seat.",
+        ja: "sitは口をリラックスして、seatは口を横に大きく引いて言います。",
+      },
+    },
     wordA: "sit",
     wordB: "seat",
   },
   {
     id: "ship-sheep",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "The sheep on the ship sailed the sea.",
+      note: {
+        en: "Relax your tongue for ship. Smile wide and pull it up for sheep.",
+        ja: "shipは舌の力を抜き、sheepは口を横に引いて舌を持ち上げます。",
+      },
+    },
     wordA: "ship",
     wordB: "sheep",
   },
   {
     id: "bit-beat",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "A bug bit the boy, the boy beat the bug.",
+      note: {
+        en: "Keep bit short and bouncy. Stretch your smile out for beat.",
+        ja: "bitは短く弾むように、beatは笑顔を横に伸ばして言います。",
+      },
+    },
     wordA: "bit",
     wordB: "beat",
   },
   {
     id: "live-leave",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Do not leave the place you live.",
+      note: {
+        en: "Drop your jaw slightly for live. Smile big for leave.",
+        ja: "liveはあごを少し下げ、leaveは大きく笑顔で言います。",
+      },
+    },
     wordA: "live",
     wordB: "leave",
   },
   {
     id: "fit-feet",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "These red shoes fit my feet, they fit both feet!",
+      note: {
+        en: "Relax for fit. Stretch a wide smile for feet.",
+        ja: "fitは力を抜き、feetは口を横に大きく引いて言います。",
+      },
+    },
     wordA: "fit",
     wordB: "feet",
   },
   {
     id: "mitt-meet",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "I will meet the man with the mitt.",
+      note: {
+        en: "Keep mitt quick and short. Smile big to say meet.",
+        ja: "mittは短く素早く、meetは大きく笑顔で言います。",
+      },
+    },
     wordA: "mitt",
     wordB: "meet",
   },
   {
     id: "rid-read",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Do not get rid of it till you read it.",
+      note: {
+        en: "Make rid short. Smile and hold the sound for read.",
+        ja: "ridは短く、readは笑顔で音を伸ばします。",
+      },
+    },
     wordA: "rid",
     wordB: "read",
   },
   {
     id: "fill-feel",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Fill the glass so you feel full.",
+      note: {
+        en: "Relax your lips for fill. Smile wide to say feel.",
+        ja: "fillは唇の力を抜き、feelは口を横に広げて言います。",
+      },
+    },
     wordA: "fill",
     wordB: "feel",
   },
   {
     id: "hill-heal",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "He will heal the man on the hill.",
+      note: {
+        en: "Drop your chin slightly for hill. Smile wide for heal.",
+        ja: "hillはあごを少し下げ、healは口を横に広げて言います。",
+      },
+    },
     wordA: "hill",
     wordB: "heal",
   },
   {
     id: "still-steel",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Stand still near the strong steel gate.",
+      note: {
+        en: "Keep still quick and relaxed. Stretch your smile for steel.",
+        ja: "stillは短くリラックスして、steelは笑顔を伸ばして言います。",
+      },
+    },
     wordA: "still",
     wordB: "steel",
   },
   {
     id: "slip-sleep",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "The sheep will slip, then the sheep will sleep.",
+      note: {
+        en: "Relax your mouth for slip. Make a wide smile for sleep.",
+        ja: "slipは口の力を抜き、sleepは口を横に広げて言います。",
+      },
+    },
     wordA: "slip",
     wordB: "sleep",
   },
   {
     id: "chip-cheap",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "The cheap cup has a small chip.",
+      note: {
+        en: "Keep chip short. Stretch a big smile for cheap.",
+        ja: "chipは短く、cheapは大きく笑顔を伸ばして言います。",
+      },
+    },
     wordA: "chip",
     wordB: "cheap",
   },
   {
     id: "grin-green",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "He had a green shin with a big grin.",
+      note: {
+        en: "Relax your mouth for grin. Smile bright for green.",
+        ja: "grinは口の力を抜き、greenは明るく笑顔で言います。",
+      },
+    },
     wordA: "grin",
     wordB: "green",
   },
   {
     id: "lick-leak",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Do not lick the water from the leak.",
+      note: {
+        en: "Make lick very quick. Smile wide and stretch leak.",
+        ja: "lickはとても短く、leakは口を横に広げて伸ばします。",
+      },
+    },
     wordA: "lick",
     wordB: "leak",
   },
   {
     id: "pick-peak",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Pick a berry at the peak of the hill.",
+      note: {
+        en: "Keep pick short. Smile big for the peak.",
+        ja: "pickは短く、peakは大きく笑顔で言います。",
+      },
+    },
     wordA: "pick",
     wordB: "peak",
   },
   {
     id: "dip-deep",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Take a deep breath and dip your toe.",
+      note: {
+        en: "Drop your jaw slightly for dip. Smile wide for deep.",
+        ja: "dipはあごを少し下げ、deepは口を横に広げて言います。",
+      },
+    },
     wordA: "dip",
     wordB: "deep",
   },
   {
     id: "mill-meal",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "We had a big meal at the old mill.",
+      note: {
+        en: "Keep mill short and relaxed. Smile to say meal.",
+        ja: "millは短くリラックスして、mealは笑顔で言います。",
+      },
+    },
     wordA: "mill",
     wordB: "meal",
   },
   {
     id: "sin-seen",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "It is a sin to be seen there.",
+      note: {
+        en: "Relax for sin. Stretch a wide smile for seen.",
+        ja: "sinは力を抜き、seenは口を横に大きく引いて言います。",
+      },
+    },
     wordA: "sin",
     wordB: "seen",
   },
-  { id: "it-eat", soundFocus: "Short I vs Long E", wordA: "it", wordB: "eat" },
+  {
+    id: "it-eat",
+    soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "See it, eat it hot or eat it cold",
+      note: {
+        en: "Make it very short. Smile big to say eat.",
+        ja: "itはとても短く、eatは大きく笑顔で言います。",
+      },
+    },
+    wordA: "it",
+    wordB: "eat",
+  },
   {
     id: "hit-heat",
     soundFocus: "Short I vs Long E",
+    tongueTwister: {
+      text: "Do not hit the glass in the heat.",
+      note: {
+        en: "Keep hit quick. Smile wide to make the heat sound.",
+        ja: "hitは素早く、heatは口を横に広げて言います。",
+      },
+    },
     wordA: "hit",
     wordB: "heat",
   },
