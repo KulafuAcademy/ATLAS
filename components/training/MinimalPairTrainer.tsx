@@ -51,6 +51,7 @@ type TrainerCopy = typeof trainerCopy.en;
 const prepareSeconds = 3;
 const pronunciationAnswerSeconds = 3;
 const tongueTwisterAnswerSeconds = 8;
+const slowPlaybackRate = 0.75;
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -85,6 +86,9 @@ const trainerCopy = {
       `Not 100% yet. Heard: "${heardText}". Try again.`,
     speechPlaybackUnsupported:
       "Speech playback is not supported in this browser.",
+    speedLabel: "Playback speed",
+    speedNormal: "Normal",
+    speedSlow: "Slow (0.75x)",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
     playQuizFirst: "Play quiz, listen, then choose.",
@@ -135,6 +139,9 @@ const trainerCopy = {
     sentenceRetry: (heardText: string) =>
       `まだ100%ではありません。聞こえた文: "${heardText}"。もう一度試してください。`,
     speechPlaybackUnsupported: "このブラウザでは音声再生に対応していません。",
+    speedLabel: "再生速度",
+    speedNormal: "通常",
+    speedSlow: "ゆっくり (0.75倍)",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
     playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
@@ -219,9 +226,21 @@ export function MinimalPairTrainer({
   );
 }
 
+// Builds the public MP3 path for a word or tongue-twister audio file.
+// Files are fetched under /public/(folder)/(soundFocus)/(filename).mp3
+// Example: /public/words/R vs L/alive.mp3
+function getPublicAudioPath(
+  folder: "words" | "twisters",
+  soundFocus: string,
+  filename: string,
+) {
+  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
+}
+
 /**
  * One word pair with four practice steps:
- *   1. Listen: hear each word via speech synthesis.
+ *   1. Listen: hear each word (recorded MP3 if available, else speech
+ *      synthesis).
  *   2. Listening test: hear a random word, pick A or B.
  *   3. Pronunciation test: say one word after a countdown; the first
  *      recognized word is compared to the target.
@@ -252,6 +271,10 @@ function PairPracticeCard({
   const [countdown, setCountdown] = useState<CountdownState>(null);
   const countdownRef = useRef<CountdownState>(null);
   const countdownTimerRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Separate speed settings: words (steps 1-2) and the tongue twister (step 4).
+  const [wordSlow, setWordSlow] = useState(false);
+  const [twisterSlow, setTwisterSlow] = useState(false);
   const tongueTwister = getTongueTwister(pair);
 
   function updateCountdown(next: CountdownState) {
@@ -333,6 +356,8 @@ function PairPracticeCard({
       window.removeEventListener(stopPronunciationCheckEvent, stopRecognition);
       clearCountdown();
       stopRecognition();
+      audioRef.current?.pause();
+      audioRef.current = null;
       window.speechSynthesis?.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,7 +389,74 @@ function PairPracticeCard({
     return cardFeedback;
   }
 
-  function speak(word: string, feedbackType: FeedbackType = "listen") {
+  // Plays the recorded MP3 at `audioPath` when it exists, otherwise falls
+  // back to browser speech synthesis.
+  async function speak(
+    textToSpeak: string,
+    feedbackType: FeedbackType = "listen",
+    audioPath?: string,
+    showPlayingFeedback = true,
+    slow = false,
+  ) {
+    // Stop any MP3 or speech that is already playing.
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    if (audioPath) {
+      const audio = new Audio(audioPath);
+      let fellBack = false;
+
+      const fallbackToTts = () => {
+        if (fellBack) return;
+        fellBack = true;
+
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+
+        speakWithTts(textToSpeak, feedbackType, showPlayingFeedback, slow);
+      };
+
+      // MP3 files in the public folder are recorded at normal speed.
+      audio.playbackRate = slow ? slowPlaybackRate : 1;
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        if (audioRef.current === audio) {
+          audioRef.current = null;
+        }
+      };
+      audio.onerror = fallbackToTts;
+
+      if (showPlayingFeedback) {
+        showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+      }
+
+      try {
+        await audio.play();
+      } catch {
+        fallbackToTts();
+      }
+
+      return;
+    }
+
+    speakWithTts(textToSpeak, feedbackType, showPlayingFeedback, slow);
+  }
+
+  function speakWithTts(
+    textToSpeak: string,
+    feedbackType: FeedbackType,
+    showPlayingFeedback = true,
+    slow = false,
+  ) {
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
       showFeedback(feedbackType, "error", copy.speechPlaybackUnsupported);
@@ -373,13 +465,16 @@ function PairPracticeCard({
 
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(word);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "en-US";
-    utterance.rate = 0.85;
+    utterance.rate = slow ? 0.85 * slowPlaybackRate : 0.85;
     utterance.pitch = 1;
 
     window.speechSynthesis.speak(utterance);
-    showFeedback(feedbackType, "neutral", copy.playing(word));
+
+    if (showPlayingFeedback) {
+      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+    }
   }
 
   // Tongue twister "say the sentence" check. Kept separate from the
@@ -436,8 +531,14 @@ function PairPracticeCard({
     const word = target === "A" ? pair.wordA : pair.wordB;
 
     setActiveQuiz({ pairId: pair.id, target });
-    speak(word);
     showFeedback("listening", "neutral", copy.whichWord);
+    void speak(
+      word,
+      "listening",
+      getPublicAudioPath("words", pair.soundFocus, word),
+      false,
+      wordSlow,
+    );
   }
 
   function answerQuiz(answer: QuizTarget) {
@@ -646,18 +747,33 @@ function PairPracticeCard({
       </div>
 
       <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
+        <SpeedToggle
+          copy={copy}
+          slow={wordSlow}
+          onToggle={() => setWordSlow((value) => !value)}
+        />
         <TestGroup
           step="1"
           title={copy.listenTitle}
           description={copy.listenDescription(pair.wordA, pair.wordB)}
           feedback={getFeedback("listen")}
         >
-          <ActionButton onClick={() => speak(pair.wordA)}>
-            {copy.listen(pair.wordA)}
-          </ActionButton>
-          <ActionButton onClick={() => speak(pair.wordB)}>
-            {copy.listen(pair.wordB)}
-          </ActionButton>
+          {[pair.wordA, pair.wordB].map((word) => (
+            <ActionButton
+              key={word}
+              onClick={() =>
+                void speak(
+                  word,
+                  "listen",
+                  getPublicAudioPath("words", pair.soundFocus, word),
+                  true,
+                  wordSlow,
+                )
+              }
+            >
+              {copy.listen(word)}
+            </ActionButton>
+          ))}
         </TestGroup>
 
         <TestGroup
@@ -708,6 +824,11 @@ function PairPracticeCard({
           {aiCheckTarget && !isTouchDevice() ? <MicLevelMeter /> : null}
         </TestGroup>
 
+        <SpeedToggle
+          copy={copy}
+          slow={twisterSlow}
+          onToggle={() => setTwisterSlow((value) => !value)}
+        />
         <TestGroup
           step="4"
           title={copy.tongueTwisterTitle}
@@ -724,7 +845,15 @@ function PairPracticeCard({
             </p>
           </div>
           <ActionButton
-            onClick={() => speak(tongueTwister.text, "tongueTwisterPlayback")}
+            onClick={() =>
+              void speak(
+                tongueTwister.text,
+                "tongueTwisterPlayback",
+                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+                true,
+                twisterSlow,
+              )
+            }
           >
             {copy.listenTongueTwister}
           </ActionButton>
@@ -1021,6 +1150,44 @@ function MicLevelMeter() {
           style={{ transform: "scaleY(0.12)" }}
         />
       ))}
+    </div>
+  );
+}
+
+function SpeedToggle({
+  copy,
+  slow,
+  onToggle,
+}: {
+  copy: TrainerCopy;
+  slow: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm text-white/50">
+      <span>{copy.speedLabel}</span>
+      <div className="flex items-center gap-3">
+        <span className="font-semibold text-white">
+          {slow ? copy.speedSlow : copy.speedNormal}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={slow}
+          aria-label={copy.speedLabel}
+          onClick={onToggle}
+          className={`relative h-8 w-14 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+            slow ? "bg-[#3498db]" : "bg-white/20"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-[#ecf0f1] transition-transform ${
+              slow ? "translate-x-6" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
