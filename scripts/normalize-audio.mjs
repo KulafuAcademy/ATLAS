@@ -8,7 +8,7 @@ import { readdirSync, renameSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOTS = ["public/words", "public/twisters"];
-const TARGET_LUFS = -16;
+const TARGET_LUFS = -20;
 const TRUE_PEAK = -1.5;
 const LRA = 11;
 const TAG = `normalized-${TARGET_LUFS}LUFS`;
