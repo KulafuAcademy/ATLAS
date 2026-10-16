@@ -1502,7 +1502,7 @@ export const finalConsonantPairs: MinimalPair[] = [
     id: "hit-hid",
     soundFocus: "Final consonants",
     tongueTwister: {
-      text: "She hit the ball then hid by the tree.",
+      text: "She hit the ball then hid behind the tree.",
       note: {
         en: "Tap behind top teeth; T is unvoiced, D is voiced.",
         ja: "上の歯の裏を舌ではじいて、hitの語末のTは無声音、hidのDは有声音です。",
