@@ -226,10 +226,8 @@ export function useSentenceCheck(
     function evaluate() {
       const heardText = `${collectedText} ${sessionText}`.trim();
 
-      // Debug: raw recognizer output vs. what the check actually compares.
-      console.log("[SentenceCheck] heard:", heardText);
-      console.log("[SentenceCheck] normalized heard:", normalizeSentence(heardText));
-      console.log("[SentenceCheck] normalized target:", normalizeSentence(targetSentence));
+      // Debug: the user's sentence exactly as the recognizer returned it.
+      console.log("[SentenceCheck] before normalization:", heardText);
 
       if (!normalizeSentence(heardText)) {
         finish({ status: "nothingHeard" });
