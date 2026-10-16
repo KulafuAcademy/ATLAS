@@ -605,7 +605,7 @@ function PairPracticeCard({
     recognition.lang = "en-US";
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives = 3;
     speechRecognitionRunIdRef.current = recognitionRunId;
     speechRecognitionRef.current = recognition;
     stopRequestedRef.current = false;
@@ -620,8 +620,9 @@ function PairPracticeCard({
 
     let finished = false;
     // Transcripts from earlier recognizer sessions, plus the current one.
-    let collected: string[] = [];
-    let sessionTranscripts: string[] = [];
+    // Each entry is one recognized phrase with its alternatives (best first).
+    let collected: string[][] = [];
+    let sessionTranscripts: string[][] = [];
 
     function evaluate() {
       if (speechRecognitionRunIdRef.current !== recognitionRunId || finished) {
@@ -635,9 +636,19 @@ function PairPracticeCard({
       // Speech recognition may return something like:
       // "Road Hello. Hello, hello."
       // Only use the first recognized word.
-      const heardWord = getFirstRecognizedWord(
-        [...collected, ...sessionTranscripts].join(" "),
-      );
+      const firstPhrase = [...collected, ...sessionTranscripts][0] ?? [];
+      const possibleWords = firstPhrase
+        .map(getFirstRecognizedWord)
+        .filter(Boolean);
+
+      console.log("Possible words heard:", possibleWords, "target:", word);
+
+      // If any alternative is the target word, count it as correct.
+      const heardWord = possibleWords.some((candidate) =>
+        transcriptMatchesWord(candidate, word),
+      )
+        ? word
+        : (possibleWords[0] ?? "");
 
       if (!heardWord) {
         playIncorrectSound();
@@ -668,17 +679,26 @@ function PairPracticeCard({
         return;
       }
 
-      const transcripts: string[] = [];
+      const phrases: string[][] = [];
 
       for (let index = 0; index < event.results.length; index += 1) {
-        const transcript = event.results[index]?.[0]?.transcript.trim();
+        const result = event.results[index];
+        const alternatives: string[] = [];
 
-        if (transcript) {
-          transcripts.push(transcript);
+        for (let alt = 0; alt < (result?.length ?? 0); alt += 1) {
+          const transcript = result[alt]?.transcript.trim();
+
+          if (transcript) {
+            alternatives.push(transcript);
+          }
+        }
+
+        if (alternatives.length > 0) {
+          phrases.push(alternatives);
         }
       }
 
-      sessionTranscripts = transcripts;
+      sessionTranscripts = phrases;
     };
 
     recognition.onerror = (event) => {
