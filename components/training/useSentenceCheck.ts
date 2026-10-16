@@ -23,24 +23,133 @@ export type SentenceCheckResult =
   | { status: "correct"; heardText: string }
   | { status: "incorrect"; heardText: string };
 
+const smallNumberWords = [
+  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
+  "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+  "sixteen", "seventeen", "eighteen", "nineteen",
+];
+const tensWords = [
+  "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty",
+  "ninety",
+];
+
 /**
- * Normalizes text so that "Right by the light, read it right!" and
- * "right by the light read it right" compare equal.
+ * Spells out a non-negative integer ("7" -> "seven", "42" -> "forty two").
+ * Speech recognizers return digits for numbers, but lesson text uses words.
+ */
+function numberToWords(value: number): string {
+  if (value < 20) {
+    return smallNumberWords[value];
+  }
+
+  if (value < 100) {
+    const ones = value % 10;
+
+    return ones ? `${tensWords[Math.floor(value / 10)]} ${smallNumberWords[ones]}` : tensWords[Math.floor(value / 10)];
+  }
+
+  if (value < 1000) {
+    const rest = value % 100;
+    const head = `${smallNumberWords[Math.floor(value / 100)]} hundred`;
+
+    return rest ? `${head} ${numberToWords(rest)}` : head;
+  }
+
+  if (value < 1_000_000) {
+    const rest = value % 1000;
+    const head = `${numberToWords(Math.floor(value / 1000))} thousand`;
+
+    return rest ? `${head} ${numberToWords(rest)}` : head;
+  }
+
+  // Too large to be spoken in a lesson; fall back to digit-by-digit.
+  return String(value).split("").map((digit) => smallNumberWords[Number(digit)]).join(" ");
+}
+
+/**
+ * Normalizes text into comparable word tokens so that these all line up:
+ * - case and punctuation: "Right by the light!" == "right by the light"
+ * - digits vs. words:     "7" == "seven"
+ * - acronym-style output: "V.A.T." -> "v a t" (re-joined by tokensMatch)
  */
 export function normalizeSentence(value: string) {
   return value
     .toLowerCase()
     .replace(/['’]/g, "")
+    // "1,000" -> "1000" so the comma doesn't split the number.
+    .replace(/(\d),(?=\d{3}\b)/g, "$1")
+    // Spell out every run of digits.
+    .replace(/\d+/g, (digits) => ` ${numberToWords(Number(digits))} `)
     .replace(/[^a-z\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/** 100% match: every word must be present, in order, with nothing extra. */
+/** Longest run of adjacent tokens that may be glued into one word. */
+const maxJoinedTokens = 4;
+
+/**
+ * Word-level comparison that tolerates spacing differences. The recognizer
+ * and the lesson text often disagree on where words break ("sunrise" vs
+ * "sun rise", "VAT" vs "v a t"). At each position we accept either an exact
+ * token match, or a run of tokens on one side whose concatenation equals a
+ * token (or run) on the other. Unlike deleting all spaces, word order and
+ * boundaries elsewhere in the sentence still have to match, and nothing
+ * needs to be listed per word, so new lessons work without changes.
+ */
+function tokensMatch(heard: string[], target: string[]): boolean {
+  function join(tokens: string[], start: number, count: number) {
+    return tokens.slice(start, start + count).join("");
+  }
+
+  function walk(h: number, t: number): boolean {
+    if (h === heard.length || t === target.length) {
+      return h === heard.length && t === target.length;
+    }
+
+    for (let heardCount = 1; heardCount <= maxJoinedTokens; heardCount += 1) {
+      if (h + heardCount > heard.length) {
+        break;
+      }
+
+      for (let targetCount = 1; targetCount <= maxJoinedTokens; targetCount += 1) {
+        if (t + targetCount > target.length) {
+          break;
+        }
+
+        // Only merge on one side at a time ("sun"+"rise" vs "sunrise").
+        if (heardCount > 1 && targetCount > 1) {
+          continue;
+        }
+
+        if (
+          join(heard, h, heardCount) === join(target, t, targetCount) &&
+          walk(h + heardCount, t + targetCount)
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  return walk(0, 0);
+}
+
+/**
+ * 100% match: every word must be present, in order, with nothing extra.
+ * Formatting differences (case, punctuation, digits, word spacing) are
+ * ignored because they are speech-to-text formatting, not pronunciation.
+ */
 export function sentenceMatches(heardText: string, targetSentence: string) {
   const heard = normalizeSentence(heardText);
 
-  return heard !== "" && heard === normalizeSentence(targetSentence);
+  if (heard === "") {
+    return false;
+  }
+
+  return tokensMatch(heard.split(" "), normalizeSentence(targetSentence).split(" "));
 }
 
 export function useSentenceCheck(
@@ -116,6 +225,11 @@ export function useSentenceCheck(
 
     function evaluate() {
       const heardText = `${collectedText} ${sessionText}`.trim();
+
+      // Debug: raw recognizer output vs. what the check actually compares.
+      console.log("[SentenceCheck] heard:", heardText);
+      console.log("[SentenceCheck] normalized heard:", normalizeSentence(heardText));
+      console.log("[SentenceCheck] normalized target:", normalizeSentence(targetSentence));
 
       if (!normalizeSentence(heardText)) {
         finish({ status: "nothingHeard" });
