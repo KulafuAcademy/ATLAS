@@ -53,7 +53,7 @@ export function SoundDetail({ symbol, related, learningStep, next }: SoundDetail
             </p>
           </div>
           <Link
-            href="/learn"
+            href="/path"
             className="text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/70"
           >
             {text(uiText.viewPath)}
