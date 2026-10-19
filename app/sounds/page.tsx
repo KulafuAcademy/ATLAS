@@ -4,8 +4,9 @@ import { ipaSymbols } from "@/data/ipa";
 
 export default function SoundsPage() {
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <PageHeader
+        compact
         eyebrow={{ en: "Sound library", ja: "音の図鑑" }}
         title={{
           en: "Find and explore every English sound.",

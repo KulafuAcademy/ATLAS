@@ -27,8 +27,9 @@ export default async function SoundPage({ params }: SoundPageProps) {
   const step = getLearningStepBySlug(slug);
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-10">
       <PageHeader
+        compact
         eyebrow={{ en: "Deep sound study", ja: "音を深く学ぶ" }}
         title={{ en: `The ${symbol.symbol} sound`, ja: `${symbol.symbol} の音` }}
         description={{

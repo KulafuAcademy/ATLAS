@@ -4,8 +4,9 @@ import { getLearningPath } from "@/lib/learning";
 
 export default function PathPage() {
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <PageHeader
+        compact
         eyebrow={{ en: "Learning path", ja: "学習順序" }}
         title={{
           en: "Build from foundation sounds, one step at a time.",
