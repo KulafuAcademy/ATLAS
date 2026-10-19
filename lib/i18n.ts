@@ -90,6 +90,10 @@ export const uiText = {
   backToVowels: { en: "Back to vowels", ja: "母音一覧へ戻る" },
   backToConsonants: { en: "Back to consonants", ja: "子音一覧へ戻る" },
   next: { en: "Next", ja: "次" },
+  lipShape: { en: "Lip shape", ja: "唇の形" },
+  voicing: { en: "Voicing", ja: "有声性" },
+  studySound: { en: "Study this sound →", ja: "詳しく学ぶ →" },
+  backToLibrary: { en: "Back to library", ja: "図鑑へ戻る" },
 };
 
 const termTranslations: Record<string, string> = {
