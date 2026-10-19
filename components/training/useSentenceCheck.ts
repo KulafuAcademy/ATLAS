@@ -39,11 +39,64 @@ export function normalizeSentence(value: string) {
     .trim();
 }
 
-/** 100% match: every word must be present, in order, with nothing extra. */
+export type WordGroup = { heard: string[]; target: string[] };
+
+/**
+ * Pairs heard words with target words, letting either side merge adjacent
+ * words so "sun rise" ↔ "sunrise" and "any one" ↔ "anyone" line up, since
+ * recognizers split compounds inconsistently. Returns null on a mismatch.
+ */
+export function alignWords(
+  heard: string[],
+  target: string[],
+): WordGroup[] | null {
+  const groups: WordGroup[] = [];
+  let heardIndex = 0;
+  let targetIndex = 0;
+
+  while (heardIndex < heard.length && targetIndex < target.length) {
+    const group: WordGroup = {
+      heard: [heard[heardIndex++]],
+      target: [target[targetIndex++]],
+    };
+    let heardJoined = group.heard[0];
+    let targetJoined = group.target[0];
+
+    while (heardJoined !== targetJoined) {
+      if (targetJoined.startsWith(heardJoined) && heardIndex < heard.length) {
+        group.heard.push(heard[heardIndex]);
+        heardJoined += heard[heardIndex++];
+      } else if (
+        heardJoined.startsWith(targetJoined) &&
+        targetIndex < target.length
+      ) {
+        group.target.push(target[targetIndex]);
+        targetJoined += target[targetIndex++];
+      } else {
+        return null;
+      }
+    }
+
+    groups.push(group);
+  }
+
+  return heardIndex === heard.length && targetIndex === target.length
+    ? groups
+    : null;
+}
+
+/**
+ * 100% match: every word must be present, in order, with nothing extra.
+ * Word breaks inside compounds ("sunrise" vs "sun rise") don't count.
+ */
 export function sentenceMatches(heardText: string, targetSentence: string) {
   const heard = normalizeSentence(heardText);
 
-  return heard !== "" && heard === normalizeSentence(targetSentence);
+  return (
+    heard !== "" &&
+    alignWords(heard.split(" "), normalizeSentence(targetSentence).split(" ")) !==
+      null
+  );
 }
 
 export function useSentenceCheck(
