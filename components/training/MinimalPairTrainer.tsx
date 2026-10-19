@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
+import { spellOutNumbers } from "@/lib/numberToWords";
 import type { MinimalPair } from "@/types/training";
 
 import type {
@@ -1326,7 +1327,7 @@ function transcriptMatchesWord(transcript: string, targetWord: string) {
 }
 
 function normalizeRecognizedText(text: string) {
-  return text
+  return spellOutNumbers(text)
     .toLowerCase()
     .replace(/[^a-z\s]/g, " ")
     .replace(/\s+/g, " ")

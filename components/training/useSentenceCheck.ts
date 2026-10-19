@@ -9,6 +9,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { spellOutNumbers } from "@/lib/numberToWords";
+
 import type { BrowserSpeechRecognition } from "./speechRecognitionTypes";
 
 // Same event the single-word pronunciation test listens to, so only one
@@ -25,10 +27,11 @@ export type SentenceCheckResult =
 
 /**
  * Normalizes text so that "Right by the light, read it right!" and
- * "right by the light read it right" compare equal.
+ * "right by the light read it right" compare equal. Numbers are spelled
+ * out first, so a recognizer writing "3" still matches "three".
  */
 export function normalizeSentence(value: string) {
-  return value
+  return spellOutNumbers(value)
     .toLowerCase()
     .replace(/['’]/g, "")
     .replace(/[^a-z\s]/g, " ")
@@ -115,7 +118,10 @@ export function useSentenceCheck(
     }
 
     function evaluate() {
-      const heardText = `${collectedText} ${sessionText}`.trim();
+      // Spelled out so the learner sees words, not the recognizer's digits.
+      const heardText = spellOutNumbers(
+        `${collectedText} ${sessionText}`.trim(),
+      );
 
       if (!normalizeSentence(heardText)) {
         finish({ status: "nothingHeard" });
