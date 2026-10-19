@@ -38,6 +38,8 @@ type CardFeedback = {
   tone: FeedbackTone;
   text: string;
   language: "en" | "ja";
+  // Speech recognition alternatives for the pronunciation test (best first).
+  alternatives?: string[];
 } | null;
 
 type CountdownState = {
@@ -103,6 +105,7 @@ const trainerCopy = {
     pronunciationRetry: (heardText: string, word: string) =>
       `Try again. Heard: "${heardText}" / Target: "${word}"`,
     couldNotHear: "I could not hear it. Try again.",
+    alternativesHeard: "Alternatives heard",
     couldNotRecognize: (word: string) =>
       `I could not recognize "${word}". Try again.`,
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
@@ -157,6 +160,7 @@ const trainerCopy = {
     pronunciationRetry: (heardText: string, word: string) =>
       `もう一度。聞こえた単語: "${heardText}" / 目標: "${word}"`,
     couldNotHear: "聞き取れませんでした。もう一度試してください。",
+    alternativesHeard: "認識候補",
     couldNotRecognize: (word: string) =>
       `「${word}」として認識できませんでした。もう一度試してください。`,
     checkCouldNotStart:
@@ -367,6 +371,7 @@ function PairPracticeCard({
     type: FeedbackType,
     tone: FeedbackTone,
     textValue: string,
+    alternatives?: string[],
   ) {
     setCardFeedback({
       pairId: pair.id,
@@ -374,6 +379,7 @@ function PairPracticeCard({
       tone,
       text: textValue,
       language,
+      alternatives,
     });
   }
 
@@ -662,6 +668,7 @@ function PairPracticeCard({
           "pronunciation",
           "success",
           copy.pronunciationCorrect(heardWord),
+          possibleWords,
         );
       } else {
         playIncorrectSound();
@@ -669,6 +676,7 @@ function PairPracticeCard({
           "pronunciation",
           "error",
           copy.pronunciationRetry(heardWord, word),
+          possibleWords,
         );
       }
     }
@@ -1274,14 +1282,22 @@ function FeedbackMessage({
         : "border-white/10 bg-white/[0.02] text-white/70";
 
   return (
-    <p
+    <div
       role="status"
       aria-live="polite"
-      className={`flex items-center gap-2 border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
+      className={`border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
     >
-      {icon ? <span aria-hidden="true">{icon}</span> : null}
-      <span>{feedback.text}</span>
-    </p>
+      <p className="flex items-center gap-2">
+        {icon ? <span aria-hidden="true">{icon}</span> : null}
+        <span>{feedback.text}</span>
+      </p>
+      {feedback.alternatives?.length ? (
+        <p className="mt-1 text-xs font-normal opacity-70">
+          {trainerCopy[feedback.language].alternativesHeard}:{" "}
+          {feedback.alternatives.join(", ")}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
