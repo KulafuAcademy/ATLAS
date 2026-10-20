@@ -7,11 +7,13 @@ import { ListeningTestSession } from "@/components/training/ListeningTestSession
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
 import type { TrainingSection } from "@/data/trainingSections";
-import type {
-  MinimalPair,
-  TrainingCategory,
-  TrainingProgress,
-} from "@/types/training";
+import {
+  getDailyPairs,
+  progressStorageKey,
+  withTestResult,
+  type ProgressByCategory,
+} from "@/lib/trainingProgress";
+import type { TrainingCategory } from "@/types/training";
 
 type TrainingCurriculumProps = {
   categories: TrainingCategory[];
@@ -19,9 +21,7 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
-type ProgressByCategory = Record<string, TrainingProgress>;
 
-const progressStorageKey = "atlas.trainingProgress.v1";
 const smallButtonClassName =
   "h-10 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
 
@@ -127,17 +127,7 @@ export function TrainingCurriculum({
 
   function recordTestProgress(sectionId: string, score: number, total: number) {
     setProgressByCategory((currentProgress) => {
-      const previousProgress = currentProgress[sectionId];
-      const nextProgress = {
-        ...currentProgress,
-        [sectionId]: {
-          attempts: (previousProgress?.attempts ?? 0) + 1,
-          bestScore: Math.max(previousProgress?.bestScore ?? 0, score),
-          lastScore: score,
-          total,
-          updatedAt: new Date().toISOString(),
-        },
-      };
+      const nextProgress = withTestResult(currentProgress, sectionId, score, total);
 
       window.localStorage.setItem(
         progressStorageKey,
@@ -297,35 +287,4 @@ export function TrainingCurriculum({
       </section>
     </div>
   );
-}
-
-function getDailyPairs(sectionId: string, pairs: MinimalPair[]) {
-  return [...pairs]
-    .sort((pairA, pairB) => {
-      const dateKey = getLocalDateKey();
-      const scoreA = hashString(`${dateKey}:${sectionId}:${pairA.id}`);
-      const scoreB = hashString(`${dateKey}:${sectionId}:${pairB.id}`);
-
-      return scoreA - scoreB;
-    })
-    .slice(0, 10);
-}
-
-function getLocalDateKey() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const date = String(today.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${date}`;
-}
-
-function hashString(value: string) {
-  let hash = 0;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-
-  return hash;
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { LessonGuide } from "@/components/training/LessonGuide";
+import { LessonListeningTest } from "@/components/training/LessonListeningTest";
 import { LessonStepNav } from "@/components/training/LessonStepNav";
 import { lessonGuides } from "@/data/lessonGuides";
 import { trainingSections } from "@/data/trainingSections";
@@ -41,6 +42,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         description={section.description}
       />
       {guide ? <LessonGuide guide={guide} /> : null}
+      <LessonListeningTest section={section} />
       <LessonStepNav
         back={{ href: "/", label: { en: "Back to curriculum", ja: "カリキュラムへ戻る" } }}
         previous={
