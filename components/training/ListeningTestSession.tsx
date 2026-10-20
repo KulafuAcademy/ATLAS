@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
 import type { MinimalPair } from "@/types/training";
+
+import { getPublicAudioPath } from "./audio";
 
 type QuizTarget = "A" | "B";
 
@@ -19,6 +21,9 @@ type ListeningTestSessionProps = {
   onComplete?: (score: number, total: number) => void;
   pairs: MinimalPair[];
   title: LocalizedText;
+  // Play the recorded MP3 in /public/words when it exists, falling back to
+  // speech synthesis.
+  useRecordedAudio?: boolean;
 };
 
 const listeningTestCopy = {
@@ -67,6 +72,7 @@ export function ListeningTestSession({
   onComplete,
   pairs,
   title,
+  useRecordedAudio = false,
 }: ListeningTestSessionProps) {
   const { language, text } = useLanguage();
   const copy = listeningTestCopy[language];
@@ -81,6 +87,7 @@ export function ListeningTestSession({
   const isRunning = questions.length > 0 && currentIndex < questions.length;
   const isComplete = questions.length > 0 && currentIndex >= questions.length;
   const currentQuestion = isRunning ? questions[currentIndex] : null;
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   function startSession() {
     const nextQuestions = pairs.slice(0, 10).map((pair) => ({
@@ -105,6 +112,48 @@ export function ListeningTestSession({
         ? currentQuestion.pair.wordA
         : currentQuestion.pair.wordB;
 
+    // Stop any MP3 or speech that is already playing.
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    setFeedback({ tone: "neutral", text: copy.ready });
+
+    if (!useRecordedAudio) {
+      speakWithTts(word);
+      return;
+    }
+
+    const audio = new Audio(
+      getPublicAudioPath("words", currentQuestion.pair.soundFocus, word),
+    );
+    let fellBack = false;
+
+    // Skip the fallback when this clip was already replaced by a newer one.
+    const fallbackToTts = () => {
+      if (fellBack || audioRef.current !== audio) return;
+      fellBack = true;
+      audioRef.current = null;
+
+      speakWithTts(word);
+    };
+
+    audioRef.current = audio;
+    audio.onended = () => {
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
+    };
+    audio.onerror = fallbackToTts;
+    audio.play().catch(fallbackToTts);
+  }
+
+  function speakWithTts(word: string) {
     if (!("speechSynthesis" in window)) {
       playIncorrectSound();
       setFeedback({ tone: "error", text: copy.unsupported });
@@ -119,7 +168,6 @@ export function ListeningTestSession({
     utterance.rate = 0.85;
     utterance.pitch = 1;
     window.speechSynthesis.speak(utterance);
-    setFeedback({ tone: "neutral", text: copy.ready });
   }
 
   function answerQuestion(answer: QuizTarget) {

@@ -7,6 +7,7 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
 import type { MinimalPair } from "@/types/training";
 
+import { getPublicAudioPath } from "./audio";
 import type {
   BrowserSpeechRecognition,
   BrowserSpeechRecognitionResultEvent,
@@ -241,17 +242,6 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
       text={text}
     />
   );
-}
-
-// Builds the public MP3 path for a word or tongue-twister audio file.
-// Files are fetched under /public/(folder)/(soundFocus)/(filename).mp3
-// Example: /public/words/R vs L/alive.mp3
-function getPublicAudioPath(
-  folder: "words" | "twisters",
-  soundFocus: string,
-  filename: string,
-) {
-  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
 }
 
 /**
