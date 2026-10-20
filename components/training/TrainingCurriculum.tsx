@@ -55,15 +55,14 @@ export function TrainingCurriculum({
   const { language, text } = useLanguage();
   const copy = curriculumCopy[language];
   const [openSectionIds, setOpenSectionIds] = useState<string[]>(["r-vs-l"]);
-  const [practiceModes, setPracticeModes] = useState<Record<string, PracticeMode>>(
-    {},
-  );
-  const [progressByCategory, setProgressByCategory] = useState<ProgressByCategory>(
-    {},
-  );
-  const [pendingScrollTargetId, setPendingScrollTargetId] = useState<string | null>(
-    null,
-  );
+  const [practiceModes, setPracticeModes] = useState<
+    Record<string, PracticeMode>
+  >({});
+  const [progressByCategory, setProgressByCategory] =
+    useState<ProgressByCategory>({});
+  const [pendingScrollTargetId, setPendingScrollTargetId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -106,7 +105,9 @@ export function TrainingCurriculum({
   function toggleSection(sectionId: string) {
     setOpenSectionIds((currentSectionIds) =>
       currentSectionIds.includes(sectionId)
-        ? currentSectionIds.filter((currentSectionId) => currentSectionId !== sectionId)
+        ? currentSectionIds.filter(
+            (currentSectionId) => currentSectionId !== sectionId,
+          )
         : [...currentSectionIds, sectionId],
     );
   }
@@ -127,7 +128,12 @@ export function TrainingCurriculum({
 
   function recordTestProgress(sectionId: string, score: number, total: number) {
     setProgressByCategory((currentProgress) => {
-      const nextProgress = withTestResult(currentProgress, sectionId, score, total);
+      const nextProgress = withTestResult(
+        currentProgress,
+        sectionId,
+        score,
+        total,
+      );
 
       window.localStorage.setItem(
         progressStorageKey,
@@ -145,6 +151,7 @@ export function TrainingCurriculum({
         progressByCategory={progressByCategory}
       />
 
+      {/*
       <section
         id="curriculum"
         className="scroll-mt-28 space-y-4 border-t border-white/10 pt-10"
@@ -285,6 +292,8 @@ export function TrainingCurriculum({
           })}
         </div>
       </section>
+      
+      */}
     </div>
   );
 }
