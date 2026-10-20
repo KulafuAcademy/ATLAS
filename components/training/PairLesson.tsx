@@ -989,31 +989,24 @@ function PronunciationReport({
         </dl>
       </ReportSection>
 
-      {result.words.length > 1 ? (
-        <ReportSection title={copy.wordByWord}>
-          <ul className="space-y-2">
-            {result.words.map((word, index) => (
-              <li
-                key={`${word.word}-${index}`}
-                className="grid grid-cols-[minmax(0,7rem)_1fr_2.5rem] items-center gap-3 text-sm"
-              >
-                <span className="truncate font-medium text-white" title={word.soundsLike}>
-                  {word.word}
-                </span>
-                <span className="h-1.5 bg-white/10">
-                  <span
-                    className={`block h-full ${getScoreBarClassName(word.score)}`}
-                    style={{ width: `${word.score}%` }}
-                  />
-                </span>
-                <span className="text-right tabular-nums text-white/70">
-                  {word.score}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </ReportSection>
-      ) : null}
+      <ReportSection title={copy.wordByWord}>
+        <ul className="flex flex-wrap gap-2">
+          {result.words.map((word, index) => (
+            <li
+              key={`${word.word}-${index}`}
+              className={`flex min-w-16 flex-col items-center rounded-lg border-2 px-3 py-2 text-center ${getWordScoreClassName(word.score)}`}
+            >
+              <span className="text-lg font-semibold leading-6">{word.word}</span>
+              <span className="text-xs font-medium text-white/80">
+                {word.soundsLike}
+              </span>
+              <span className="text-xs tabular-nums text-white/60">
+                {word.score}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      </ReportSection>
 
       <ReportSection title={copy.whatToFix}>
         {result.issues.length > 0 ? (
@@ -1330,10 +1323,11 @@ function alignPhonemes(expected: string[], heard: string[]): PhonemeStep[] {
   return steps.reverse();
 }
 
-function getScoreBarClassName(score: number) {
-  if (score >= 100) return "bg-white";
-  if (score >= 60) return "bg-amber-400";
-  return "bg-red-400";
+// Green when every sound in the word was right, amber when close, red otherwise.
+function getWordScoreClassName(score: number) {
+  if (score >= 100) return "border-green-600 text-green-500";
+  if (score >= 60) return "border-amber-500 text-amber-400";
+  return "border-red-500 text-red-400";
 }
 
 function getBestScoreKey(pairId: string, target: string) {
