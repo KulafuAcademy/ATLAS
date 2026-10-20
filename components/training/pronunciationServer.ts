@@ -80,6 +80,13 @@ const API_URL = (
 const API_KEY = process.env.NEXT_PUBLIC_PRONUNCIATION_API_KEY;
 const TARGET_SAMPLE_RATE = 16000;
 
+// ngrok's free plan answers browser requests with a warning page (no CORS
+// headers) unless this header is sent. Harmless for any other host.
+const API_HEADERS: Record<string, string> = {
+  "ngrok-skip-browser-warning": "1",
+  ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+};
+
 // ---------------------------------------------------------------------------
 // Response types (mirror server.py's /analyze JSON)
 // ---------------------------------------------------------------------------
@@ -134,7 +141,7 @@ export async function analyzePronunciation(
   const response = await fetch(`${API_URL}/analyze`, {
     method: "POST",
     body: form,
-    headers: API_KEY ? { "X-API-Key": API_KEY } : undefined,
+    headers: API_HEADERS,
     signal,
   });
 
@@ -154,7 +161,10 @@ export async function analyzePronunciation(
 /** True when the server answers GET /health. */
 export async function checkPronunciationServer(signal?: AbortSignal) {
   try {
-    const response = await fetch(`${API_URL}/health`, { signal });
+    const response = await fetch(`${API_URL}/health`, {
+      headers: API_HEADERS,
+      signal,
+    });
     return response.ok;
   } catch {
     return false;
