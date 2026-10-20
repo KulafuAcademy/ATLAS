@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 import { useLanguage } from "@/components/language/LanguageProvider";
+import { getLessonHref, getTestHref } from "@/lib/training";
 import type { TrainingCategory, TrainingProgress } from "@/types/training";
 
 type TrainingCategoryOverviewProps = {
   categories: TrainingCategory[];
-  onStart?: (categoryId: string, target: "learn" | "test") => void;
   progressByCategory?: Record<string, TrainingProgress>;
 };
 
@@ -41,11 +43,10 @@ const overviewCopy = {
 };
 
 const buttonClassName =
-  "h-11 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
+  "flex h-11 items-center justify-center border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
 
 export function TrainingCategoryOverview({
   categories,
-  onStart,
   progressByCategory = {},
 }: TrainingCategoryOverviewProps) {
   const { language, text } = useLanguage();
@@ -129,20 +130,12 @@ export function TrainingCategoryOverview({
 
               {isAvailable ? (
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => onStart?.(category.id, "learn")}
-                    className={buttonClassName}
-                  >
+                  <Link href={getLessonHref(category.id)} className={buttonClassName}>
                     {copy.learn}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onStart?.(category.id, "test")}
-                    className={buttonClassName}
-                  >
+                  </Link>
+                  <Link href={getTestHref(category.id)} className={buttonClassName}>
                     {copy.test}
-                  </button>
+                  </Link>
                 </div>
               ) : null}
             </article>

@@ -6,19 +6,12 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { ListeningTestSession } from "@/components/training/ListeningTestSession";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
-import type { LocalizedText } from "@/lib/i18n";
+import type { TrainingSection } from "@/data/trainingSections";
 import type {
   MinimalPair,
   TrainingCategory,
   TrainingProgress,
 } from "@/types/training";
-
-type TrainingSection = {
-  id: string;
-  title: LocalizedText;
-  description: LocalizedText;
-  pairs: MinimalPair[];
-};
 
 type TrainingCurriculumProps = {
   categories: TrainingCategory[];
@@ -26,7 +19,6 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
-type EntryTarget = "learn" | "test";
 type ProgressByCategory = Record<string, TrainingProgress>;
 
 const progressStorageKey = "atlas.trainingProgress.v1";
@@ -133,18 +125,6 @@ export function TrainingCurriculum({
     });
   }
 
-  function openAndScrollToSection(sectionId: string, target: EntryTarget) {
-    const targetElementId =
-      target === "test" ? `${sectionId}-test` : `${sectionId}-learn`;
-
-    setOpenSectionIds((currentSectionIds) =>
-      currentSectionIds.includes(sectionId)
-        ? currentSectionIds
-        : [...currentSectionIds, sectionId],
-    );
-    setPendingScrollTargetId(targetElementId);
-  }
-
   function recordTestProgress(sectionId: string, score: number, total: number) {
     setProgressByCategory((currentProgress) => {
       const previousProgress = currentProgress[sectionId];
@@ -172,7 +152,6 @@ export function TrainingCurriculum({
     <div className="space-y-16">
       <TrainingCategoryOverview
         categories={categories}
-        onStart={openAndScrollToSection}
         progressByCategory={progressByCategory}
       />
 

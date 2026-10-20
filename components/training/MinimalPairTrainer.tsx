@@ -226,6 +226,23 @@ export function MinimalPairTrainer({
   );
 }
 
+/**
+ * A single PairPracticeCard on its own, used by the per-pair test page.
+ */
+
+export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
+  const { language, text } = useLanguage();
+
+  return (
+    <PairPracticeCard
+      copy={trainerCopy[language]}
+      language={language}
+      pair={pair}
+      text={text}
+    />
+  );
+}
+
 // Builds the public MP3 path for a word or tongue-twister audio file.
 // Files are fetched under /public/(folder)/(soundFocus)/(filename).mp3
 // Example: /public/words/R vs L/alive.mp3
