@@ -7,4 +7,5 @@ build
 !.env.example
 *.log
 .DS_Store
-next-end.d.ts
+next-env.d.ts
+tsconfig.tsbuildinfo
