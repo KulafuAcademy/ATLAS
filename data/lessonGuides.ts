@@ -1,7 +1,8 @@
 type Localized = { en: string; ja: string };
 
 export type SoundGuide = {
-  label: string;
+  // Big label in the card header; omit to leave that spot empty.
+  label?: string;
   title: Localized;
   steps: Localized[];
   words: string[];
@@ -220,7 +221,6 @@ export const lessonGuides: Record<string, LessonGuide> = {
     image: "/images/final-consonant-articulation.png",
     sounds: [
       {
-        label: "STOP",
         title: { en: "Stop cleanly", ja: "きれいに止める" },
         steps: [
           {
@@ -239,7 +239,6 @@ export const lessonGuides: Record<string, LessonGuide> = {
         words: ["cap", "bet", "book"],
       },
       {
-        label: "+ VOWEL",
         title: { en: "Avoid adding a vowel", ja: "母音を足さない" },
         steps: [
           {

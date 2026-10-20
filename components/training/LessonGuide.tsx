@@ -83,7 +83,7 @@ export function LessonGuide({ guide }: { guide: LessonGuideData }) {
       <div className="grid gap-4 lg:grid-cols-2">
         {guide.sounds.map((sound, index) => (
           <SoundCard
-            key={sound.label}
+            key={sound.title.en}
             image={guide.image}
             side={index === 0 ? "left" : "right"}
             sound={sound}
@@ -110,9 +110,11 @@ function SoundCard({
       <div className="space-y-4 border-b border-white/10 p-5">
         <div className="flex items-start justify-between gap-4">
           <h3 className="text-xl font-semibold text-white">{text(sound.title)}</h3>
-          <span className="text-4xl leading-none font-semibold whitespace-nowrap text-white">
-            {sound.label}
-          </span>
+          {sound.label ? (
+            <span className="text-4xl leading-none font-semibold whitespace-nowrap text-white">
+              {sound.label}
+            </span>
+          ) : null}
         </div>
         <div className="relative aspect-square overflow-hidden border border-white/10">
           {/* The image holds both sounds side by side; show only this card's half. */}
