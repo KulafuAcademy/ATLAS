@@ -154,7 +154,7 @@ export function SoundDetail({ symbol, related, learningStep, next }: SoundDetail
               href={`/sounds/${next.slug}`}
               className="inline-flex text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/70"
             >
-              {text(uiText.next)}: {next.symbol} {getSymbolCopy(next, language).label} →
+              {text(uiText.next)}: {next.symbol} →
             </Link>
           ) : null}
         </div>
