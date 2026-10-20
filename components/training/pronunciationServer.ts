@@ -74,7 +74,8 @@
 import { useEffect, useRef, useState } from "react";
 
 const API_URL = (
-  process.env.NEXT_PUBLIC_PRONUNCIATION_API_URL ?? "http://127.0.0.1:8000"
+  process.env.NEXT_PUBLIC_PRONUNCIATION_API_URL ??
+  "https://oil-sterility-cyclic.ngrok-free.dev"
 ).replace(/\/$/, "");
 const API_KEY = process.env.NEXT_PUBLIC_PRONUNCIATION_API_KEY;
 const TARGET_SAMPLE_RATE = 16000;
@@ -275,8 +276,16 @@ function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
 
 export type ServerCheckOutcome =
   | { status: "listening" }
-  | { status: "correct"; heardText: string; result: Extract<PronunciationResult, { ok: true }> }
-  | { status: "incorrect"; heardText: string; result: Extract<PronunciationResult, { ok: true }> }
+  | {
+      status: "correct";
+      heardText: string;
+      result: Extract<PronunciationResult, { ok: true }>;
+    }
+  | {
+      status: "incorrect";
+      heardText: string;
+      result: Extract<PronunciationResult, { ok: true }>;
+    }
   | { status: "nothingHeard" }
   | { status: "unsupported" }
   | { status: "failedToStart" }
@@ -322,7 +331,10 @@ export function useServerPronunciationCheck(
     cancel();
     const runId = runIdRef.current;
 
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
       onResultRef.current({ status: "unsupported" });
       return;
     }
@@ -334,7 +346,8 @@ export function useServerPronunciationCheck(
 
     recording.then(
       () => {
-        if (runIdRef.current === runId) onResultRef.current({ status: "listening" });
+        if (runIdRef.current === runId)
+          onResultRef.current({ status: "listening" });
       },
       () => {
         if (runIdRef.current !== runId) return;
@@ -360,7 +373,11 @@ export function useServerPronunciationCheck(
 
     try {
       const blob = await (await recordingPromise).stop();
-      const result = await analyzePronunciation(blob, textRef.current, controller.signal);
+      const result = await analyzePronunciation(
+        blob,
+        textRef.current,
+        controller.signal,
+      );
       if (runIdRef.current !== runId) return;
 
       if (!result.ok || result.heard.phonemes.length === 0) {
@@ -370,7 +387,9 @@ export function useServerPronunciationCheck(
 
       const { passScore } = optionsRef.current;
       const passed =
-        passScore === undefined ? result.allWordsCorrect : result.score >= passScore;
+        passScore === undefined
+          ? result.allWordsCorrect
+          : result.score >= passScore;
       // The server returns sounds, not words; show the readable respelling.
       const heardText = result.heard.soundsLike;
       onResultRef.current(
