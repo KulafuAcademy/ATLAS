@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { LessonGuide } from "@/components/training/LessonGuide";
 import { LessonStepNav } from "@/components/training/LessonStepNav";
-import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
+import { lessonGuides } from "@/data/lessonGuides";
 import { trainingSections } from "@/data/trainingSections";
 import {
   getAdjacentSections,
@@ -28,6 +29,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
     notFound();
   }
 
+  const guide = lessonGuides[section.id];
   const { previous, next } = getAdjacentSections(section.id);
 
   return (
@@ -38,11 +40,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         title={section.title}
         description={section.description}
       />
-      <MinimalPairTrainer
-        title={section.title}
-        description={section.description}
-        pairs={section.pairs}
-      />
+      {guide ? <LessonGuide guide={guide} /> : null}
       <LessonStepNav
         back={{ href: "/", label: { en: "Back to curriculum", ja: "カリキュラムへ戻る" } }}
         previous={
