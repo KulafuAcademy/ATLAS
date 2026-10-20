@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
+import { getLessonHref } from "@/data/trainingSections";
+import { getTongueTwister } from "@/lib/training";
 import type { MinimalPair } from "@/types/training";
 
+import { MicLevelMeter } from "./MicLevelMeter";
 import type {
   BrowserSpeechRecognition,
   BrowserSpeechRecognitionResultEvent,
@@ -16,6 +20,13 @@ import {
   useSentenceCheck,
   type SentenceCheckResult,
 } from "./useSentenceCheck";
+import {
+  getPublicAudioPath,
+  playCorrectSound,
+  playCountdownGo,
+  playCountdownTick,
+  playIncorrectSound,
+} from "./trainingAudio";
 
 type QuizTarget = "A" | "B";
 
@@ -55,6 +66,7 @@ const slowPlaybackRate = 0.75;
 
 type MinimalPairTrainerProps = {
   id?: string;
+  sectionId: string;
   title: LocalizedText;
   description: LocalizedText;
   pairs: MinimalPair[];
@@ -110,6 +122,7 @@ const trainerCopy = {
     speakNow: "Speak now",
     secondsLeft: (seconds: number) => `${seconds}s`,
     sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
+    openLesson: "Open lesson",
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
   },
   ja: {
@@ -166,6 +179,7 @@ const trainerCopy = {
     secondsLeft: (seconds: number) => `${seconds}秒`,
     sayAfterCountdown: (word: string) =>
       `カウントダウン後に「${word}」を発音してください。`,
+    openLesson: "レッスンを開く",
     saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
   },
 };
@@ -181,6 +195,7 @@ function isTouchDevice() {
 
 export function MinimalPairTrainer({
   id,
+  sectionId,
   title,
   description,
   pairs,
@@ -218,23 +233,13 @@ export function MinimalPairTrainer({
             copy={copy}
             language={language}
             pair={pair}
+            sectionId={sectionId}
             text={text}
           />
         ))}
       </div>
     </section>
   );
-}
-
-// Builds the public MP3 path for a word or tongue-twister audio file.
-// Files are fetched under /public/(folder)/(soundFocus)/(filename).mp3
-// Example: /public/words/R vs L/alive.mp3
-function getPublicAudioPath(
-  folder: "words" | "twisters",
-  soundFocus: string,
-  filename: string,
-) {
-  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
 }
 
 /**
@@ -255,11 +260,13 @@ function PairPracticeCard({
   copy,
   language,
   pair,
+  sectionId,
   text,
 }: {
   copy: TrainerCopy;
   language: "en" | "ja";
   pair: MinimalPair;
+  sectionId: string;
   text: (value: LocalizedText) => string;
 }) {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
@@ -736,9 +743,17 @@ function PairPracticeCard({
   return (
     <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
       <div className="space-y-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-white/35">
-          {pair.soundFocus}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs uppercase tracking-[0.24em] text-white/35">
+            {pair.soundFocus}
+          </p>
+          <Link
+            href={getLessonHref(sectionId, pair.id)}
+            className="border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:border-white hover:bg-white hover:text-black"
+          >
+            {copy.openLesson} →
+          </Link>
+        </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
           <WordLabel label="A" word={pair.wordA} />
           <span className="text-sm text-white/30">vs</span>
@@ -897,72 +912,6 @@ function PairPracticeCard({
   );
 }
 
-function getTongueTwister(pair: MinimalPair) {
-  if (pair.tongueTwister) {
-    return pair.tongueTwister;
-  }
-
-  const { wordA, wordB } = pair;
-
-  if (pair.soundFocus === "B vs V") {
-    return {
-      text: `${wordA} and ${wordB} move from closed lips to clear voice.`,
-      note: {
-        en: "Close the lips for B, then use the lower lip and voice for V.",
-        ja: "Bは唇を閉じ、Vは下唇と声を使う意識で練習します。",
-      },
-    };
-  }
-
-  if (pair.soundFocus === "S vs SH") {
-    return {
-      text: `${wordA}, ${wordB}; say ${wordA}, then ${wordB} softly.`,
-      note: {
-        en: "Keep S narrow and sharp, then make SH wider and softer.",
-        ja: "Sは細く鋭く、SHは少し広くやわらかく出します。",
-      },
-    };
-  }
-
-  if (pair.soundFocus === "Short I vs Long E") {
-    return {
-      text: `${wordA} and ${wordB} sit in a clean little line.`,
-      note: {
-        en: "Keep the short vowel relaxed, then make the long vowel clearer.",
-        ja: "短い母音は力を抜き、長い母音はよりはっきり伸ばします。",
-      },
-    };
-  }
-
-  if (pair.soundFocus === "TH sounds") {
-    return {
-      text: `${wordA} then ${wordB}; keep the tongue light and clear.`,
-      note: {
-        en: "Let the tongue come forward lightly for TH before moving on.",
-        ja: "THでは舌を軽く前に出してから、次の音へ移ります。",
-      },
-    };
-  }
-
-  if (pair.soundFocus === "Final consonants") {
-    return {
-      text: `${wordA}, ${wordB}; finish each word clean and short.`,
-      note: {
-        en: "Do not add an extra vowel after the final consonant.",
-        ja: "語尾の子音の後に、余計な母音を足さないようにします。",
-      },
-    };
-  }
-
-  return {
-    text: `${wordA}, ${wordB}, ${wordA} again, then ${wordB}.`,
-    note: {
-      en: "Practice both target sounds inside one short sentence.",
-      ja: "学んだ2つの音を、ひとつの短い文の中で練習します。",
-    },
-  };
-}
-
 // Shows the big "get ready" number, then a "speak now" timer bar.
 // Renders only for the step whose countdown is active (`kind`).
 function CountdownDisplay({
@@ -1047,109 +996,6 @@ function CountdownBar({
           transition: `width ${seconds}s linear`,
         }}
       />
-    </div>
-  );
-}
-
-const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
-
-/**
- * Animated 5-bar mic level indicator shown while recording.
- * Opens its own getUserMedia stream and reads volume (RMS) through an
- * AnalyserNode, updating bar heights directly via refs to avoid re-renders.
- * Purely visual: if mic access fails, recognition still works.
- * Hidden on touch devices, where a second mic stream can conflict with speech recognition.
- */
-function MicLevelMeter() {
-  const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let frameId = 0;
-    let stream: MediaStream | null = null;
-    let audioContext: AudioContext | null = null;
-
-    function setBars(level: number, time: number) {
-      barRefs.current.forEach((bar, index) => {
-        if (!bar) return;
-        const wobble = 0.85 + 0.15 * Math.sin(time / 90 + index * 1.7);
-        const scale = Math.min(1, 0.12 + level * meterWeights[index] * wobble);
-        bar.style.transform = `scaleY(${scale})`;
-      });
-    }
-
-    async function start() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        audioContext = createAudioContext();
-        if (!audioContext) return;
-
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        audioContext.createMediaStreamSource(stream).connect(analyser);
-
-        const samples = new Uint8Array(analyser.fftSize);
-        let smoothed = 0;
-
-        const tick = (time: number) => {
-          analyser.getByteTimeDomainData(samples);
-
-          let sumSquares = 0;
-          for (const sample of samples) {
-            const normalized = (sample - 128) / 128;
-            sumSquares += normalized * normalized;
-          }
-
-          const rms = Math.sqrt(sumSquares / samples.length);
-          const level = Math.min(1, rms * 6);
-
-          // fast attack, slow release so the bars feel natural
-          smoothed =
-            level > smoothed
-              ? smoothed * 0.4 + level * 0.6
-              : smoothed * 0.9 + level * 0.1;
-
-          setBars(smoothed, time);
-          frameId = requestAnimationFrame(tick);
-        };
-
-        frameId = requestAnimationFrame(tick);
-      } catch {
-        // Mic level unavailable; recognition still works without the animation.
-      }
-    }
-
-    start();
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frameId);
-      stream?.getTracks().forEach((track) => track.stop());
-      void audioContext?.close();
-    };
-  }, []);
-
-  return (
-    <div
-      aria-hidden="true"
-      className="col-span-full flex h-10 items-center justify-center gap-1.5 border border-white/10 bg-white/[0.02]"
-    >
-      {meterWeights.map((_, index) => (
-        <span
-          key={index}
-          ref={(element) => {
-            barRefs.current[index] = element;
-          }}
-          className="h-6 w-1.5 origin-center bg-white"
-          style={{ transform: "scaleY(0.12)" }}
-        />
-      ))}
     </div>
   );
 }
@@ -1331,93 +1177,4 @@ function normalizeRecognizedText(text: string) {
     .replace(/[^a-z\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function playCorrectSound() {
-  const audioContext = createAudioContext();
-
-  if (!audioContext) {
-    return;
-  }
-
-  playTone(audioContext, 660, 0, 0.12, "sine");
-  playTone(audioContext, 880, 0.13, 0.16, "sine");
-}
-
-let countdownAudioContext: AudioContext | null = null;
-
-// Shared context so the per-second ticks don't open a new one each time.
-function getCountdownAudioContext() {
-  if (!countdownAudioContext || countdownAudioContext.state === "closed") {
-    countdownAudioContext = createAudioContext();
-  }
-
-  if (countdownAudioContext?.state === "suspended") {
-    void countdownAudioContext.resume();
-  }
-
-  return countdownAudioContext;
-}
-
-// Short, soft tick for each "get ready" second.
-function playCountdownTick() {
-  const audioContext = getCountdownAudioContext();
-
-  if (audioContext) {
-    playTone(audioContext, 660, 0, 0.09, "sine");
-  }
-}
-
-// Higher, slightly longer beep when it's time to speak.
-function playCountdownGo() {
-  const audioContext = getCountdownAudioContext();
-
-  if (audioContext) {
-    playTone(audioContext, 1320, 0, 0.2, "sine");
-  }
-}
-
-function playIncorrectSound() {
-  const audioContext = createAudioContext();
-
-  if (!audioContext) {
-    return;
-  }
-
-  playTone(audioContext, 160, 0, 0.28, "sawtooth");
-}
-
-function createAudioContext() {
-  const AudioContextConstructor =
-    window.AudioContext ?? window.webkitAudioContext;
-
-  if (!AudioContextConstructor) {
-    return null;
-  }
-
-  return new AudioContextConstructor();
-}
-
-function playTone(
-  audioContext: AudioContext,
-  frequency: number,
-  startDelay: number,
-  duration: number,
-  type: OscillatorType,
-) {
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
-  const startsAt = audioContext.currentTime + startDelay;
-  const endsAt = startsAt + duration;
-
-  oscillator.type = type;
-  oscillator.frequency.setValueAtTime(frequency, startsAt);
-  gain.gain.setValueAtTime(0.0001, startsAt);
-  gain.gain.exponentialRampToValueAtTime(0.16, startsAt + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
-
-  oscillator.connect(gain);
-  gain.connect(audioContext.destination);
-  oscillator.start(startsAt);
-  oscillator.stop(endsAt);
 }

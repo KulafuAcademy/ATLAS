@@ -6,19 +6,12 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { ListeningTestSession } from "@/components/training/ListeningTestSession";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
-import type { LocalizedText } from "@/lib/i18n";
+import type { TrainingSection } from "@/data/trainingSections";
 import type {
   MinimalPair,
   TrainingCategory,
   TrainingProgress,
 } from "@/types/training";
-
-type TrainingSection = {
-  id: string;
-  title: LocalizedText;
-  description: LocalizedText;
-  pairs: MinimalPair[];
-};
 
 type TrainingCurriculumProps = {
   categories: TrainingCategory[];
@@ -295,6 +288,7 @@ export function TrainingCurriculum({
                     </div>
                     <div id={`${section.id}-learn`} className="scroll-mt-28">
                       <MinimalPairTrainer
+                        sectionId={section.id}
                         title={section.title}
                         description={section.description}
                         pairs={visiblePairs}
