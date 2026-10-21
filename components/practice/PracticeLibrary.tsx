@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { getPublicAudioPath, useRecordedAudio } from "@/components/training/audio";
+import {
+  getPublicAudioPath,
+  useRecordedAudio,
+} from "@/components/training/audio";
 import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
 import type { TrainingSection } from "@/data/trainingSections";
 import { saveTestResult } from "@/lib/trainingProgress";
@@ -20,7 +24,8 @@ const libraryCopy = {
     listeningDescription: "Play each word and choose which one you heard.",
     listeningMeta: (count: number) => `${count} word pairs`,
     speaking: "Speaking",
-    speakingDescription: "Listen, repeat, and check your pronunciation with the microphone.",
+    speakingDescription:
+      "Listen, repeat, and check your pronunciation with the microphone.",
     speakingMeta: (count: number) => `${count} word pairs and tongue twisters`,
     included: "Included practice",
     wordPairs: "Word pairs",
@@ -63,12 +68,16 @@ export function PracticeLibrary({
       : (sections[0]?.id ?? ""),
   );
   const [mode, setMode] = useState<PracticeMode>(initialMode ?? "listening");
-  const active = sections.find((section) => section.id === activeId) ?? sections[0];
+  const active =
+    sections.find((section) => section.id === activeId) ?? sections[0];
   const category = categories.find((item) => item.id === activeId);
 
   return (
     <div className="space-y-8">
-      <nav className="flex gap-2 overflow-x-auto pb-1" aria-label={copy.categories}>
+      <nav
+        className="flex gap-2 overflow-x-auto pb-1"
+        aria-label={copy.categories}
+      >
         {sections.map((section) => (
           <button
             key={section.id}
@@ -123,6 +132,10 @@ export function PracticeLibrary({
         </div>
       </section>
 
+      {mode === "speaking" ? (
+        <ArticulationGuide categoryId={active.id} />
+      ) : null}
+
       <div
         id={mode === "listening" ? "listening" : "pronunciation"}
         className="scroll-mt-28"
@@ -131,7 +144,9 @@ export function PracticeLibrary({
         {mode === "listening" ? (
           <QuickTest
             pairs={active.pairs}
-            onComplete={(score, total) => saveTestResult(active.id, score, total)}
+            onComplete={(score, total) =>
+              saveTestResult(active.id, score, total)
+            }
             onStudy={() => setMode("speaking")}
           />
         ) : (
@@ -149,7 +164,9 @@ export function PracticeLibrary({
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
               {copy.included}
             </p>
-            <h2 className="text-xl font-semibold text-white">{copy.wordPairs}</h2>
+            <h2 className="text-xl font-semibold text-white">
+              {copy.wordPairs}
+            </h2>
           </div>
           <span className="text-sm font-semibold text-white/55">
             {copy.pairCount(active.pairs.length)}
@@ -157,12 +174,16 @@ export function PracticeLibrary({
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {active.pairs.map((pair, index) => (
-            <article key={pair.id} className="border border-white/10 bg-white/[0.02] p-4">
+            <article
+              key={pair.id}
+              className="border border-white/10 bg-white/[0.02] p-4"
+            >
               <span className="text-xs font-semibold text-white/40">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <p className="mt-2 text-lg font-semibold text-white">
-                {pair.wordA} <span className="font-normal text-white/40">/</span>{" "}
+                {pair.wordA}{" "}
+                <span className="font-normal text-white/40">/</span>{" "}
                 {pair.wordB}
               </p>
               {pair.tongueTwister ? (
@@ -175,6 +196,184 @@ export function PracticeLibrary({
         </div>
       </section>
     </div>
+  );
+}
+
+// Each image shows both sounds side by side: left half, then right half.
+const articulationGuides = {
+  "r-vs-l": {
+    image: "/images/r-l-tongue-position-mouth-only.webp",
+    left: {
+      title: { en: "R: Keep the tongue tip free", ja: "R：舌先を浮かせる" },
+      detail: {
+        en: "Lift it toward the roof without touching.",
+        ja: "上あごに近づけますが、どこにも触れさせません。",
+      },
+    },
+    right: {
+      title: { en: "L: Touch the tongue tip", ja: "L：舌先をつける" },
+      detail: {
+        en: "Touch just behind the upper front teeth.",
+        ja: "上の前歯のすぐ後ろに舌先をつけます。",
+      },
+    },
+  },
+  "b-v": {
+    image: "/images/b-v-articulation.webp",
+    left: {
+      title: { en: "B: Close both lips", ja: "B：唇を閉じる" },
+      detail: {
+        en: "Close both lips, then release the air.",
+        ja: "上下の唇を閉じてから、一気に開きます。",
+      },
+    },
+    right: {
+      title: { en: "V: Teeth on the lower lip", ja: "V：下唇に歯を当てる" },
+      detail: {
+        en: "Rest the upper teeth lightly on the lower lip.",
+        ja: "上の前歯を下唇に軽く当てて震わせます。",
+      },
+    },
+  },
+  "s-sh": {
+    image: "/images/s-sh-articulation.webp",
+    left: {
+      title: { en: "S: Keep the tongue forward", ja: "S：舌を前に置く" },
+      detail: {
+        en: "Keep the tip behind the lower teeth and send a narrow stream of air.",
+        ja: "舌先を下の前歯の後ろに置き、細く息を出します。",
+      },
+    },
+    right: {
+      title: { en: "SH: Move the tongue back", ja: "SH：舌を少し奥へ" },
+      detail: {
+        en: "Raise the tongue farther back and round the lips slightly.",
+        ja: "舌を少し奥へ上げ、唇を軽く丸めます。",
+      },
+    },
+  },
+  "short-i-long-e": {
+    image: "/images/i-e-articulation.webp",
+    left: {
+      title: {
+        en: "Short I: Lower and relaxed",
+        ja: "短いI：少し低く、力を抜く",
+      },
+      detail: {
+        en: "Raise the front of the tongue with a slightly open jaw.",
+        ja: "舌の前を上げつつ、口を少し開けます。",
+      },
+    },
+    right: {
+      title: { en: "Long E: Raise the tongue", ja: "長いE：舌を高く上げる" },
+      detail: {
+        en: "Raise the tongue higher and spread the lips gently.",
+        ja: "舌の前をさらに高くし、唇を横に広げます。",
+      },
+    },
+  },
+  th: {
+    image: "/images/th-s-articulation.webp",
+    left: {
+      title: { en: "TH: Tongue between the teeth", ja: "TH：舌先を歯の間へ" },
+      detail: {
+        en: "Place the tongue tip gently between the front teeth.",
+        ja: "舌先を上下の前歯の間に軽く出します。",
+      },
+    },
+    right: {
+      title: {
+        en: "Unlike S: Tongue behind the teeth",
+        ja: "Sとの違い：舌は歯の後ろ",
+      },
+      detail: {
+        en: "For S, the tongue stays inside behind the teeth.",
+        ja: "Sでは舌を外へ出しません。位置の違いを確認しましょう。",
+      },
+    },
+  },
+  "final-consonants": {
+    image: "/images/final-consonant-articulation.webp",
+    left: {
+      title: { en: "Stop on the consonant", ja: "子音で止める" },
+      detail: {
+        en: "Finish the final consonant and stop the sound.",
+        ja: "最後の子音を作った位置で、音を短く止めます。",
+      },
+    },
+    right: {
+      title: { en: "Do not add a vowel", ja: "母音を足さない" },
+      detail: {
+        en: "Do not reopen the mouth for an extra vowel sound.",
+        ja: "子音のあとに口を開き直して、余分な母音を続けないようにします。",
+      },
+    },
+  },
+} as const;
+
+const articulationCopy = {
+  en: { eyebrow: "Compare how your mouth moves" },
+  ja: { eyebrow: "口の使い方を比べよう" },
+};
+
+function ArticulationGuide({ categoryId }: { categoryId: string }) {
+  const { language, text } = useLanguage();
+  const guide =
+    articulationGuides[categoryId as keyof typeof articulationGuides];
+
+  if (!guide) return null;
+
+  return (
+    <section className="space-y-4 border border-white/10 bg-white/[0.02] p-5 sm:p-7">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
+        {articulationCopy[language].eyebrow}
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {(["left", "right"] as const).map((side) => (
+          <ArticulationPanel
+            key={side}
+            image={guide.image}
+            side={side}
+            title={text(guide[side].title)}
+            detail={text(guide[side].detail)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ArticulationPanel({
+  image,
+  side,
+  title,
+  detail,
+}: {
+  image: string;
+  side: "left" | "right";
+  title: string;
+  detail: string;
+}) {
+  return (
+    <article className="overflow-hidden border border-white/10 bg-black">
+      <div className="relative aspect-square overflow-hidden">
+        {/* The image holds both sounds side by side; show only this panel's half. */}
+        <Image
+          src={image}
+          alt={`${title}. ${detail}`}
+          width={1774}
+          height={887}
+          className={`absolute top-0 h-full w-[200%] max-w-none ${
+            side === "left" ? "left-0" : "right-0"
+          }`}
+          sizes="(min-width: 768px) 416px, 100vw"
+        />
+      </div>
+      <div className="space-y-1 border-t border-white/10 p-4">
+        <h3 className="font-semibold text-white">{title}</h3>
+        <p className="text-sm leading-6 text-white/55">{detail}</p>
+      </div>
+    </article>
   );
 }
 
@@ -213,10 +412,14 @@ function ModeCard({
           →
         </span>
       </div>
-      <p className={`mt-2 text-sm leading-6 ${active ? "text-black/65" : "text-white/55"}`}>
+      <p
+        className={`mt-2 text-sm leading-6 ${active ? "text-black/65" : "text-white/55"}`}
+      >
         {description}
       </p>
-      <p className={`mt-3 text-xs font-semibold ${active ? "text-black" : "text-white/75"}`}>
+      <p
+        className={`mt-3 text-xs font-semibold ${active ? "text-black" : "text-white/75"}`}
+      >
         {meta}
       </p>
     </button>
@@ -285,10 +488,16 @@ function QuickTest({
         <p className="text-4xl font-semibold text-white">
           {score} / {quiz.length}
         </p>
-        <p className="text-white/55">{score === quiz.length ? copy.perfect : copy.missed}</p>
+        <p className="text-white/55">
+          {score === quiz.length ? copy.perfect : copy.missed}
+        </p>
         <div className="flex flex-wrap justify-center gap-3">
           {score < quiz.length ? (
-            <button type="button" onClick={onStudy} className={primaryButtonClassName}>
+            <button
+              type="button"
+              onClick={onStudy}
+              className={primaryButtonClassName}
+            >
               {copy.study}
             </button>
           ) : null}
@@ -377,7 +586,11 @@ function QuickTest({
           <p className="font-semibold text-white">
             {answer === target ? copy.correct : copy.answer(targetWord)}
           </p>
-          <button type="button" onClick={next} className={primaryButtonClassName}>
+          <button
+            type="button"
+            onClick={next}
+            className={primaryButtonClassName}
+          >
             {isLast ? copy.finish : copy.next}
           </button>
         </div>
@@ -406,7 +619,9 @@ function PairCard({ pair }: { pair: MinimalPair }) {
           <button
             key={word}
             type="button"
-            onClick={() => play(getPublicAudioPath("words", pair.soundFocus, word), word)}
+            onClick={() =>
+              play(getPublicAudioPath("words", pair.soundFocus, word), word)
+            }
             className="flex h-11 items-center justify-center gap-2 border border-white/10 bg-black px-3 font-semibold text-white transition hover:border-white/35 focus:outline-none"
           >
             <SpeakerIcon className="h-4 w-4 shrink-0 text-white/50" />
@@ -463,7 +678,8 @@ function PronunciationCheck({ words }: { words: string[] }) {
   const [feedback, setFeedback] = useState("");
 
   function check(word: string) {
-    const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    const Recognition =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
     if (!Recognition) {
       setFeedback(copy.unsupported);
@@ -478,7 +694,9 @@ function PronunciationCheck({ words }: { words: string[] }) {
     recognition.onresult = (event) => {
       const heard = event.results[0]?.[0]?.transcript.toLowerCase() ?? "";
       setFeedback(
-        heard.includes(word.toLowerCase()) ? copy.correct(word) : copy.retry(heard),
+        heard.includes(word.toLowerCase())
+          ? copy.correct(word)
+          : copy.retry(heard),
       );
     };
     recognition.onerror = () => setFeedback(copy.nothing);
