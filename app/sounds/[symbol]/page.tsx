@@ -33,7 +33,7 @@ export default async function SoundPage({ params }: SoundPageProps) {
         eyebrow={{ en: "Deep sound study", ja: "音を深く学ぶ" }}
         title={{ en: `The ${symbol.symbol} sound`, ja: `${symbol.symbol} の音` }}
         description={{
-          en: "Understand the articulation and practise with example words.",
+          en: "Understand the articulation and practice with example words.",
           ja: "口と舌の使い方を理解して、例語を聞きながら練習します。",
         }}
       />

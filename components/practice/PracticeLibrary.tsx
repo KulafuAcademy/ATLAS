@@ -232,7 +232,7 @@ const quickTestCopy = {
     next: "Next",
     finish: "Show score",
     perfect: "Perfect! Move to the next sound.",
-    missed: "Now practise the sounds you missed.",
+    missed: "Now practice the sounds you missed.",
     study: "Open speaking practice",
     restart: "Try again",
   },

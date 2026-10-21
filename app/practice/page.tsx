@@ -17,7 +17,7 @@ const lessonPageCopy: Record<
   "r-vs-l": {
     title: { en: "R and L Lesson", ja: "RとLの学習" },
     description: {
-      en: "See whether the tongue tip touches, then practise with words such as right and light.",
+      en: "See whether the tongue tip touches, then practice with words such as right and light.",
       ja: "舌先が触れるか触れないかを見て、right / light などの単語で練習します。",
     },
   },
@@ -38,7 +38,7 @@ const lessonPageCopy: Record<
   "short-i-long-e": {
     title: { en: "Short I and Long E Lesson", ja: "短いIと長いEの学習" },
     description: {
-      en: "Practise differences in tongue height and jaw opening with words such as sit and seat.",
+      en: "Practice differences in tongue height and jaw opening with words such as sit and seat.",
       ja: "sit / seat のような単語で、舌の高さと口の開き方の違いを練習します。",
     },
   },
@@ -52,7 +52,7 @@ const lessonPageCopy: Record<
   "final-consonants": {
     title: { en: "Final Consonants Lesson", ja: "語尾の子音の学習" },
     description: {
-      en: "Practise stopping on the final consonant without adding an extra vowel.",
+      en: "Practice stopping on the final consonant without adding an extra vowel.",
       ja: "語尾の子音で音を止め、あとに余分な母音を足さない発音を練習します。",
     },
   },
@@ -83,7 +83,7 @@ export default async function PracticePage({ searchParams }: PracticePageProps) 
         }
         description={
           copy?.description ?? {
-            en: "Practise minimal-pair listening, pronunciation checks, and tongue twisters.",
+            en: "Practice minimal-pair listening, pronunciation checks, and tongue twisters.",
             ja: "ミニマルペアの聞き分けと、発音チェック・早口文を練習できます。",
           }
         }
