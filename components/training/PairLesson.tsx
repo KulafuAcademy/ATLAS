@@ -967,6 +967,13 @@ function PronunciationReport({
         </div>
       </div>
 
+      {result.feedback ? (
+        <p className="whitespace-pre-line rounded-lg border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/85">
+          {result.feedback}
+        </p>
+      ) : null}
+
+      {/* Sounds section hidden for now
       <ReportSection title={copy.sounds}>
         <PhonemeComparison
           copy={copy}
@@ -988,6 +995,7 @@ function PronunciationReport({
           </div>
         </dl>
       </ReportSection>
+      */}
 
       <ReportSection title={copy.wordByWord}>
         <ul className="flex flex-wrap gap-2">

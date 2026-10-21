@@ -114,6 +114,7 @@ export type PronunciationResult =
       heard: { phonemes: string[]; soundsLike: string };
       words: PronunciationWord[];
       issues: PronunciationIssue[];
+      feedback: string | null; // kid-friendly advice from Ollama; null if Ollama was down
     }
   | {
       ok: false; // recording too short or too quiet
