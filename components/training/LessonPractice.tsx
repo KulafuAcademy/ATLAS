@@ -89,11 +89,11 @@ export function LessonPractice({
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           {practice.compare.pairs.map((pair) => (
             <div
               key={`${pair.left}-${pair.right}`}
-              className="flex items-center gap-2 border border-white/10 bg-white/[0.03] p-3"
+              className="flex min-w-0 items-center gap-2 border border-white/10 bg-white/[0.03] p-2 sm:p-3"
             >
               <PlayWordButton word={pair.left} hint={text(pair.leftHint)} onPlay={playWord} />
               <span aria-hidden className="shrink-0 text-white/30">
@@ -148,11 +148,11 @@ function PlayWordButton({
     <button
       type="button"
       onClick={() => onPlay(word)}
-      className="flex h-11 flex-1 items-center justify-center gap-2 border border-white/10 bg-black px-3 text-white transition hover:border-white/35 focus:outline-none"
+      className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 border border-white/10 bg-black px-2 text-white transition hover:border-white/35 focus:outline-none sm:px-3"
     >
       <SpeakerIcon className="h-4 w-4 shrink-0 text-white/50" />
-      <span className="font-semibold">{word}</span>
-      <span className="text-xs text-white/50">{hint}</span>
+      <span className="shrink-0 font-semibold">{word}</span>
+      <span className="min-w-0 truncate text-xs text-white/50">{hint}</span>
     </button>
   );
 }
