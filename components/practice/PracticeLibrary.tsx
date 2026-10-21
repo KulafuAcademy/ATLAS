@@ -68,9 +68,21 @@ export function PracticeLibrary({
       : (sections[0]?.id ?? ""),
   );
   const [mode, setMode] = useState<PracticeMode>(initialMode ?? "listening");
+  const [quizIndex, setQuizIndex] = useState(0);
   const active =
     sections.find((section) => section.id === activeId) ?? sections[0];
   const category = categories.find((item) => item.id === activeId);
+
+  // Jump the listening quiz to the chosen pair and bring it into view.
+  function practicePair(index: number) {
+    setMode("listening");
+    setQuizIndex(index);
+    requestAnimationFrame(() =>
+      document
+        .getElementById("listening")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -85,6 +97,7 @@ export function PracticeLibrary({
             onClick={() => {
               setActiveId(section.id);
               setMode("listening");
+              setQuizIndex(0);
             }}
             className={`h-10 shrink-0 border px-4 text-sm font-semibold transition focus:outline-none ${
               activeId === section.id
@@ -144,6 +157,8 @@ export function PracticeLibrary({
         {mode === "listening" ? (
           <QuickTest
             pairs={active.pairs}
+            index={quizIndex}
+            onIndexChange={setQuizIndex}
             onComplete={(score, total) =>
               saveTestResult(active.id, score, total)
             }
@@ -173,26 +188,39 @@ export function PracticeLibrary({
           </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {active.pairs.map((pair, index) => (
-            <article
-              key={pair.id}
-              className="border border-white/10 bg-white/[0.02] p-4"
-            >
-              <span className="text-xs font-semibold text-white/40">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {pair.wordA}{" "}
-                <span className="font-normal text-white/40">/</span>{" "}
-                {pair.wordB}
-              </p>
-              {pair.tongueTwister ? (
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/55">
-                  {pair.tongueTwister.text}
+          {active.pairs.map((pair, index) => {
+            const isCurrent = mode === "listening" && index === quizIndex;
+
+            return (
+              <button
+                key={pair.id}
+                type="button"
+                aria-current={isCurrent ? "step" : undefined}
+                onClick={() => practicePair(index)}
+                className={`border p-4 text-left transition focus:outline-none ${
+                  isCurrent
+                    ? "border-white/45 bg-white/[0.09]"
+                    : "border-white/10 bg-white/[0.02] hover:border-white/35"
+                }`}
+              >
+                <span
+                  className={`text-xs font-semibold ${isCurrent ? "text-white/70" : "text-white/40"}`}
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {pair.wordA}{" "}
+                  <span className="font-normal text-white/40">/</span>{" "}
+                  {pair.wordB}
                 </p>
-              ) : null}
-            </article>
-          ))}
+                {pair.tongueTwister ? (
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/55">
+                    {pair.tongueTwister.text}
+                  </p>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </section>
     </div>
@@ -463,12 +491,17 @@ function buildQuiz(pairs: MinimalPair[]) {
 }
 
 // Goes through every pair: play the word, then pick which one was heard.
+// `index` is owned by the parent so the word pair list can jump to a pair.
 function QuickTest({
   pairs,
+  index,
+  onIndexChange,
   onComplete,
   onStudy,
 }: {
   pairs: MinimalPair[];
+  index: number;
+  onIndexChange: (index: number) => void;
   onComplete: (score: number, total: number) => void;
   onStudy: () => void;
 }) {
@@ -476,11 +509,18 @@ function QuickTest({
   const copy = quickTestCopy[language];
   const play = useRecordedAudio();
   const [quiz, setQuiz] = useState(() => buildQuiz(pairs));
-  const [index, setIndex] = useState(0);
   const [played, setPlayed] = useState(false);
   const [answer, setAnswer] = useState<QuizTarget | null>(null);
   const [score, setScore] = useState(0);
+  const [shownIndex, setShownIndex] = useState(index);
   const current = quiz[index];
+
+  // Start the question fresh whenever the index changes (next or a jump).
+  if (shownIndex !== index) {
+    setShownIndex(index);
+    setPlayed(false);
+    setAnswer(null);
+  }
 
   if (!current) {
     return (
@@ -505,7 +545,7 @@ function QuickTest({
             type="button"
             onClick={() => {
               setQuiz(buildQuiz(pairs));
-              setIndex(0);
+              onIndexChange(0);
               setScore(0);
             }}
             className="inline-flex h-11 items-center justify-center border border-white/10 px-4 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
@@ -534,9 +574,7 @@ function QuickTest({
 
   function next() {
     if (isLast) onComplete(score, quiz.length);
-    setIndex((value) => value + 1);
-    setPlayed(false);
-    setAnswer(null);
+    onIndexChange(index + 1);
   }
 
   return (
