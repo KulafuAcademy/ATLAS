@@ -747,9 +747,9 @@ function PairPracticeCard({
           {pair.soundFocus}
         </p>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <WordLabel label="A" word={pair.wordA} />
+          <WordLabel word={pair.wordA} />
           <span className="text-sm text-white/30">vs</span>
-          <WordLabel label="B" word={pair.wordB} />
+          <WordLabel word={pair.wordB} />
         </div>
       </div>
 
@@ -1199,14 +1199,9 @@ function SpeedToggle({
   );
 }
 
-function WordLabel({ label, word }: { label: string; word: string }) {
+function WordLabel({ word }: { word: string }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/35">
-        {label}
-      </p>
-      <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
-    </div>
+    <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
   );
 }
 
