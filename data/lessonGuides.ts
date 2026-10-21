@@ -19,7 +19,7 @@ export type LessonGuide = {
 export const lessonGuides: Record<string, LessonGuide> = {
   "r-vs-l": {
     title: { en: "Learn to pronounce R and L", ja: "RとLの発音を学ぶ" },
-    image: "/images/r-l-tongue-position-mouth-only.png",
+    image: "/images/r-l-tongue-position-mouth-only.webp",
     sounds: [
       {
         label: "R",
@@ -57,7 +57,7 @@ export const lessonGuides: Record<string, LessonGuide> = {
   },
   "b-v": {
     title: { en: "Learn to pronounce B and V", ja: "BとVの発音を学ぶ" },
-    image: "/images/b-v-articulation.png",
+    image: "/images/b-v-articulation.webp",
     sounds: [
       {
         label: "B",
@@ -98,7 +98,7 @@ export const lessonGuides: Record<string, LessonGuide> = {
   },
   "s-sh": {
     title: { en: "Learn to pronounce S and SH", ja: "SとSHの発音を学ぶ" },
-    image: "/images/s-sh-articulation.png",
+    image: "/images/s-sh-articulation.webp",
     sounds: [
       {
         label: "S",
@@ -136,7 +136,7 @@ export const lessonGuides: Record<string, LessonGuide> = {
   },
   "short-i-long-e": {
     title: { en: "Learn to pronounce short I and long E", ja: "短いIと長いEの発音を学ぶ" },
-    image: "/images/i-e-articulation.png",
+    image: "/images/i-e-articulation.webp",
     sounds: [
       {
         label: "I",
@@ -174,7 +174,7 @@ export const lessonGuides: Record<string, LessonGuide> = {
   },
   th: {
     title: { en: "Learn to pronounce TH and S", ja: "THとSの発音を学ぶ" },
-    image: "/images/th-s-articulation.png",
+    image: "/images/th-s-articulation.webp",
     sounds: [
       {
         label: "TH",
@@ -218,7 +218,7 @@ export const lessonGuides: Record<string, LessonGuide> = {
   },
   "final-consonants": {
     title: { en: "Learn clean word endings", ja: "語尾の子音をはっきり出す" },
-    image: "/images/final-consonant-articulation.png",
+    image: "/images/final-consonant-articulation.webp",
     sounds: [
       {
         title: { en: "Stop cleanly", ja: "きれいに止める" },
