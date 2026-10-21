@@ -93,9 +93,11 @@ export function PracticeLibrary({
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
             {copy.overview}
           </p>
-          <h2 className="text-2xl font-semibold text-white">{text(active.title)}</h2>
+          <h2 className="text-2xl font-semibold text-white">
+            {text(category?.title ?? active.title)}
+          </h2>
           <p className="max-w-2xl text-sm leading-6 text-white/55">
-            {text(active.description)}
+            {text(category?.description ?? active.description)}
           </p>
           {category ? (
             <p className="text-sm font-medium text-white/75">
