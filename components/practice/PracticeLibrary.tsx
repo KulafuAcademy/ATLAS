@@ -384,7 +384,14 @@ function QuickTest({
   );
 }
 
+const pairCardCopy = {
+  en: { listen: "Listen" },
+  ja: { listen: "聞く" },
+};
+
 function PairCard({ pair }: { pair: MinimalPair }) {
+  const { language } = useLanguage();
+  const copy = pairCardCopy[language];
   const play = useRecordedAudio();
 
   return (
@@ -405,6 +412,27 @@ function PairCard({ pair }: { pair: MinimalPair }) {
           </button>
         ))}
       </div>
+      {pair.tongueTwister ? (
+        <div className="space-y-3 border border-white/10 bg-white/[0.03] p-4">
+          <p className="font-semibold text-white">{pair.tongueTwister.text}</p>
+          <p className="text-sm leading-6 text-white/55">
+            {pair.tongueTwister.note[language]}
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              play(
+                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+                pair.tongueTwister!.text,
+              )
+            }
+            className="flex h-10 items-center gap-2 border border-white/10 bg-black px-3 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
+          >
+            <SpeakerIcon className="h-4 w-4 text-white/50" />
+            {copy.listen}
+          </button>
+        </div>
+      ) : null}
       <PronunciationCheck words={[pair.wordA, pair.wordB]} />
     </article>
   );
