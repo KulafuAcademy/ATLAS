@@ -1,13 +1,11 @@
 "use client";
 
-import { useRef } from "react";
-
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import { speakWord } from "@/components/sounds/speak";
 import type { LessonPractice as LessonPracticeData } from "@/data/lessonPractice";
 
-import { getPublicAudioPath } from "./audio";
+import { getPublicAudioPath, useRecordedAudio } from "./audio";
 
 const practiceCopy = {
   en: {
@@ -36,42 +34,10 @@ export function LessonPractice({
 }) {
   const { language, text } = useLanguage();
   const copy = practiceCopy[language];
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const play = useRecordedAudio();
 
-  // Plays the recorded clip when one exists, otherwise falls back to TTS.
   function playWord(word: string) {
-    audioRef.current?.pause();
-    audioRef.current = null;
-
-    if (!soundFocus) {
-      speakWord(word, 0.72);
-      return;
-    }
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    const audio = new Audio(getPublicAudioPath("words", soundFocus, word));
-    let fellBack = false;
-
-    // Skip the fallback when this clip was already replaced by a newer one.
-    const fallbackToTts = () => {
-      if (fellBack || audioRef.current !== audio) return;
-      fellBack = true;
-      audioRef.current = null;
-
-      speakWord(word, 0.72);
-    };
-
-    audioRef.current = audio;
-    audio.onended = () => {
-      if (audioRef.current === audio) {
-        audioRef.current = null;
-      }
-    };
-    audio.onerror = fallbackToTts;
-    audio.play().catch(fallbackToTts);
+    play(soundFocus ? getPublicAudioPath("words", soundFocus, word) : null, word);
   }
 
   return (
