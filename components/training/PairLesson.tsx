@@ -121,6 +121,10 @@ const lessonCopy = {
     legendMissing: "missing",
     legendExtra: "extra",
     wordByWord: "Word by word",
+    ipa: "IPA",
+    expectedIpa: "Should be",
+    heardIpa: "You said",
+    heardShort: "heard",
     whatToFix: "What to fix",
     nothingToFix: "Nothing to fix. Try it again at normal speed to lock it in.",
     tip: "Tip",
@@ -186,6 +190,10 @@ const lessonCopy = {
     legendMissing: "抜けた音",
     legendExtra: "余分な音",
     wordByWord: "単語ごと",
+    ipa: "発音記号 (IPA)",
+    expectedIpa: "正しい発音",
+    heardIpa: "あなたの発音",
+    heardShort: "聞こえた音",
     whatToFix: "直すポイント",
     nothingToFix:
       "直すところはありません。通常の速さでもう一度言って定着させましょう。",
@@ -1008,12 +1016,35 @@ function PronunciationReport({
               <span className="text-xs font-medium text-white/80">
                 {word.soundsLike}
               </span>
+              <span className="font-mono text-xs text-white/70">/{word.ipa}/</span>
+              {word.heardIpa !== word.ipa ? (
+                <span className="font-mono text-[11px] text-amber-200/80">
+                  {copy.heardShort}: {word.heardIpa ? `/${word.heardIpa}/` : "–"}
+                </span>
+              ) : null}
               <span className="text-xs tabular-nums text-white/60">
                 {word.score}%
               </span>
             </li>
           ))}
         </ul>
+      </ReportSection>
+
+      <ReportSection title={copy.ipa}>
+        <dl className="grid gap-2 text-sm">
+          <div className="grid grid-cols-[8rem_1fr] gap-3">
+            <dt className="text-white/45">{copy.expectedIpa}</dt>
+            <dd className="wrap-break-word font-mono font-medium text-white">
+              /{result.expected.ipa}/
+            </dd>
+          </div>
+          <div className="grid grid-cols-[8rem_1fr] gap-3">
+            <dt className="text-white/45">{copy.heardIpa}</dt>
+            <dd className="wrap-break-word font-mono font-medium text-white">
+              /{result.heard.ipa}/
+            </dd>
+          </div>
+        </dl>
       </ReportSection>
 
       <ReportSection title={copy.whatToFix}>

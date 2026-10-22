@@ -96,6 +96,8 @@ export type PronunciationWord = {
   score: number; // 0-100, share of this word's sounds pronounced correctly
   phonemes: string[]; // IPA symbols the word should have
   soundsLike: string; // readable respelling, e.g. "r-AH-k"
+  ipa: string; // expected pronunciation in IPA, e.g. "ɹɑk"
+  heardIpa: string | null; // what was heard in IPA; null if nothing was heard for this word
 };
 
 export type PronunciationIssue = {
@@ -110,8 +112,8 @@ export type PronunciationResult =
       score: number; // 0-100 overall
       grade: { letter: string; verdict: string; color: string };
       allWordsCorrect: boolean;
-      expected: { phonemes: string[]; soundsLike: string };
-      heard: { phonemes: string[]; soundsLike: string };
+      expected: { phonemes: string[]; soundsLike: string; ipa: string };
+      heard: { phonemes: string[]; soundsLike: string; ipa: string };
       words: PronunciationWord[];
       issues: PronunciationIssue[];
       feedback: string | null; // kid-friendly advice from Ollama; null if Ollama was down
