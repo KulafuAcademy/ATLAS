@@ -7,6 +7,7 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import type { LocalizedText } from "@/lib/i18n";
 import type { MinimalPair } from "@/types/training";
 
+import { getPublicAudioPath } from "./audio";
 import type {
   BrowserSpeechRecognition,
   BrowserSpeechRecognitionResultEvent,
@@ -226,15 +227,21 @@ export function MinimalPairTrainer({
   );
 }
 
-// Builds the public MP3 path for a word or tongue-twister audio file.
-// Files are fetched under /public/(folder)/(soundFocus)/(filename).mp3
-// Example: /public/words/R vs L/alive.mp3
-function getPublicAudioPath(
-  folder: "words" | "twisters",
-  soundFocus: string,
-  filename: string,
-) {
-  return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
+/**
+ * A single PairPracticeCard on its own, used by the per-pair test page.
+ */
+
+export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
+  const { language, text } = useLanguage();
+
+  return (
+    <PairPracticeCard
+      copy={trainerCopy[language]}
+      language={language}
+      pair={pair}
+      text={text}
+    />
+  );
 }
 
 /**
@@ -740,9 +747,9 @@ function PairPracticeCard({
           {pair.soundFocus}
         </p>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <WordLabel label="A" word={pair.wordA} />
+          <WordLabel word={pair.wordA} />
           <span className="text-sm text-white/30">vs</span>
-          <WordLabel label="B" word={pair.wordB} />
+          <WordLabel word={pair.wordB} />
         </div>
       </div>
 
@@ -1192,14 +1199,9 @@ function SpeedToggle({
   );
 }
 
-function WordLabel({ label, word }: { label: string; word: string }) {
+function WordLabel({ word }: { word: string }) {
   return (
-    <div className="space-y-2">
-      <p className="text-xs uppercase tracking-[0.22em] text-white/35">
-        {label}
-      </p>
-      <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
-    </div>
+    <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
   );
 }
 

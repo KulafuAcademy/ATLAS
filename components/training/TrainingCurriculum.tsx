@@ -6,19 +6,14 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { ListeningTestSession } from "@/components/training/ListeningTestSession";
 import { MinimalPairTrainer } from "@/components/training/MinimalPairTrainer";
 import { TrainingCategoryOverview } from "@/components/training/TrainingCategoryOverview";
-import type { LocalizedText } from "@/lib/i18n";
-import type {
-  MinimalPair,
-  TrainingCategory,
-  TrainingProgress,
-} from "@/types/training";
-
-type TrainingSection = {
-  id: string;
-  title: LocalizedText;
-  description: LocalizedText;
-  pairs: MinimalPair[];
-};
+import type { TrainingSection } from "@/data/trainingSections";
+import {
+  getDailyPairs,
+  progressStorageKey,
+  withTestResult,
+  type ProgressByCategory,
+} from "@/lib/trainingProgress";
+import type { TrainingCategory } from "@/types/training";
 
 type TrainingCurriculumProps = {
   categories: TrainingCategory[];
@@ -26,10 +21,7 @@ type TrainingCurriculumProps = {
 };
 
 type PracticeMode = "all" | "daily";
-type EntryTarget = "learn" | "test";
-type ProgressByCategory = Record<string, TrainingProgress>;
 
-const progressStorageKey = "atlas.trainingProgress.v1";
 const smallButtonClassName =
   "h-10 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none";
 
@@ -63,15 +55,14 @@ export function TrainingCurriculum({
   const { language, text } = useLanguage();
   const copy = curriculumCopy[language];
   const [openSectionIds, setOpenSectionIds] = useState<string[]>(["r-vs-l"]);
-  const [practiceModes, setPracticeModes] = useState<Record<string, PracticeMode>>(
-    {},
-  );
-  const [progressByCategory, setProgressByCategory] = useState<ProgressByCategory>(
-    {},
-  );
-  const [pendingScrollTargetId, setPendingScrollTargetId] = useState<string | null>(
-    null,
-  );
+  const [practiceModes, setPracticeModes] = useState<
+    Record<string, PracticeMode>
+  >({});
+  const [progressByCategory, setProgressByCategory] =
+    useState<ProgressByCategory>({});
+  const [pendingScrollTargetId, setPendingScrollTargetId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -114,7 +105,9 @@ export function TrainingCurriculum({
   function toggleSection(sectionId: string) {
     setOpenSectionIds((currentSectionIds) =>
       currentSectionIds.includes(sectionId)
-        ? currentSectionIds.filter((currentSectionId) => currentSectionId !== sectionId)
+        ? currentSectionIds.filter(
+            (currentSectionId) => currentSectionId !== sectionId,
+          )
         : [...currentSectionIds, sectionId],
     );
   }
@@ -133,31 +126,14 @@ export function TrainingCurriculum({
     });
   }
 
-  function openAndScrollToSection(sectionId: string, target: EntryTarget) {
-    const targetElementId =
-      target === "test" ? `${sectionId}-test` : `${sectionId}-learn`;
-
-    setOpenSectionIds((currentSectionIds) =>
-      currentSectionIds.includes(sectionId)
-        ? currentSectionIds
-        : [...currentSectionIds, sectionId],
-    );
-    setPendingScrollTargetId(targetElementId);
-  }
-
   function recordTestProgress(sectionId: string, score: number, total: number) {
     setProgressByCategory((currentProgress) => {
-      const previousProgress = currentProgress[sectionId];
-      const nextProgress = {
-        ...currentProgress,
-        [sectionId]: {
-          attempts: (previousProgress?.attempts ?? 0) + 1,
-          bestScore: Math.max(previousProgress?.bestScore ?? 0, score),
-          lastScore: score,
-          total,
-          updatedAt: new Date().toISOString(),
-        },
-      };
+      const nextProgress = withTestResult(
+        currentProgress,
+        sectionId,
+        score,
+        total,
+      );
 
       window.localStorage.setItem(
         progressStorageKey,
@@ -172,10 +148,10 @@ export function TrainingCurriculum({
     <div className="space-y-16">
       <TrainingCategoryOverview
         categories={categories}
-        onStart={openAndScrollToSection}
         progressByCategory={progressByCategory}
       />
 
+      {/*
       <section
         id="curriculum"
         className="scroll-mt-28 space-y-4 border-t border-white/10 pt-10"
@@ -316,37 +292,8 @@ export function TrainingCurriculum({
           })}
         </div>
       </section>
+      
+      */}
     </div>
   );
-}
-
-function getDailyPairs(sectionId: string, pairs: MinimalPair[]) {
-  return [...pairs]
-    .sort((pairA, pairB) => {
-      const dateKey = getLocalDateKey();
-      const scoreA = hashString(`${dateKey}:${sectionId}:${pairA.id}`);
-      const scoreB = hashString(`${dateKey}:${sectionId}:${pairB.id}`);
-
-      return scoreA - scoreB;
-    })
-    .slice(0, 10);
-}
-
-function getLocalDateKey() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const date = String(today.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${date}`;
-}
-
-function hashString(value: string) {
-  let hash = 0;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-
-  return hash;
 }
