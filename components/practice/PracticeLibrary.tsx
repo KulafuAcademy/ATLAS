@@ -9,6 +9,10 @@ import {
   getPublicAudioPath,
   useRecordedAudio,
 } from "@/components/training/audio";
+import {
+  playCorrectSound,
+  playIncorrectSound,
+} from "@/components/training/feedbackSounds";
 import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
 import type { TrainingSection } from "@/data/trainingSections";
 import { saveTestResult } from "@/lib/trainingProgress";
@@ -569,7 +573,12 @@ function QuickTest({
   function choose(value: QuizTarget) {
     if (!played || answer) return;
     setAnswer(value);
-    if (value === target) setScore((value) => value + 1);
+    if (value === target) {
+      playCorrectSound();
+      setScore((value) => value + 1);
+    } else {
+      playIncorrectSound();
+    }
   }
 
   function next() {
@@ -731,13 +740,19 @@ function PronunciationCheck({ words }: { words: string[] }) {
     recognition.lang = "en-US";
     recognition.onresult = (event) => {
       const heard = event.results[0]?.[0]?.transcript.toLowerCase() ?? "";
-      setFeedback(
-        heard.includes(word.toLowerCase())
-          ? copy.correct(word)
-          : copy.retry(heard),
-      );
+      const isCorrect = heard.includes(word.toLowerCase());
+
+      if (isCorrect) {
+        playCorrectSound();
+      } else {
+        playIncorrectSound();
+      }
+      setFeedback(isCorrect ? copy.correct(word) : copy.retry(heard));
     };
-    recognition.onerror = () => setFeedback(copy.nothing);
+    recognition.onerror = () => {
+      playIncorrectSound();
+      setFeedback(copy.nothing);
+    };
     recognition.start();
     setFeedback(copy.say(word));
   }
