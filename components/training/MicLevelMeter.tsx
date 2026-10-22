@@ -11,9 +11,11 @@ const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
  * Opens its own getUserMedia stream and reads volume (RMS) through an
  * AnalyserNode, updating bar heights directly via refs to avoid re-renders.
  * Purely visual: if mic access fails, recognition still works.
- * Hidden on touch devices, where a second mic stream can conflict with speech recognition.
+ * Pass `stream` to reuse an existing mic stream instead of opening a second one;
+ * on touch devices a second stream can mute the first, so callers recording on
+ * touch devices must pass it.
  */
-export function MicLevelMeter() {
+export function MicLevelMeter({ stream: sharedStream }: { stream?: MediaStream } = {}) {
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   useEffect(() => {
@@ -33,19 +35,23 @@ export function MicLevelMeter() {
 
     async function start() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source =
+          sharedStream ??
+          (stream = await navigator.mediaDevices.getUserMedia({ audio: true }));
 
         if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
+          stream?.getTracks().forEach((track) => track.stop());
           return;
         }
 
         audioContext = createAudioContext();
         if (!audioContext) return;
+        // Mobile browsers start contexts suspended outside a tap.
+        if (audioContext.state === "suspended") void audioContext.resume();
 
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
-        audioContext.createMediaStreamSource(stream).connect(analyser);
+        audioContext.createMediaStreamSource(source).connect(analyser);
 
         const samples = new Uint8Array(analyser.fftSize);
         let smoothed = 0;
@@ -86,7 +92,7 @@ export function MicLevelMeter() {
       stream?.getTracks().forEach((track) => track.stop());
       void audioContext?.close();
     };
-  }, []);
+  }, [sharedStream]);
 
   return (
     <div

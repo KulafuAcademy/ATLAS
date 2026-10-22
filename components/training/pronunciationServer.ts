@@ -179,6 +179,8 @@ export async function checkPronunciationServer(signal?: AbortSignal) {
 // ---------------------------------------------------------------------------
 
 export type Recording = {
+  /** The live mic stream, e.g. for a level meter (avoids opening a second stream). */
+  stream: MediaStream;
   /** Stops recording and resolves with the audio. */
   stop: () => Promise<Blob>;
   /** Stops recording and throws the audio away. */
@@ -203,6 +205,7 @@ export async function startRecording(): Promise<Recording> {
   recorder.start();
 
   return {
+    stream,
     stop: () =>
       new Promise<Blob>((resolve) => {
         const finish = () => {
@@ -315,6 +318,7 @@ export function useServerPronunciationCheck(
 ) {
   const [isListening, setIsListening] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const recordingRef = useRef<Promise<Recording> | null>(null);
   const textRef = useRef("");
   const runIdRef = useRef(0); // bumps on every start/cancel so stale async work is ignored
@@ -335,6 +339,7 @@ export function useServerPronunciationCheck(
     recordingRef.current = null;
     setIsListening(false);
     setIsAnalyzing(false);
+    setStream(null);
   }
 
   useEffect(() => cancel, []); // release the mic on unmount
@@ -358,9 +363,10 @@ export function useServerPronunciationCheck(
     recordingRef.current = recording;
 
     recording.then(
-      () => {
-        if (runIdRef.current === runId)
-          onResultRef.current({ status: "listening" });
+      (rec) => {
+        if (runIdRef.current !== runId) return;
+        setStream(rec.stream);
+        onResultRef.current({ status: "listening" });
       },
       () => {
         if (runIdRef.current !== runId) return;
@@ -380,6 +386,7 @@ export function useServerPronunciationCheck(
     recordingRef.current = null;
     setIsListening(false);
     setIsAnalyzing(true);
+    setStream(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -424,5 +431,5 @@ export function useServerPronunciationCheck(
     }
   }
 
-  return { start, finishListening, cancel, isListening, isAnalyzing };
+  return { start, finishListening, cancel, isListening, isAnalyzing, stream };
 }

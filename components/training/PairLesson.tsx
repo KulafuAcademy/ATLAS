@@ -655,7 +655,7 @@ export function PairLesson({
               <LiveCheckStatus
                 copy={copy}
                 countdown={countdown}
-                isListening={check.isListening}
+                micStream={check.stream}
                 isAnalyzing={check.isAnalyzing}
               />
               <NoticeMessage copy={copy} notice={checkNotice} />
@@ -845,12 +845,12 @@ function BestScore({
 function LiveCheckStatus({
   copy,
   countdown,
-  isListening,
+  micStream,
   isAnalyzing,
 }: {
   copy: LessonCopy;
   countdown: Countdown;
-  isListening: boolean;
+  micStream: MediaStream | null;
   isAnalyzing: boolean;
 }) {
   if (countdown?.phase === "prepare") {
@@ -899,7 +899,7 @@ function LiveCheckStatus({
           {countdown.target}
         </p>
         <DrainingBar seconds={total} />
-        {isListening && !isTouchDevice() ? <MicLevelMeter /> : null}
+        {micStream ? <MicLevelMeter stream={micStream} /> : null}
       </div>
     );
   }
@@ -1381,8 +1381,4 @@ function readBestScores(): Record<string, number> {
   } catch {
     return {};
   }
-}
-
-function isTouchDevice() {
-  return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
 }
