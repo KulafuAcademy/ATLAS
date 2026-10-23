@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import { PronunciationPanel } from "@/components/pronunciation/PronunciationPanel";
+import {
+  usePronunciationAssessment,
+  type AssessmentOutcome,
+} from "@/components/pronunciation/usePronunciationAssessment";
 import type { LocalizedText } from "@/lib/i18n";
+import { gradeByLetter } from "@/lib/pronunciationGrades";
 import type { MinimalPair } from "@/types/training";
 
 import { getPublicAudioPath } from "./audio";
@@ -118,6 +124,11 @@ const trainerCopy = {
     secondsLeft: (seconds: number) => `${seconds}s`,
     sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
+    aiChecking: "Checking your pronunciation…",
+    aiScore: (score: number, verdict: string) =>
+      `Score ${score} · ${verdict}. See the details in the AI panel.`,
+    aiFailed: "Couldn't score that one. See the AI panel and try again.",
+    micUnavailable: "The microphone isn't available. See the AI panel.",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -174,6 +185,11 @@ const trainerCopy = {
     sayAfterCountdown: (word: string) =>
       `カウントダウン後に「${word}」を発音してください。`,
     saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
+    aiChecking: "発音をチェックしています…",
+    aiScore: (score: number, verdict: string) =>
+      `スコア ${score}・${verdict}。くわしくはAIパネルを見てね。`,
+    aiFailed: "スコアを出せませんでした。AIパネルを見て、もう一度ためしてね。",
+    micUnavailable: "マイクが使えません。AIパネルを見てください。",
   },
 };
 
@@ -246,6 +262,7 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
       language={language}
       pair={pair}
       text={text}
+      useAiAssessment
     />
   );
 }
@@ -260,6 +277,11 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
  *   4. Tongue twister: say a whole sentence after a countdown; judged by
  *      useSentenceCheck and must match 100%.
  *
+ * With `useAiAssessment`, steps 3 and 4 record the learner during the
+ * answer window instead and score the clip with the wav2vec2 server; the
+ * full result shows in a PronunciationPanel to the right of the card
+ * (below it on narrow screens). See docs/pronunciation-assessment.md.
+ *
  * Only one mic session runs at a time. Steps 3 and 4 share the countdown
  * state, and `isBusy` disables their buttons while either is active.
  */
@@ -269,11 +291,13 @@ function PairPracticeCard({
   language,
   pair,
   text,
+  useAiAssessment = false,
 }: {
   copy: TrainerCopy;
   language: "en" | "ja";
   pair: MinimalPair;
   text: (value: LocalizedText) => string;
+  useAiAssessment?: boolean;
 }) {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
@@ -289,6 +313,7 @@ function PairPracticeCard({
   const [wordSlow, setWordSlow] = useState(false);
   const [twisterSlow, setTwisterSlow] = useState(false);
   const tongueTwister = getTongueTwister(pair);
+  const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
 
   function updateCountdown(next: CountdownState) {
     countdownRef.current = next;
@@ -526,8 +551,9 @@ function PairPracticeCard({
 
   const sentenceCheck = useSentenceCheck(handleSentenceResult);
 
-  const isChecking =
-    countdown?.kind === "tongueTwister"
+  const isChecking = useAiAssessment
+    ? assessment.recorder.status !== "idle"
+    : countdown?.kind === "tongueTwister"
       ? sentenceCheck.isListening
       : Boolean(aiCheckTarget);
 
@@ -574,9 +600,80 @@ function PairPracticeCard({
   }
 
   const isBusy =
-    countdown !== null || sentenceCheck.isListening || Boolean(aiCheckTarget);
+    countdown !== null ||
+    sentenceCheck.isListening ||
+    Boolean(aiCheckTarget) ||
+    (useAiAssessment && assessment.isBusy);
+
+  // AI mode for steps 3 and 4: ask for the mic on the tap, record during the
+  // answer window, then send the clip when the countdown ends.
+  function startAiAssessment(
+    kind: "pronunciation" | "tongueTwister",
+    target: string,
+  ) {
+    window.speechSynthesis?.cancel();
+    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+    showFeedback(
+      kind,
+      "neutral",
+      kind === "pronunciation"
+        ? copy.sayAfterCountdown(target)
+        : copy.saySentenceAfterCountdown,
+    );
+
+    void assessment.prepare(target).then((ready) => {
+      if (ready) return;
+
+      clearCountdown();
+      playIncorrectSound();
+      showFeedback(kind, "error", copy.micUnavailable);
+    });
+
+    startCountdown(
+      kind,
+      kind === "pronunciation"
+        ? pronunciationAnswerSeconds
+        : tongueTwisterAnswerSeconds,
+      () => assessment.startRecording(),
+      () => {
+        showFeedback(kind, "neutral", copy.aiChecking);
+        assessment.finish((outcome) => handleAiOutcome(kind, outcome));
+      },
+    );
+  }
+
+  function handleAiOutcome(
+    kind: "pronunciation" | "tongueTwister",
+    outcome: AssessmentOutcome,
+  ) {
+    if (outcome.kind === "failed") {
+      playIncorrectSound();
+      showFeedback(kind, "error", copy.aiFailed);
+      return;
+    }
+
+    const { score, grade } = outcome.result;
+    const passed = grade.letter === "A" || grade.letter === "B";
+    const verdict =
+      gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict;
+
+    if (passed) {
+      playCorrectSound();
+    } else {
+      playIncorrectSound();
+    }
+    showFeedback(kind, passed ? "success" : "error", copy.aiScore(score, verdict));
+  }
 
   function startPronunciationTest(target: QuizTarget) {
+    if (useAiAssessment) {
+      startAiAssessment(
+        "pronunciation",
+        target === "A" ? pair.wordA : pair.wordB,
+      );
+      return;
+    }
+
     window.speechSynthesis?.cancel();
     showFeedback(
       "pronunciation",
@@ -746,7 +843,7 @@ function PairPracticeCard({
   const playbackFeedback = getFeedback("tongueTwisterPlayback");
   const answerFeedback = getFeedback("tongueTwister");
 
-  return (
+  const card = (
     <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
       <div className="space-y-5">
         <p className="text-xs uppercase tracking-[0.24em] text-white/35">
@@ -877,6 +974,11 @@ function PairPracticeCard({
             intent="primary"
             disabled={isBusy}
             onClick={() => {
+              if (useAiAssessment) {
+                startAiAssessment("tongueTwister", tongueTwister.text);
+                return;
+              }
+
               window.speechSynthesis?.cancel();
               showFeedback(
                 "tongueTwister",
@@ -907,6 +1009,31 @@ function PairPracticeCard({
         </TestGroup>
       </div>
     </article>
+  );
+
+  if (!useAiAssessment) {
+    return card;
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      {card}
+      <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+        <PronunciationPanel
+          assessment={assessment}
+          tryAgainDisabled={isBusy}
+          onTryAgain={() => {
+            const target = assessment.target;
+            if (!target) return;
+
+            startAiAssessment(
+              target === tongueTwister.text ? "tongueTwister" : "pronunciation",
+              target,
+            );
+          }}
+        />
+      </aside>
+    </div>
   );
 }
 
