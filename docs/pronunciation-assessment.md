@@ -133,7 +133,7 @@ Top to bottom (`AssessmentResults` in `PronunciationPanel.tsx`):
 2. **Score row:** a ring gauge filled to `score`% in `grade.color` with the score inside, then the grade letter (in `grade.color`) and verdict. Below that, "⭕️ Every sound was correct" when `allWordsCorrect`, otherwise "N of M words need practice". Then `Target: "…"`.
 3. **AI Assessment:** the `feedback` text in a rounded box labelled "AI Assessment". Hidden when `feedback` is `null`.
 4. **Word by word:** a chip per word, coloured by `gradeFor(score)`. Tapping a chip shows "Say it like" (`soundsLike`, plus IPA from `phonemes`), and "We heard" only if the server sends `heardIpa`.
-5. **IPA:** one box per word. It shows the word, the expected IPA (`words[].phonemes`), and below it what was heard. The server sends `heard.phonemes` as one flat list with no word breaks, so `lib/phonemeAlignment.ts` matches it to the expected phonemes with an edit-distance (Levenshtein) alignment and splits it back into words. Each heard sound is coloured with a grade-band colour: **A green** = correct, **D red** = a different sound, or a missing sound (shown struck through), **C amber** = an extra sound. A legend sits under the boxes. Hidden if no word has phonemes.
+5. **IPA:** one box per word. It shows the word, the expected IPA (`words[].phonemes`), and below it what was heard. The server sends `heard.phonemes` as one flat list with no word breaks, so `lib/phonemeAlignment.ts` matches it to the expected phonemes with an edit-distance (Levenshtein) alignment and splits it back into words. Each heard sound is coloured with a grade-band colour: **A green** = correct, **D red** = a different sound, **C amber** = an extra sound. A **missing** sound is shown in the theme's grey, struck through, so it can't be confused with red. The legend under the boxes shows a sample sound drawn in each style. Hidden if no word has phonemes.
 6. **What to fix:** `issues`, **excluding issues for words that scored 100**, each with its word's score tag, message and tip. If none are left: "Nothing to fix. Try it again at normal speed to lock it in."
 
 ## Grade bands and colours
@@ -186,7 +186,7 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] A silent clip shows the too-short/too-quiet notice.
 - [ ] While recording or checking, all "Say ..." buttons and "Try again" are disabled.
 - [ ] Tapping a word shows *Say it like* with IPA. There's no *We heard* column with the current server.
-- [ ] The IPA section shows one box per word: the expected IPA on top and the heard IPA below. Heard sounds are coloured (green correct, red different/missing, amber extra), with a legend. E.g. saying "id" for "it" shows a red `d`.
+- [ ] The IPA section shows one box per word: the expected IPA on top and the heard IPA below. Heard sounds are coloured (green correct, red different, amber extra, grey struck-through missing), and each legend sample matches its style. E.g. saying "id" for "it" shows a red `d`.
 - [ ] The "AI Assessment" box is hidden when `feedback` is `null`.
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
 - [ ] "What to fix" leaves out words that scored 100, and shows "Nothing to fix…" when none are left.

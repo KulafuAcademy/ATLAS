@@ -524,13 +524,17 @@ function AssessmentResults({
   );
 }
 
-// Per-sound colours reuse the grade bands: A = correct, D = wrong or
-// missing, C = an extra sound that shouldn't be there.
-const phonemeColors: Record<PhonemeStep["kind"], string> = {
-  match: gradeByLetter("A")?.color ?? "currentColor",
-  substitute: gradeByLetter("D")?.color ?? "currentColor",
-  missing: gradeByLetter("D")?.color ?? "currentColor",
-  extra: gradeByLetter("C")?.color ?? "currentColor",
+// How each heard sound is drawn. Colours reuse the grade bands (A correct,
+// D different, C extra); a missing sound is a struck-through theme grey so it
+// can't be confused with a different (red) one.
+const phonemeStyles: Record<
+  PhonemeStep["kind"],
+  { color?: string; className: string }
+> = {
+  match: { color: gradeByLetter("A")?.color, className: "" },
+  substitute: { color: gradeByLetter("D")?.color, className: "" },
+  missing: { className: "text-white/40 line-through" },
+  extra: { color: gradeByLetter("C")?.color, className: "" },
 };
 
 /**
@@ -585,13 +589,16 @@ function IpaComparison({
       </div>
       {heardByWord ? (
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/60">
-          {(Object.keys(phonemeColors) as PhonemeStep["kind"][]).map((kind) => (
+          {(Object.keys(phonemeStyles) as PhonemeStep["kind"][]).map((kind) => (
             <li key={kind} className="flex items-center gap-1.5">
+              {/* A sample sound drawn exactly like the marks above. */}
               <span
                 aria-hidden="true"
-                className="h-2.5 w-2.5"
-                style={{ backgroundColor: phonemeColors[kind] }}
-              />
+                className={`font-mono text-sm font-semibold ${phonemeStyles[kind].className}`}
+                style={{ color: phonemeStyles[kind].color }}
+              >
+                a
+              </span>
               {copy.phonemeLegend[kind]}
             </li>
           ))}
@@ -602,17 +609,13 @@ function IpaComparison({
 }
 
 function PhonemeMark({ step, copy }: { step: PhonemeStep; copy: PanelCopy }) {
-  const color = phonemeColors[step.kind];
+  const { color, className } = phonemeStyles[step.kind];
   const label = copy.phonemeLegend[step.kind];
 
   if (step.kind === "missing") {
     // Shows the sound that should have been there, struck through.
     return (
-      <span
-        title={`${label}: ${step.expected}`}
-        className="line-through opacity-70"
-        style={{ color }}
-      >
+      <span title={`${label}: ${step.expected}`} className={className}>
         {step.expected}
       </span>
     );
@@ -625,6 +628,7 @@ function PhonemeMark({ step, copy }: { step: PhonemeStep; copy: PanelCopy }) {
           ? `${label}: ${step.heard} (${copy.shouldBe}: ${step.expected})`
           : `${label}: ${step.heard}`
       }
+      className={className}
       style={{ color }}
     >
       {step.heard}
