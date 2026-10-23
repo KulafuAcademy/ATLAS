@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
+import { saveAudioSettings, useAudioSettings } from "@/components/hardware/audioSettings";
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { LevelMeter } from "@/components/pronunciation/LevelMeter";
 import { createAudioContext } from "@/components/training/feedbackSounds";
@@ -131,10 +132,12 @@ export function HardwareTest() {
     supportsOutputSelection,
     () => false,
   );
-  const [inputId, setInputId] = useState("");
-  const [outputId, setOutputId] = useState("");
-  const [outputVolume, setOutputVolume] = useState(1);
-  const [inputGain, setInputGain] = useState(1);
+  // Saved, so the rest of the app plays and records with these choices.
+  const { inputId, outputId, outputVolume, inputGain } = useAudioSettings();
+  const setInputId = (id: string) => saveAudioSettings({ inputId: id });
+  const setOutputId = (id: string) => saveAudioSettings({ outputId: id });
+  const setOutputVolume = (volume: number) => saveAudioSettings({ outputVolume: volume });
+  const setInputGain = (gain: number) => saveAudioSettings({ inputGain: gain });
 
   // Fall back to the default device if the chosen one is unplugged.
   const activeInputId = devices.inputs.some((device) => device.deviceId === inputId)

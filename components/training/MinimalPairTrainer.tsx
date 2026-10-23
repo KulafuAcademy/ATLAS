@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import { applyOutputSettings, getAudioSettings } from "@/components/hardware/audioSettings";
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { LevelMeter } from "@/components/pronunciation/LevelMeter";
 import { PronunciationPanel } from "@/components/pronunciation/PronunciationPanel";
@@ -493,6 +494,10 @@ function PairPracticeCard({
         showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
       }
 
+      // Speaker and volume from the hardware test page.
+      await applyOutputSettings(audio);
+      if (audioRef.current !== audio) return;
+
       try {
         await audio.play();
       } catch {
@@ -523,6 +528,8 @@ function PairPracticeCard({
     utterance.lang = "en-US";
     utterance.rate = slow ? 0.85 * slowPlaybackRate : 0.85;
     utterance.pitch = 1;
+    // Speech can't be sent to a chosen speaker, but it follows the saved volume.
+    utterance.volume = getAudioSettings().outputVolume;
 
     window.speechSynthesis.speak(utterance);
 

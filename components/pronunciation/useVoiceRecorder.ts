@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { microphoneConstraints, withInputGain } from "@/components/hardware/audioSettings";
+
 /** Recording stops on its own after this many seconds. */
 export const maxRecordingSeconds = 15;
 
@@ -143,7 +145,9 @@ export function useVoiceRecorder({
     }
 
     preparingRef.current = navigator.mediaDevices
-      .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      .getUserMedia({
+        audio: microphoneConstraints({ echoCancellation: true, noiseSuppression: true }),
+      })
       .then((micStream) => {
         if (!mountedRef.current) {
           stopTracks(micStream);
@@ -189,15 +193,18 @@ export function useVoiceRecorder({
     // The stream now belongs to this recording and stops with it.
     preparedStreamRef.current = null;
 
+    // Input gain from the hardware test page.
+    const gained = withInputGain(micStream);
     const mimeType = pickMimeType();
     let recorder: MediaRecorder;
 
     try {
       recorder = mimeType
-        ? new MediaRecorder(micStream, { mimeType })
-        : new MediaRecorder(micStream);
+        ? new MediaRecorder(gained.stream, { mimeType })
+        : new MediaRecorder(gained.stream);
     } catch {
       stopTracks(micStream);
+      gained.close();
       updateStatus("idle");
       setError("failed");
       return;
@@ -213,6 +220,7 @@ export function useVoiceRecorder({
     recorder.onstop = () => {
       clearTimers();
       stopTracks(micStream);
+      gained.close();
       recorderRef.current = null;
 
       if (!mountedRef.current) return;
@@ -252,7 +260,7 @@ export function useVoiceRecorder({
     recorderRef.current = recorder;
     // No timeslice: Safari delivers the whole clip reliably in one chunk on stop.
     recorder.start();
-    setStream(micStream);
+    setStream(gained.stream);
     updateStatus("recording");
     setElapsed(0);
 
