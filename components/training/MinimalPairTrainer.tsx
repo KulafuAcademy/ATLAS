@@ -1064,17 +1064,21 @@ function PairPracticeCard({
         <p
           className={`font-semibold text-white ${
             focusKind === "tongueTwister"
-              ? "text-2xl leading-10"
+              ? "text-3xl leading-tight md:text-4xl"
               : "text-lg leading-8"
           }`}
         >
           {tongueTwister.text}
         </p>
-        <p className="mt-2 text-sm leading-6 text-white/50">
-          {text(tongueTwister.note)}
-        </p>
+        {/* Hidden while the learner reads it out, so the sentence has room. */}
+        {focusKind === "tongueTwister" ? null : (
+          <p className="mt-2 text-sm leading-6 text-white/50">
+            {text(tongueTwister.note)}
+          </p>
+        )}
       </div>
       <ActionButton
+        disabled={isBusy}
         onClick={() =>
           void speak(
             tongueTwister.text,
