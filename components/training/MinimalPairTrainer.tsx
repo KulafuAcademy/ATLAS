@@ -317,6 +317,17 @@ function PairPracticeCard({
   const [twisterSlow, setTwisterSlow] = useState(false);
   const tongueTwister = getTongueTwister(pair);
   const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
+  const aiResultsRef = useRef<HTMLDivElement | null>(null);
+
+  // Bring a freshly loaded AI result into view.
+  useEffect(() => {
+    if (!assessment.result) return;
+
+    aiResultsRef.current?.scrollIntoView({
+      behavior: scrollBehavior(),
+      block: "start",
+    });
+  }, [assessment.result]);
 
   function updateCountdown(next: CountdownState) {
     countdownRef.current = next;
@@ -944,6 +955,7 @@ function PairPracticeCard({
   const pronunciationStep = (
     <TestGroup
       step="3"
+      id={separate ? pronunciationStepId : undefined}
       title={copy.pronunciationTitle}
       description={copy.pronunciationDescription}
       actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
@@ -979,6 +991,7 @@ function PairPracticeCard({
   const tongueTwisterStep = (
     <TestGroup
       step="4"
+      id={separate ? tongueTwisterStepId : undefined}
       title={copy.tongueTwisterTitle}
       description={copy.tongueTwisterDescription}
       actionsClassName="grid gap-3"
@@ -1070,19 +1083,27 @@ function PairPracticeCard({
   }
 
   const resultsPanel = (
-    <PronunciationPanel
-      assessment={assessment}
-      tryAgainDisabled={isBusy}
-      onTryAgain={() => {
-        const target = assessment.target;
-        if (!target) return;
+    <div ref={aiResultsRef} className="scroll-mt-28">
+      <PronunciationPanel
+        assessment={assessment}
+        tryAgainDisabled={isBusy}
+        onTryAgain={() => {
+          const target = assessment.target;
+          if (!target) return;
 
-        startAiAssessment(
-          target === tongueTwister.text ? "tongueTwister" : "pronunciation",
-          target,
-        );
-      }}
-    />
+          const kind =
+            target === tongueTwister.text ? "tongueTwister" : "pronunciation";
+
+          startAiAssessment(kind, target);
+          // Back to the step that runs the check, centred on screen.
+          document
+            .getElementById(
+              kind === "tongueTwister" ? tongueTwisterStepId : pronunciationStepId,
+            )
+            ?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
+        }}
+      />
+    </div>
   );
 
   return (
@@ -1098,6 +1119,16 @@ function PairPracticeCard({
       {resultsKind === "tongueTwister" ? resultsPanel : null}
     </div>
   );
+}
+
+// Ids of the step boxes on the single-pair page (one card per page).
+const pronunciationStepId = "pronunciation-test";
+const tongueTwisterStepId = "tongue-twister";
+
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
 }
 
 function getTongueTwister(pair: MinimalPair) {
@@ -1409,6 +1440,7 @@ function TestGroup({
   feedback,
   separate = false,
   header,
+  id,
   children,
 }: {
   step: string;
@@ -1420,6 +1452,8 @@ function TestGroup({
   separate?: boolean;
   /** Full-width row above the step (e.g. a speed toggle); separate boxes only. */
   header?: ReactNode;
+  /** DOM id for the separate box, e.g. to scroll back to it. */
+  id?: string;
   children: ReactNode;
 }) {
   const content = (
@@ -1443,7 +1477,7 @@ function TestGroup({
   }
 
   return (
-    <div className="border border-white/10 bg-white/[0.02] p-5">
+    <div id={id} className="border border-white/10 bg-white/[0.02] p-5">
       {header ? (
         <div className="mb-5 border-b border-white/10 pb-4">{header}</div>
       ) : null}

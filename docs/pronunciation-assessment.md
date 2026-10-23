@@ -184,7 +184,8 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
 - [ ] "What to fix" leaves out words that scored 100, and shows "Nothing to fix…" when none are left.
 - [ ] "N attempts" goes up with each scored try of the same word, and is tracked separately per word or sentence.
-- [ ] "Try again" re-runs the same word or sentence.
+- [ ] "Try again" re-runs the same word or sentence, and scrolls that step (Pronunciation test or Tongue twister) to the middle of the screen.
+- [ ] When a result loads, the page scrolls so the top of the Results panel sits just below the header. With "reduce motion" on, it jumps instead of animating.
 - [ ] Each step is its own box. After "Say right/light", results appear under Pronunciation test. After "Say the sentence", they move under Tongue twister.
 - [ ] The home page lesson grid still shows one combined card per pair.
 - [ ] The home page lesson grid still uses the browser speech check, and doesn't poll `/health`.
