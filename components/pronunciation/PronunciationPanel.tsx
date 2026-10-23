@@ -36,7 +36,7 @@ const panelCopy = {
     wordsToPractice: (count: number, total: number) =>
       `${count} of ${total} ${total === 1 ? "word needs" : "words need"} practice`,
     target: (target: string) => `Target: “${target}”`,
-    aiAssessment: "AI Assessment",
+    aiAssessment: "ATLAS Assessment",
     wordByWord: "Word by word",
     tapWord: "Tap a word to see how it should sound.",
     sayItLike: "Say it like",
@@ -104,7 +104,7 @@ const panelCopy = {
     wordsToPractice: (count: number, total: number) =>
       `${total}語中${count}語を練習しよう`,
     target: (target: string) => `目標：「${target}」`,
-    aiAssessment: "AI評価",
+    aiAssessment: "ATLAS評価",
     wordByWord: "単語ごと",
     tapWord: "単語をタップすると、正しい音が見られます。",
     sayItLike: "こう言おう",
