@@ -163,6 +163,13 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - **What is scored:** step 3 sends `pair.wordA` / `pair.wordB`, and step 4 sends the tongue twister text (`pair.tongueTwister`, or the generated fallback in `getTongueTwister()`).
 - **Answer window length:** `pronunciationAnswerSeconds` / `tongueTwisterAnswerSeconds` in `MinimalPairTrainer.tsx`.
 - **Layout:** the `useAiAssessment` return at the end of `PairPracticeCard`: the pair header box, step boxes, and `resultsKind` deciding where `resultsPanel` goes. Each playback speed toggle is the top row of the step box it affects (`TestGroup header`): words in step 1 ("Check the sounds"), the sentence in step 4 ("Tongue twister").
+- **Focus while speaking:** from the "Say ..." tap until recording ends (`focusKind` in `PairPracticeCard`):
+  - the text to read (the "Say this" card or the highlighted sentence box) scrolls to the middle of the screen. This runs from an effect on `focusKind`, so it happens after that element renders, on the first tap and on Try again;
+  - every other box (header, other steps, Results panel) fades to 30% and can't be tapped (`focusDimClassName`), so a stray tap can't play audio into the recording;
+  - **word:** a large "Say this" card shows the target word in step 3;
+  - **tongue twister:** the sentence box gets a white border, a "Read this" label, and larger text.
+
+  Everything goes back to normal when checking starts, so "Checking..." and the results are fully visible.
 - **Mic level meter:** while recording, `LevelMeter` (`components/pronunciation/LevelMeter.tsx`) shows under the step's "Speak now" bar. It uses the recording's own mic stream, so it also works on touch devices. The Results panel only says "Listening…", with no timer.
 - **Safety cap on recording length:** `maxRecordingSeconds` in `useVoiceRecorder.ts` (default 15 s). The answer windows are shorter, so this only matters if something goes wrong.
 - **Server URL:** set `NEXT_PUBLIC_PRONUNCIATION_API_URL`, or the fallback in `lib/pronunciationApi.ts`.
@@ -184,7 +191,8 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
 - [ ] "What to fix" leaves out words that scored 100, and shows "Nothing to fix…" when none are left.
 - [ ] "N attempts" goes up with each scored try of the same word, and is tracked separately per word or sentence.
-- [ ] "Try again" re-runs the same word or sentence, and scrolls that step (Pronunciation test or Tongue twister) to the middle of the screen.
+- [ ] "Try again" re-runs the same word or sentence, and scrolls the word card or sentence to the middle of the screen.
+- [ ] Tapping "Say right" shows a big "Say this: right" card centred on screen, and fades the other boxes. "Say the sentence" does the same with the sentence box highlighted. The fade ends when checking starts.
 - [ ] When a result loads, the page scrolls so the top of the Results panel sits just below the header. With "reduce motion" on, it jumps instead of animating.
 - [ ] Each step is its own box. After "Say right/light", results appear under Pronunciation test. After "Say the sentence", they move under Tongue twister.
 - [ ] The home page lesson grid still shows one combined card per pair.

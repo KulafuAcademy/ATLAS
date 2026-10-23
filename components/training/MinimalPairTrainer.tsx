@@ -131,6 +131,8 @@ const trainerCopy = {
       `Score ${score} · ${verdict}. See the details below.`,
     aiFailed: "Couldn't score that one. See below and try again.",
     micUnavailable: "The microphone isn't available. See below.",
+    sayThis: "Say this",
+    readThis: "Read this",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -192,6 +194,8 @@ const trainerCopy = {
       `スコア ${score}・${verdict}。くわしくは下を見てね。`,
     aiFailed: "スコアを出せませんでした。下を見て、もう一度ためしてね。",
     micUnavailable: "マイクが使えません。下を見てください。",
+    sayThis: "これを言おう",
+    readThis: "これを読もう",
   },
 };
 
@@ -862,6 +866,30 @@ function PairPracticeCard({
   const separate = useAiAssessment;
   // The AI recording's own mic stream drives the step's level meter.
   const aiRecordingStream = useAiAssessment ? assessment.recorder.stream : null;
+  // While an AI check counts down or records, everything except that step
+  // is dimmed and the text to read is highlighted.
+  const focusKind: "pronunciation" | "tongueTwister" | null =
+    useAiAssessment && countdown
+      ? countdown.kind
+      : useAiAssessment && assessment.recorder.status !== "idle"
+        ? assessment.target === tongueTwister.text
+          ? "tongueTwister"
+          : "pronunciation"
+        : null;
+  const dimmedUnless = (kind: "pronunciation" | "tongueTwister" | "none") =>
+    focusKind !== null && focusKind !== kind;
+  const focusTargetRef = useRef<HTMLDivElement | null>(null);
+
+  // Each attempt (tap or Try again) starts from no focus, so this runs once
+  // per attempt, after the "Say this" card or highlighted sentence renders.
+  useEffect(() => {
+    if (!focusKind) return;
+
+    focusTargetRef.current?.scrollIntoView({
+      behavior: scrollBehavior(),
+      block: "center",
+    });
+  }, [focusKind]);
   const resultsKind =
     assessment.target === null
       ? null
@@ -908,6 +936,7 @@ function PairPracticeCard({
       actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
       feedback={getFeedback("listen")}
       separate={separate}
+      dimmed={dimmedUnless("none")}
       header={separate ? wordSpeedToggle : undefined}
     >
       {[pair.wordA, pair.wordB].map((word) => (
@@ -937,6 +966,7 @@ function PairPracticeCard({
       actionsClassName="grid gap-3"
       feedback={getFeedback("listening")}
       separate={separate}
+      dimmed={dimmedUnless("none")}
     >
       <ActionButton intent="primary" onClick={startQuiz}>
         {copy.playQuiz}
@@ -955,12 +985,12 @@ function PairPracticeCard({
   const pronunciationStep = (
     <TestGroup
       step="3"
-      id={separate ? pronunciationStepId : undefined}
       title={copy.pronunciationTitle}
       description={copy.pronunciationDescription}
       actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
       feedback={getFeedback("pronunciation")}
       separate={separate}
+      dimmed={dimmedUnless("pronunciation")}
     >
       <ActionButton
         intent="primary"
@@ -976,6 +1006,23 @@ function PairPracticeCard({
       >
         {copy.speak(pair.wordB)}
       </ActionButton>
+      {focusKind === "pronunciation" && assessment.target ? (
+        <div
+          ref={focusTargetRef}
+          className="col-span-full border border-white bg-white/[0.06] px-4 py-5 text-center"
+        >
+          <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
+            />
+            {copy.sayThis}
+          </p>
+          <p className="mt-2 text-5xl font-semibold text-white md:text-6xl">
+            {assessment.target}
+          </p>
+        </div>
+      ) : null}
       <CountdownDisplay
         copy={copy}
         countdown={countdown}
@@ -991,16 +1038,38 @@ function PairPracticeCard({
   const tongueTwisterStep = (
     <TestGroup
       step="4"
-      id={separate ? tongueTwisterStepId : undefined}
       title={copy.tongueTwisterTitle}
       description={copy.tongueTwisterDescription}
       actionsClassName="grid gap-3"
       feedback={null}
       separate={separate}
+      dimmed={dimmedUnless("tongueTwister")}
       header={separate ? twisterSpeedToggle : undefined}
     >
-      <div className="border border-white/10 bg-black px-4 py-3">
-        <p className="text-lg font-semibold leading-8 text-white">
+      <div
+        ref={focusKind === "tongueTwister" ? focusTargetRef : undefined}
+        className={`border px-4 py-3 transition-colors ${
+          focusKind === "tongueTwister"
+            ? "border-white bg-white/[0.06]"
+            : "border-white/10 bg-black"
+        }`}
+      >
+        {focusKind === "tongueTwister" ? (
+          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
+            />
+            {copy.readThis}
+          </p>
+        ) : null}
+        <p
+          className={`font-semibold text-white ${
+            focusKind === "tongueTwister"
+              ? "text-2xl leading-10"
+              : "text-lg leading-8"
+          }`}
+        >
           {tongueTwister.text}
         </p>
         <p className="mt-2 text-sm leading-6 text-white/50">
@@ -1083,7 +1152,10 @@ function PairPracticeCard({
   }
 
   const resultsPanel = (
-    <div ref={aiResultsRef} className="scroll-mt-28">
+    <div
+      ref={aiResultsRef}
+      className={`scroll-mt-28 ${focusDimClassName(focusKind !== null)}`}
+    >
       <PronunciationPanel
         assessment={assessment}
         tryAgainDisabled={isBusy}
@@ -1095,12 +1167,6 @@ function PairPracticeCard({
             target === tongueTwister.text ? "tongueTwister" : "pronunciation";
 
           startAiAssessment(kind, target);
-          // Back to the step that runs the check, centred on screen.
-          document
-            .getElementById(
-              kind === "tongueTwister" ? tongueTwisterStepId : pronunciationStepId,
-            )
-            ?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
         }}
       />
     </div>
@@ -1108,7 +1174,11 @@ function PairPracticeCard({
 
   return (
     <div className="space-y-4">
-      <section className="border border-white/10 bg-white/[0.02] p-5">
+      <section
+        className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(
+          dimmedUnless("none"),
+        )}`}
+      >
         {pairHeader}
       </section>
       {listenStep}
@@ -1121,9 +1191,13 @@ function PairPracticeCard({
   );
 }
 
-// Ids of the step boxes on the single-pair page (one card per page).
-const pronunciationStepId = "pronunciation-test";
-const tongueTwisterStepId = "tongue-twister";
+// Faded and not clickable while another step's check runs (so a stray tap
+// can't play audio into the recording).
+function focusDimClassName(dimmed: boolean) {
+  return `transition-opacity duration-300 ${
+    dimmed ? "pointer-events-none opacity-30" : ""
+  }`;
+}
 
 function scrollBehavior(): ScrollBehavior {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -1440,7 +1514,7 @@ function TestGroup({
   feedback,
   separate = false,
   header,
-  id,
+  dimmed = false,
   children,
 }: {
   step: string;
@@ -1452,8 +1526,8 @@ function TestGroup({
   separate?: boolean;
   /** Full-width row above the step (e.g. a speed toggle); separate boxes only. */
   header?: ReactNode;
-  /** DOM id for the separate box, e.g. to scroll back to it. */
-  id?: string;
+  /** Fade out while another step's check is running; separate boxes only. */
+  dimmed?: boolean;
   children: ReactNode;
 }) {
   const content = (
@@ -1477,7 +1551,9 @@ function TestGroup({
   }
 
   return (
-    <div id={id} className="border border-white/10 bg-white/[0.02] p-5">
+    <div
+      className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(dimmed)}`}
+    >
       {header ? (
         <div className="mb-5 border-b border-white/10 pb-4">{header}</div>
       ) : null}
