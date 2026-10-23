@@ -106,7 +106,6 @@ const trainerCopy = {
     speedSlow: "Slow (0.75x)",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
-    playQuizFirst: "Play quiz, listen, then choose.",
     correct: "Correct.",
     listeningIncorrect: (word: string) =>
       `Not quite. The answer was "${word}".`,
@@ -166,7 +165,6 @@ const trainerCopy = {
     speedSlow: "ゆっくり (0.75倍)",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
-    playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
     correct: "正解です。",
     listeningIncorrect: (word: string) =>
       `惜しいです。正解は「${word}」でした。`,
@@ -598,12 +596,12 @@ function PairPracticeCard({
     );
   }
 
+  // The "I hear …" buttons stay disabled until "Play quiz" sets a quiz for
+  // this pair, and again after each answer.
+  const quizReady = activeQuiz?.pairId === pair.id;
+
   function answerQuiz(answer: QuizTarget) {
-    if (!activeQuiz || activeQuiz.pairId !== pair.id) {
-      playIncorrectSound();
-      showFeedback("listening", "error", copy.playQuizFirst);
-      return;
-    }
+    if (!activeQuiz || !quizReady) return;
 
     if (answer === activeQuiz.target) {
       playCorrectSound();
@@ -972,10 +970,10 @@ function PairPracticeCard({
         {copy.playQuiz}
       </ActionButton>
       <div className="grid gap-3 sm:grid-cols-2">
-        <ActionButton onClick={() => answerQuiz("A")}>
+        <ActionButton disabled={!quizReady} onClick={() => answerQuiz("A")}>
           {copy.answer(pair.wordA)}
         </ActionButton>
-        <ActionButton onClick={() => answerQuiz("B")}>
+        <ActionButton disabled={!quizReady} onClick={() => answerQuiz("B")}>
           {copy.answer(pair.wordB)}
         </ActionButton>
       </div>
