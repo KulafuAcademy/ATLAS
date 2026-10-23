@@ -1,6 +1,6 @@
 # Pronunciation assessment (wav2vec2 API)
 
-On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the wav2vec2 pronunciation assessment server. The full result appears in the **Results** panel to the right of the practice card (below it on screens narrower than `lg`). The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
+On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the wav2vec2 pronunciation assessment server. On this page, each step is its own box. The full result appears in the **Results** panel **right under the step that ran the check**: under "Pronunciation test" for a word, and under "Tongue twister" for the sentence. The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
 
 This applies only on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
 
@@ -10,8 +10,8 @@ The server is a separate project. This app only records audio, sends it, and sho
 
 | File | What it does |
 | --- | --- |
-| [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`, and the card and panel sit side by side. |
-| [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The right-side **Results** panel: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
+| [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
+| [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
 | [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
 | [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts) | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL. |
 | [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts) | Polls `GET /health` every 30 s. |
@@ -78,7 +78,7 @@ This drives the status badge: *Connecting...* → *Checker is ready* / *Checker 
 
 Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 
-**Success**
+**Success** (as sent by the server's `server.py`)
 
 ```json
 {
@@ -86,11 +86,10 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
   "score": 87,
   "grade": { "letter": "B", "verdict": "Good", "color": "#65a30d" },
   "allWordsCorrect": false,
-  "expected": { "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k ...", "ipa": "ɹɑk ..." },
-  "heard":    { "phonemes": ["r","ɔ","k"], "soundsLike": "r-aw-k ...", "ipa": "rɔk ..." },
+  "expected": { "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k ..." },
+  "heard":    { "phonemes": ["r","ɔ","k"], "soundsLike": "r-aw-k ..." },
   "words": [
-    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k",
-      "ipa": "ɹɑk", "heardIpa": "rɔk" }
+    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k" }
   ],
   "issues": [
     { "word": "Rock", "message": "you said \"aw\" ... instead of \"ah\" ...", "tip": "Open your mouth wide..." }
@@ -101,10 +100,13 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 
 Nullable fields:
 
-- `words[].heardIpa`: `null` when the word wasn't heard at all. The UI says "We didn't hear this word".
 - `issues[].tip`: `null` means no tip line is shown.
 - `feedback`: `null` when the AI coach is offline. The "AI Assessment" box is hidden.
-- `ipa`, `heardIpa`: the server may already wrap these in slashes. The UI strips them and adds exactly one pair (`formatIpa`), so `/laɪt/` never shows as `//laɪt//`.
+
+**IPA.** The server sends **no `ipa` or `heardIpa` fields**. `phonemes` are IPA symbols, and the UI builds the IPA by joining them (`formatIpa(ipa, phonemes)` in `PronunciationPanel.tsx`). The types also accept optional `ipa` / `words[].heardIpa`, in case the server adds them later:
+
+- `ipa` (on `expected`, `heard`, or a word): used instead of the joined `phonemes` when present. Any surrounding slashes are stripped, so it never shows as `//laɪt//`.
+- `words[].heardIpa`: when the field is present, the word detail shows a "We heard" column, and `null` there means "We didn't hear this word". The current server doesn't send it, so the column is hidden. The only per-word feedback is the score and `issues`.
 
 **Too short / too quiet** (HTTP 200)
 
@@ -130,8 +132,8 @@ Top to bottom (`AssessmentResults` in `PronunciationPanel.tsx`):
 1. **Header:** "RESULTS", plus "N attempts" (scored attempts for this word or sentence during this visit). Before the first result, the header shows the server status instead.
 2. **Score row:** a ring gauge filled to `score`% in `grade.color` with the score inside, then the grade letter (in `grade.color`) and verdict. Below that, "⭕️ Every sound was correct" when `allWordsCorrect`, otherwise "N of M words need practice". Then `Target: "…"`.
 3. **AI Assessment:** the `feedback` text in a rounded box labelled "AI Assessment". Hidden when `feedback` is `null`.
-4. **Word by word:** a chip per word, coloured by `gradeFor(score)`. Tapping a chip shows "Say it like" (`soundsLike` and `ipa`) and "We heard" (`heardIpa`).
-5. **IPA:** "Should be" `expected.ipa` and "You said" `heard.ipa`.
+4. **Word by word:** a chip per word, coloured by `gradeFor(score)`. Tapping a chip shows "Say it like" (`soundsLike`, plus IPA from `phonemes`), and "We heard" only if the server sends `heardIpa`.
+5. **IPA:** one box per word. It shows the word, the expected IPA (`words[].phonemes`), and below it what was heard. The server sends `heard.phonemes` as one flat list with no word breaks, so `lib/phonemeAlignment.ts` matches it to the expected phonemes with an edit-distance (Levenshtein) alignment and splits it back into words. Each heard sound is coloured with a grade-band colour: **A green** = correct, **D red** = a different sound, or a missing sound (shown struck through), **C amber** = an extra sound. A legend sits under the boxes. Hidden if no word has phonemes.
 6. **What to fix:** `issues`, **excluding issues for words that scored 100**, each with its word's score tag, message and tip. If none are left: "Nothing to fix. Try it again at normal speed to lock it in."
 
 ## Grade bands and colours
@@ -160,7 +162,8 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 
 - **What is scored:** step 3 sends `pair.wordA` / `pair.wordB`, and step 4 sends the tongue twister text (`pair.tongueTwister`, or the generated fallback in `getTongueTwister()`).
 - **Answer window length:** `pronunciationAnswerSeconds` / `tongueTwisterAnswerSeconds` in `MinimalPairTrainer.tsx`.
-- **Panel layout:** the `lg:grid-cols-2` wrapper at the end of `PairPracticeCard`.
+- **Layout:** the `useAiAssessment` return at the end of `PairPracticeCard`: the pair header box, step boxes, and `resultsKind` deciding where `resultsPanel` goes. Each playback speed toggle is the top row of the step box it affects (`TestGroup header`): words in step 1 ("Check the sounds"), the sentence in step 4 ("Tongue twister").
+- **Mic level meter:** while recording, `LevelMeter` (`components/pronunciation/LevelMeter.tsx`) shows under the step's "Speak now" bar. It uses the recording's own mic stream, so it also works on touch devices. The Results panel only says "Listening…", with no timer.
 - **Safety cap on recording length:** `maxRecordingSeconds` in `useVoiceRecorder.ts` (default 15 s). The answer windows are shorter, so this only matters if something goes wrong.
 - **Server URL:** set `NEXT_PUBLIC_PRONUNCIATION_API_URL`, or the fallback in `lib/pronunciationApi.ts`.
 - **New response fields:** add them to the types in `lib/pronunciationApi.ts` first.
@@ -175,12 +178,14 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] "Listen to me" plays the last recording (also on iOS Safari).
 - [ ] A silent clip shows the too-short/too-quiet notice.
 - [ ] While recording or checking, all "Say ..." buttons and "Try again" are disabled.
-- [ ] Tapping a word shows *Say it like* and *We heard* (or "didn't hear this word").
+- [ ] Tapping a word shows *Say it like* with IPA. There's no *We heard* column with the current server.
+- [ ] The IPA section shows one box per word: the expected IPA on top and the heard IPA below. Heard sounds are coloured (green correct, red different/missing, amber extra), with a legend. E.g. saying "id" for "it" shows a red `d`.
 - [ ] The "AI Assessment" box is hidden when `feedback` is `null`.
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
 - [ ] "What to fix" leaves out words that scored 100, and shows "Nothing to fix…" when none are left.
 - [ ] "N attempts" goes up with each scored try of the same word, and is tracked separately per word or sentence.
 - [ ] "Try again" re-runs the same word or sentence.
-- [ ] On desktop (`lg`), the panel sits to the right and stays in view while scrolling. On phones, it sits below the card.
+- [ ] Each step is its own box. After "Say right/light", results appear under Pronunciation test. After "Say the sentence", they move under Tongue twister.
+- [ ] The home page lesson grid still shows one combined card per pair.
 - [ ] The home page lesson grid still uses the browser speech check, and doesn't poll `/health`.
 - [ ] Layout works at phone width (~360 px) with no horizontal scroll.

@@ -29,21 +29,28 @@ export type PronunciationGrade = {
 };
 
 export type PhonemeTranscription = {
+  /** IPA symbols, e.g. ["ɹ", "ɑ", "k"]. Join them to show IPA. */
   phonemes: string[];
   /** Kid-friendly spelling, e.g. "r-ah-k". */
   soundsLike: string;
-  ipa: string;
+  /** Not sent by the current server; derive IPA from `phonemes`. */
+  ipa?: string;
 };
 
 export type PronunciationWord = {
   word: string;
   /** 0–100. */
   score: number;
+  /** Expected IPA symbols for this word. */
   phonemes: string[];
   soundsLike: string;
-  ipa: string;
-  /** What was heard for this word; null when the word wasn't heard at all. */
-  heardIpa: string | null;
+  /** Not sent by the current server; derive IPA from `phonemes`. */
+  ipa?: string;
+  /**
+   * What was heard for this word. Not sent by the current server (undefined);
+   * null would mean the word wasn't heard at all.
+   */
+  heardIpa?: string | null;
 };
 
 export type PronunciationIssue = {

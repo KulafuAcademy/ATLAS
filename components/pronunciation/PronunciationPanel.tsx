@@ -5,18 +5,18 @@ import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { createAudioContext } from "@/components/training/feedbackSounds";
 import type { Language } from "@/lib/i18n";
 import type {
   AnalyzeSuccess,
   PronunciationIssue,
   PronunciationWord,
 } from "@/lib/pronunciationApi";
+import { alignPhonemes, groupStepsByWord } from "@/lib/phonemeAlignment";
+import type { PhonemeStep } from "@/lib/phonemeAlignment";
 import { gradeByLetter, gradeFor } from "@/lib/pronunciationGrades";
 
 import type { PronunciationAssessmentState } from "./usePronunciationAssessment";
 import type { ServerStatus } from "./useServerStatus";
-import { maxRecordingSeconds } from "./useVoiceRecorder";
 import type { RecorderError } from "./useVoiceRecorder";
 
 const panelCopy = {
@@ -45,6 +45,13 @@ const panelCopy = {
     ipa: "IPA",
     shouldBe: "Should be",
     youSaid: "You said",
+    ipaHint: "Top: how it should sound. Bottom: what we heard.",
+    phonemeLegend: {
+      match: "Correct",
+      substitute: "Different sound",
+      missing: "Missing",
+      extra: "Extra sound",
+    } satisfies Record<PhonemeStep["kind"], string>,
     whatToFix: "What to fix",
     nothingToFix: "Nothing to fix. Try it again at normal speed to lock it in.",
     tip: "Tip",
@@ -106,6 +113,13 @@ const panelCopy = {
     ipa: "IPA",
     shouldBe: "正しい発音",
     youSaid: "あなたの発音",
+    ipaHint: "上：正しい発音　下：聞こえた発音",
+    phonemeLegend: {
+      match: "正しい",
+      substitute: "ちがう音",
+      missing: "ぬけた音",
+      extra: "よけいな音",
+    } satisfies Record<PhonemeStep["kind"], string>,
     whatToFix: "直すところ",
     nothingToFix: "直すところはありません。普通の速さでもう一度言って、身につけよう。",
     tip: "コツ",
@@ -216,13 +230,7 @@ export function PronunciationPanel({
         </p>
       )}
 
-      {recorder.isRecording ? (
-        <RecordingStatus
-          label={copy.listening}
-          elapsed={recorder.elapsed}
-          stream={recorder.stream}
-        />
-      ) : null}
+      {recorder.isRecording ? <ListeningIndicator label={copy.listening} /> : null}
 
       {isChecking ? <CheckingIndicator label={copy.checking} /> : null}
 
@@ -304,116 +312,21 @@ function ServerStatusBadge({
   );
 }
 
-function formatSeconds(seconds: number) {
-  const whole = Math.floor(seconds);
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
-}
-
-function RecordingStatus({
-  label,
-  elapsed,
-  stream,
-}: {
-  label: string;
-  elapsed: number;
-  stream: MediaStream | null;
-}) {
+// The live mic meter sits in the step under "Speak now"; here we only say
+// that the recording is running.
+function ListeningIndicator({ label }: { label: string }) {
   return (
-    <div className="space-y-2 border border-white/10 bg-black p-4">
-      <div className="flex items-center justify-between text-sm">
-        <span className="flex items-center gap-2 text-white/70">
-          <span
-            aria-hidden="true"
-            className="h-2.5 w-2.5 rounded-full bg-white motion-safe:animate-pulse"
-          />
-          {label}
-        </span>
-        <span className="font-semibold tabular-nums text-white">
-          {formatSeconds(elapsed)}
-          <span className="text-white/40"> / {formatSeconds(maxRecordingSeconds)}</span>
-        </span>
-      </div>
-      {stream ? <LevelMeter stream={stream} /> : null}
-    </div>
-  );
-}
-
-const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
-
-/**
- * 5-bar mic level meter for the live recording stream. Reads volume (RMS)
- * through an AnalyserNode and sets bar heights via refs to avoid re-renders.
- * Purely visual; the stream itself is owned and stopped by the recorder.
- */
-function LevelMeter({ stream }: { stream: MediaStream }) {
-  const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  useEffect(() => {
-    const audioContext = createAudioContext();
-    if (!audioContext) return;
-
-    let frameId = 0;
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-    // iOS Safari may create the context suspended outside a tap.
-    void audioContext.resume().catch(() => {});
-
-    const samples = new Uint8Array(analyser.fftSize);
-    let smoothed = 0;
-
-    const tick = (time: number) => {
-      analyser.getByteTimeDomainData(samples);
-
-      let sumSquares = 0;
-      for (const sample of samples) {
-        const normalized = (sample - 128) / 128;
-        sumSquares += normalized * normalized;
-      }
-
-      const level = Math.min(1, Math.sqrt(sumSquares / samples.length) * 6);
-      // fast attack, slow release so the bars feel natural
-      smoothed =
-        level > smoothed
-          ? smoothed * 0.4 + level * 0.6
-          : smoothed * 0.9 + level * 0.1;
-
-      barRefs.current.forEach((bar, index) => {
-        if (!bar) return;
-        const wobble = 0.85 + 0.15 * Math.sin(time / 90 + index * 1.7);
-        const scale = Math.min(1, 0.12 + smoothed * meterWeights[index] * wobble);
-        bar.style.transform = `scaleY(${scale})`;
-      });
-
-      frameId = requestAnimationFrame(tick);
-    };
-
-    frameId = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      source.disconnect();
-      void audioContext.close();
-    };
-  }, [stream]);
-
-  return (
-    <div
-      aria-hidden="true"
-      className="flex h-10 items-center justify-center gap-1.5 border border-white/10 bg-white/[0.02]"
+    <p
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 border border-white/10 bg-black px-4 py-3 text-sm text-white/70"
     >
-      {meterWeights.map((_, index) => (
-        <span
-          key={index}
-          ref={(element) => {
-            barRefs.current[index] = element;
-          }}
-          className="h-6 w-1.5 origin-center bg-white"
-          style={{ transform: "scaleY(0.12)" }}
-        />
-      ))}
-    </div>
+      <span
+        aria-hidden="true"
+        className="h-2.5 w-2.5 rounded-full bg-white motion-safe:animate-pulse"
+      />
+      {label}
+    </p>
   );
 }
 
@@ -478,9 +391,15 @@ function CheckingIndicator({ label }: { label: string }) {
   );
 }
 
-/** The server's IPA may already be wrapped in slashes; show exactly one pair. */
-function formatIpa(ipa: string) {
-  return `/${ipa.trim().replace(/^\/+|\/+$/g, "")}/`;
+/**
+ * IPA for display, wrapped in exactly one pair of slashes. Uses `ipa` when
+ * the server sends it, otherwise joins the IPA `phonemes`. Null if neither.
+ */
+function formatIpa(ipa?: string | null, phonemes?: string[]) {
+  const raw = ipa?.trim() || phonemes?.join("") || "";
+  const bare = raw.replace(/^\/+|\/+$/g, "");
+
+  return bare ? `/${bare}/` : null;
 }
 
 function isPerfect(word: PronunciationWord | undefined) {
@@ -575,18 +494,15 @@ function AssessmentResults({
         {selectedWord ? <WordDetail word={selectedWord} copy={copy} /> : null}
       </ResultSection>
 
-      <ResultSection title={copy.ipa}>
-        <dl className="grid grid-cols-[6.5rem_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-white/50">{copy.shouldBe}</dt>
-          <dd className="break-words font-mono font-semibold text-white">
-            {formatIpa(result.expected.ipa)}
-          </dd>
-          <dt className="text-white/50">{copy.youSaid}</dt>
-          <dd className="break-words font-mono font-semibold text-white">
-            {formatIpa(result.heard.ipa)}
-          </dd>
-        </dl>
-      </ResultSection>
+      {result.words.some((word) => word.phonemes?.length) ? (
+        <ResultSection title={copy.ipa}>
+          <IpaComparison
+            words={result.words}
+            heardPhonemes={result.heard?.phonemes}
+            copy={copy}
+          />
+        </ResultSection>
+      ) : null}
 
       <ResultSection title={copy.whatToFix}>
         {fixableIssues.length > 0 ? (
@@ -605,6 +521,114 @@ function AssessmentResults({
         )}
       </ResultSection>
     </div>
+  );
+}
+
+// Per-sound colours reuse the grade bands: A = correct, D = wrong or
+// missing, C = an extra sound that shouldn't be there.
+const phonemeColors: Record<PhonemeStep["kind"], string> = {
+  match: gradeByLetter("A")?.color ?? "currentColor",
+  substitute: gradeByLetter("D")?.color ?? "currentColor",
+  missing: gradeByLetter("D")?.color ?? "currentColor",
+  extra: gradeByLetter("C")?.color ?? "currentColor",
+};
+
+/**
+ * One box per word: the expected IPA on top and what was heard below, each
+ * heard sound coloured by whether it matched (see lib/phonemeAlignment.ts).
+ */
+function IpaComparison({
+  words,
+  heardPhonemes,
+  copy,
+}: {
+  words: PronunciationWord[];
+  heardPhonemes: string[] | undefined;
+  copy: PanelCopy;
+}) {
+  const expected = words.flatMap((word) => word.phonemes ?? []);
+  const heardByWord = heardPhonemes?.length
+    ? groupStepsByWord(
+        alignPhonemes(expected, heardPhonemes),
+        words.map((word) => word.phonemes?.length ?? 0),
+      )
+    : null;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-white/50">{copy.ipaHint}</p>
+      <div className="flex flex-wrap gap-2">
+        {words.map((word, index) => (
+          <div
+            key={`${word.word}-${index}`}
+            className="min-w-16 border border-white/10 bg-black px-3 py-2"
+          >
+            <p className="text-xs text-white/50">{word.word}</p>
+            <p className="mt-1 font-mono text-lg font-semibold text-white">
+              <span className="sr-only">{copy.shouldBe}: </span>
+              <span className="text-white/30">/</span>
+              {word.phonemes?.join("")}
+              <span className="text-white/30">/</span>
+            </p>
+            {heardByWord ? (
+              <p className="font-mono text-lg font-semibold">
+                <span className="sr-only">{copy.youSaid}: </span>
+                <span className="text-white/30">/</span>
+                {heardByWord[index]?.map((step, stepIndex) => (
+                  <PhonemeMark key={stepIndex} step={step} copy={copy} />
+                ))}
+                <span className="text-white/30">/</span>
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      {heardByWord ? (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/60">
+          {(Object.keys(phonemeColors) as PhonemeStep["kind"][]).map((kind) => (
+            <li key={kind} className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="h-2.5 w-2.5"
+                style={{ backgroundColor: phonemeColors[kind] }}
+              />
+              {copy.phonemeLegend[kind]}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function PhonemeMark({ step, copy }: { step: PhonemeStep; copy: PanelCopy }) {
+  const color = phonemeColors[step.kind];
+  const label = copy.phonemeLegend[step.kind];
+
+  if (step.kind === "missing") {
+    // Shows the sound that should have been there, struck through.
+    return (
+      <span
+        title={`${label}: ${step.expected}`}
+        className="line-through opacity-70"
+        style={{ color }}
+      >
+        {step.expected}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      title={
+        step.kind === "substitute"
+          ? `${label}: ${step.heard} (${copy.shouldBe}: ${step.expected})`
+          : `${label}: ${step.heard}`
+      }
+      style={{ color }}
+    >
+      {step.heard}
+    </span>
   );
 }
 
@@ -715,28 +739,40 @@ function WordDetail({
   copy: PanelCopy;
 }) {
   const grade = gradeFor(word.score);
+  const expectedIpa = formatIpa(word.ipa, word.phonemes);
+  // The current server sends no per-word "heard" data (undefined), so the
+  // column only shows when it does; null means the word wasn't heard.
+  const hasHeard = word.heardIpa !== undefined;
 
   return (
-    <div className="grid gap-3 border border-white/10 bg-white/[0.02] p-3 sm:grid-cols-2">
-      <div className="flex items-center gap-3 sm:col-span-2">
+    <div
+      className={`grid gap-3 border border-white/10 bg-white/[0.02] p-3 ${
+        hasHeard ? "sm:grid-cols-2" : ""
+      }`}
+    >
+      <div className={`flex items-center gap-3 ${hasHeard ? "sm:col-span-2" : ""}`}>
         <p className="text-xl font-semibold text-white">{word.word}</p>
         <ScoreTag score={word.score} color={grade.color} />
       </div>
       <div>
         <p className={labelClassName}>{copy.sayItLike}</p>
         <p className="mt-1 text-lg font-semibold text-white">{word.soundsLike}</p>
-        <p className="font-mono text-sm text-white/50">{formatIpa(word.ipa)}</p>
+        {expectedIpa ? (
+          <p className="font-mono text-sm text-white/50">{expectedIpa}</p>
+        ) : null}
       </div>
-      <div>
-        <p className={labelClassName}>{copy.weHeard}</p>
-        {word.heardIpa ? (
-          <p className="mt-1 font-mono text-lg text-white">
-            {formatIpa(word.heardIpa)}
-          </p>
-        ) : (
-          <p className="mt-1 text-sm leading-6 text-white/70">{copy.notHeard}</p>
-        )}
-      </div>
+      {hasHeard ? (
+        <div>
+          <p className={labelClassName}>{copy.weHeard}</p>
+          {word.heardIpa ? (
+            <p className="mt-1 font-mono text-lg text-white">
+              {formatIpa(word.heardIpa)}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm leading-6 text-white/70">{copy.notHeard}</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
