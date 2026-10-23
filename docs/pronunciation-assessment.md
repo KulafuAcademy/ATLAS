@@ -1,6 +1,6 @@
 # Pronunciation assessment (wav2vec2 API)
 
-On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the wav2vec2 pronunciation assessment server. The full result appears in the **AI pronunciation check** panel to the right of the practice card (below it on screens narrower than `lg`). The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
+On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the wav2vec2 pronunciation assessment server. The full result appears in the **Results** panel to the right of the practice card (below it on screens narrower than `lg`). The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
 
 This applies only on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
 
@@ -11,7 +11,7 @@ The server is a separate project. This app only records audio, sends it, and sho
 | File | What it does |
 | --- | --- |
 | [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`, and the card and panel sit side by side. |
-| [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The right-side panel: server status, current target, live recording meter, "Checking...", notices, results, coach bubble, "Listen to me" and "Try again". |
+| [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The right-side **Results** panel: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
 | [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
 | [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts) | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL. |
 | [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts) | Polls `GET /health` every 30 s. |
@@ -43,7 +43,7 @@ tap "Say right"  ─► prepare(): ask for mic ─► "Get ready" 3-2-1
                                                    │  3 s for a word, 8 s for the sentence
                          countdown ends ─► finish(): stop ─► POST /analyze (audio + text)
                                                    │
-        ├─ ok: true             ─► panel: score, grade, coloured words, issues, coach
+        ├─ ok: true             ─► panel: results (see "Results panel")
         │                          step: "Score 87 · Good" (+ correct/incorrect sound)
         ├─ ok: false            ─► panel: "too short or too quiet" notice
         └─ HTTP error / offline ─► panel: kid-friendly notice
@@ -103,7 +103,8 @@ Nullable fields:
 
 - `words[].heardIpa`: `null` when the word wasn't heard at all. The UI says "We didn't hear this word".
 - `issues[].tip`: `null` means no tip line is shown.
-- `feedback`: `null` when the AI coach is offline. The coach bubble is hidden.
+- `feedback`: `null` when the AI coach is offline. The "AI Assessment" box is hidden.
+- `ipa`, `heardIpa`: the server may already wrap these in slashes. The UI strips them and adds exactly one pair (`formatIpa`), so `/laɪt/` never shows as `//laɪt//`.
 
 **Too short / too quiet** (HTTP 200)
 
@@ -122,6 +123,17 @@ Nullable fields:
 | 415 | Audio couldn't be decoded | "We couldn't play that recording..." |
 | 502 | Response wasn't JSON, e.g. an ngrok page (client-side) | Generic "Something went wrong" |
 
+## Results panel
+
+Top to bottom (`AssessmentResults` in `PronunciationPanel.tsx`):
+
+1. **Header:** "RESULTS", plus "N attempts" (scored attempts for this word or sentence during this visit). Before the first result, the header shows the server status instead.
+2. **Score row:** a ring gauge filled to `score`% in `grade.color` with the score inside, then the grade letter (in `grade.color`) and verdict. Below that, "⭕️ Every sound was correct" when `allWordsCorrect`, otherwise "N of M words need practice". Then `Target: "…"`.
+3. **AI Assessment:** the `feedback` text in a rounded box labelled "AI Assessment". Hidden when `feedback` is `null`.
+4. **Word by word:** a chip per word, coloured by `gradeFor(score)`. Tapping a chip shows "Say it like" (`soundsLike` and `ipa`) and "We heard" (`heardIpa`).
+5. **IPA:** "Should be" `expected.ipa` and "You said" `heard.ipa`.
+6. **What to fix:** `issues`, **excluding issues for words that scored 100**, each with its word's score tag, message and tip. If none are left: "Nothing to fix. Try it again at normal speed to lock it in."
+
 ## Grade bands and colours
 
 The bands in `lib/pronunciationGrades.ts` match the server:
@@ -137,7 +149,7 @@ Rules:
 
 - The overall score uses `grade.color` **from the response**, as-is.
 - Per-word colours and the score tags on issues use `gradeFor(words[].score)`. Don't add other cutoffs or shades.
-- These four colours are the **only** non-theme colours, and they appear only on score elements: the score and grade badge, the word highlights, and the issue score tags. The "every word correct" celebration uses the A colour. Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
+- These four colours are the **only** non-theme colours, and they appear only on score elements: the score ring and grade letter, the word chips, and the issue score tags. The "⭕️" mark is the app's existing success mark, also used in the practice steps. Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
 - If the server's bands ever change, update `pronunciationGrades` to match.
 
 ## Copy and language
@@ -164,7 +176,10 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] A silent clip shows the too-short/too-quiet notice.
 - [ ] While recording or checking, all "Say ..." buttons and "Try again" are disabled.
 - [ ] Tapping a word shows *Say it like* and *We heard* (or "didn't hear this word").
-- [ ] The coach bubble is hidden when `feedback` is `null`.
+- [ ] The "AI Assessment" box is hidden when `feedback` is `null`.
+- [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
+- [ ] "What to fix" leaves out words that scored 100, and shows "Nothing to fix…" when none are left.
+- [ ] "N attempts" goes up with each scored try of the same word, and is tracked separately per word or sentence.
 - [ ] "Try again" re-runs the same word or sentence.
 - [ ] On desktop (`lg`), the panel sits to the right and stays in view while scrolling. On phones, it sits below the card.
 - [ ] The home page lesson grid still uses the browser speech check, and doesn't poll `/health`.

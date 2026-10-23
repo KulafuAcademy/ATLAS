@@ -39,6 +39,9 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
   const [result, setResult] = useState<AnalyzeSuccess | null>(null);
   const [notice, setNotice] = useState<AssessmentNotice | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  // Scored attempts per target during this visit, for "N attempts".
+  const [attempts, setAttempts] = useState(0);
+  const attemptsByTargetRef = useRef(new Map<string, number>());
   const targetRef = useRef<string | null>(null);
   const pendingRef = useRef<PendingCheck | null>(null);
   const requestRef = useRef<AbortController | null>(null);
@@ -83,6 +86,10 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
       if (controller.signal.aborted) return;
 
       if (response.ok) {
+        const count =
+          (attemptsByTargetRef.current.get(pending.target) ?? 0) + 1;
+        attemptsByTargetRef.current.set(pending.target, count);
+        setAttempts(count);
         setResult(response);
         pending.onDone?.({ kind: "result", result: response });
       } else {
@@ -110,6 +117,7 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
     pendingRef.current = null;
     targetRef.current = nextTarget;
     setTarget(nextTarget);
+    setAttempts(attemptsByTargetRef.current.get(nextTarget) ?? 0);
     setResult(null);
     setNotice(null);
     recorder.reset();
@@ -139,6 +147,8 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
     serverStatus: server.status,
     target,
     result,
+    /** How many times the current target has been scored. */
+    attempts,
     notice,
     isChecking,
     /** True from the tap until the result (or failure) arrives. */
