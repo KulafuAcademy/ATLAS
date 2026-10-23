@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { LevelMeter } from "@/components/pronunciation/LevelMeter";
+import { createAudioContext } from "@/components/training/feedbackSounds";
 
 /** How long the microphone test records before playing it back. */
 const testRecordingSeconds = 5;
+
+/** Mic input gain goes up to this multiple, so quiet microphones can be boosted. */
+const maxInputGain = 2;
 
 const speakerTestSrc = `/twisters/${encodeURIComponent("R vs L")}/arrive-alive.mp3`;
 
@@ -32,6 +37,8 @@ const primaryButtonClass =
 
 const secondaryButtonClass =
   "inline-flex h-11 shrink-0 items-center justify-center border border-white/20 px-5 text-sm font-semibold text-white/70 transition hover:border-white hover:text-white focus:outline-none focus-visible:border-white disabled:cursor-not-allowed disabled:opacity-40";
+
+const sliderClass = "h-1 w-full cursor-pointer accent-white";
 
 const selectClass =
   "h-11 w-full border border-white/20 bg-black px-3 text-sm text-white transition hover:border-white/45 focus:border-white focus:outline-none";
@@ -126,6 +133,8 @@ export function HardwareTest() {
   );
   const [inputId, setInputId] = useState("");
   const [outputId, setOutputId] = useState("");
+  const [outputVolume, setOutputVolume] = useState(1);
+  const [inputGain, setInputGain] = useState(1);
 
   // Fall back to the default device if the chosen one is unplugged.
   const activeInputId = devices.inputs.some((device) => device.deviceId === inputId)
@@ -145,69 +154,67 @@ export function HardwareTest() {
     await devices.refresh();
   }
 
+  // Device pickers only show on a PC; each test card gets its own.
+  const outputPicker = isDesktop ? (
+    <DevicePicker
+      label={text({ en: "Speaker / headphones", ja: "スピーカー / ヘッドホン" })}
+      value={activeOutputId}
+      onChange={setOutputId}
+      devices={devices.outputs}
+      fallbackName={text({ en: "Speaker", ja: "スピーカー" })}
+      disabled={!canPickOutput}
+      note={
+        canPickOutput
+          ? undefined
+          : text({
+              en: "This browser always uses the system output. Change it in your computer's sound settings, or use Chrome or Edge.",
+              ja: "このブラウザはシステムの出力先を使います。パソコンのサウンド設定で変更するか、Chrome または Edge をお使いください。",
+            })
+      }
+    />
+  ) : null;
+
+  const inputPicker = isDesktop ? (
+    <DevicePicker
+      label={text({ en: "Microphone", ja: "マイク" })}
+      value={activeInputId}
+      onChange={setInputId}
+      devices={devices.inputs}
+      fallbackName={text({ en: "Microphone", ja: "マイク" })}
+    />
+  ) : null;
+
   return (
     <div className="space-y-6">
-      {isDesktop ? (
-        <section className="space-y-5 border border-white/10 bg-white/[0.02] p-5 sm:p-7">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
-              {text({ en: "Devices", ja: "デバイス" })}
-            </p>
-            <h2 className="text-xl font-semibold text-white">
-              {text({ en: "Choose your hardware", ja: "使う機器を選ぶ" })}
-            </h2>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <DevicePicker
-              label={text({ en: "Speaker / headphones", ja: "スピーカー / ヘッドホン" })}
-              value={activeOutputId}
-              onChange={setOutputId}
-              devices={devices.outputs}
-              fallbackName={text({ en: "Speaker", ja: "スピーカー" })}
-              disabled={!canPickOutput}
-              note={
-                canPickOutput
-                  ? undefined
-                  : text({
-                      en: "This browser always uses the system output. Change it in your computer's sound settings, or use Chrome or Edge.",
-                      ja: "このブラウザはシステムの出力先を使います。パソコンのサウンド設定で変更するか、Chrome または Edge をお使いください。",
-                    })
-              }
-            />
-            <DevicePicker
-              label={text({ en: "Microphone", ja: "マイク" })}
-              value={activeInputId}
-              onChange={setInputId}
-              devices={devices.inputs}
-              fallbackName={text({ en: "Microphone", ja: "マイク" })}
-            />
-          </div>
-
-          {!devices.hasLabels ? (
-            <div className="flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6 text-white/55">
-                {text({
-                  en: "Allow the microphone to see the names of your devices.",
-                  ja: "マイクを許可すると、機器の名前が表示されます。",
-                })}
-              </p>
-              <button type="button" onClick={revealDeviceNames} className={secondaryButtonClass}>
-                {text({ en: "Show device names", ja: "機器名を表示" })}
-              </button>
-            </div>
-          ) : null}
-        </section>
+      {isDesktop && !devices.hasLabels ? (
+        <div className="flex flex-col gap-3 border border-white/10 bg-white/[0.02] p-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-6 text-white/55">
+            {text({
+              en: "Allow the microphone to see the names of your devices.",
+              ja: "マイクを許可すると、機器の名前が表示されます。",
+            })}
+          </p>
+          <button type="button" onClick={revealDeviceNames} className={secondaryButtonClass}>
+            {text({ en: "Show device names", ja: "機器名を表示" })}
+          </button>
+        </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SpeakerTest outputId={activeOutputId} />
-        <MicrophoneTest
-          inputId={activeInputId}
-          outputId={activeOutputId}
-          onPermissionGranted={devices.refresh}
-        />
-      </div>
+      <SpeakerTest
+        outputId={activeOutputId}
+        volume={outputVolume}
+        onVolumeChange={setOutputVolume}
+        devicePicker={outputPicker}
+      />
+      <MicrophoneTest
+        inputId={activeInputId}
+        outputId={activeOutputId}
+        outputVolume={outputVolume}
+        inputGain={inputGain}
+        onInputGainChange={setInputGain}
+        onPermissionGranted={devices.refresh}
+        devicePicker={inputPicker}
+      />
     </div>
   );
 }
@@ -256,6 +263,37 @@ function DevicePicker({
   );
 }
 
+function LevelSlider({
+  label,
+  value,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  /** 1 = 100%. */
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block space-y-3">
+      <span className="flex items-center justify-between text-sm">
+        <span className="font-medium text-white/75">{label}</span>
+        <span className="font-mono text-white/55">{Math.round(value * 100)}%</span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={0.05}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className={sliderClass}
+      />
+    </label>
+  );
+}
+
 async function routeToOutput(audio: SinkAudioElement, outputId: string) {
   if (!audio.setSinkId) return;
 
@@ -266,7 +304,17 @@ async function routeToOutput(audio: SinkAudioElement, outputId: string) {
   }
 }
 
-function SpeakerTest({ outputId }: { outputId: string }) {
+function SpeakerTest({
+  outputId,
+  volume,
+  onVolumeChange,
+  devicePicker,
+}: {
+  outputId: string;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
+  devicePicker: ReactNode;
+}) {
   const { text } = useLanguage();
   const audioRef = useRef<SinkAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -275,6 +323,11 @@ function SpeakerTest({ outputId }: { outputId: string }) {
   useEffect(() => {
     return () => audioRef.current?.pause();
   }, []);
+
+  // Moving the slider changes a sound that is already playing.
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
 
   async function play() {
     if (playing) {
@@ -285,6 +338,7 @@ function SpeakerTest({ outputId }: { outputId: string }) {
 
     audioRef.current?.pause();
     const audio: SinkAudioElement = new Audio(speakerTestSrc);
+    audio.volume = volume;
     audioRef.current = audio;
     audio.onended = () => setPlaying(false);
     audio.onerror = () => {
@@ -321,6 +375,15 @@ function SpeakerTest({ outputId }: { outputId: string }) {
         </p>
       </div>
 
+      {devicePicker}
+
+      <LevelSlider
+        label={text({ en: "Output volume", ja: "出力音量" })}
+        value={volume}
+        max={1}
+        onChange={onVolumeChange}
+      />
+
       <div className="mt-auto flex flex-wrap items-center gap-4">
         <button type="button" onClick={play} className={primaryButtonClass}>
           <PlayStopIcon playing={playing} />
@@ -348,11 +411,19 @@ function SpeakerTest({ outputId }: { outputId: string }) {
 function MicrophoneTest({
   inputId,
   outputId,
+  outputVolume,
+  inputGain,
+  onInputGainChange,
   onPermissionGranted,
+  devicePicker,
 }: {
   inputId: string;
   outputId: string;
+  outputVolume: number;
+  inputGain: number;
+  onInputGainChange: (gain: number) => void;
   onPermissionGranted: () => void;
+  devicePicker: ReactNode;
 }) {
   const { text } = useLanguage();
   const [status, setStatus] = useState<MicStatus>("idle");
@@ -363,6 +434,8 @@ function MicrophoneTest({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<SinkAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const timersRef = useRef<{ tick?: number; stop?: number }>({});
   const urlRef = useRef<string | null>(null);
 
@@ -370,6 +443,12 @@ function MicrophoneTest({
     window.clearInterval(timersRef.current.tick);
     window.clearTimeout(timersRef.current.stop);
     timersRef.current = {};
+  }
+
+  function closeGainChain() {
+    gainNodeRef.current = null;
+    void audioContextRef.current?.close().catch(() => {});
+    audioContextRef.current = null;
   }
 
   function replaceRecordingUrl(next: string | null) {
@@ -388,14 +467,25 @@ function MicrophoneTest({
         recorder.stop();
       }
       stopTracks(streamRef.current);
+      closeGainChain();
       audioRef.current?.pause();
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);
 
+  // The gain can be changed while recording; playback follows the output volume.
+  useEffect(() => {
+    if (gainNodeRef.current) gainNodeRef.current.gain.value = inputGain;
+  }, [inputGain]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = outputVolume;
+  }, [outputVolume]);
+
   async function playBack(url: string) {
     audioRef.current?.pause();
     const audio: SinkAudioElement = new Audio(url);
+    audio.volume = outputVolume;
     audioRef.current = audio;
     audio.onended = () => setStatus("done");
     audio.onerror = () => setStatus("done");
@@ -439,13 +529,31 @@ function MicrophoneTest({
     // Device names become readable once the mic is allowed.
     onPermissionGranted();
 
+    // Route the mic through a gain node so the slider changes what is recorded.
+    let recordStream = micStream;
+    const audioContext = createAudioContext();
+
+    if (audioContext) {
+      const source = audioContext.createMediaStreamSource(micStream);
+      const gainNode = audioContext.createGain();
+      const destination = audioContext.createMediaStreamDestination();
+      gainNode.gain.value = inputGain;
+      source.connect(gainNode).connect(destination);
+      void audioContext.resume().catch(() => {});
+
+      audioContextRef.current = audioContext;
+      gainNodeRef.current = gainNode;
+      recordStream = destination.stream;
+    }
+
     const mimeType = pickMimeType();
     let recorder: MediaRecorder;
 
     try {
-      recorder = new MediaRecorder(micStream, mimeType ? { mimeType } : undefined);
+      recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
     } catch {
       stopTracks(micStream);
+      closeGainChain();
       setError("failed");
       setStatus("idle");
       return;
@@ -458,6 +566,7 @@ function MicrophoneTest({
     recorder.onstop = () => {
       clearTimers();
       stopTracks(micStream);
+      closeGainChain();
       streamRef.current = null;
       setStream(null);
 
@@ -475,7 +584,8 @@ function MicrophoneTest({
 
     recorderRef.current = recorder;
     streamRef.current = micStream;
-    setStream(micStream);
+    // The meter shows the boosted level, matching what gets recorded.
+    setStream(recordStream);
     setSecondsLeft(testRecordingSeconds);
     recorder.start();
     setStatus("recording");
@@ -541,6 +651,15 @@ function MicrophoneTest({
           })}
         </p>
       </div>
+
+      {devicePicker}
+
+      <LevelSlider
+        label={text({ en: "Input gain", ja: "入力音量" })}
+        value={inputGain}
+        max={maxInputGain}
+        onChange={onInputGainChange}
+      />
 
       <div aria-live="polite" className="space-y-3">
         {status === "recording" && stream ? (
