@@ -4,6 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import {
+  useWordCheck,
+  WordAssessmentModal,
+} from "@/components/pronunciation/WordAssessmentModal";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import {
   getPublicAudioPath,
@@ -13,7 +17,6 @@ import {
   playCorrectSound,
   playIncorrectSound,
 } from "@/components/training/feedbackSounds";
-import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
 import type { TrainingSection } from "@/data/trainingSections";
 import { saveTestResult } from "@/lib/trainingProgress";
 import type { MinimalPair, TrainingCategory } from "@/types/training";
@@ -169,11 +172,7 @@ export function PracticeLibrary({
             onStudy={() => setMode("speaking")}
           />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {active.pairs.map((pair) => (
-              <PairCard key={pair.id} pair={pair} />
-            ))}
-          </div>
+          <SpeakingPairs pairs={active.pairs} />
         )}
       </div>
 
@@ -646,12 +645,44 @@ function QuickTest({
   );
 }
 
+// One AI word check (and one /health poll) shared by every card, shown in a
+// modal. Mounted only in speaking mode.
+function SpeakingPairs({ pairs }: { pairs: MinimalPair[] }) {
+  const check = useWordCheck();
+
+  return (
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
+        {pairs.map((pair) => (
+          <PairCard
+            key={pair.id}
+            pair={pair}
+            onCheck={(word) =>
+              check.start({
+                word,
+                audioPath: getPublicAudioPath("words", pair.soundFocus, word),
+              })
+            }
+          />
+        ))}
+      </div>
+      <WordAssessmentModal check={check} />
+    </>
+  );
+}
+
 const pairCardCopy = {
   en: { listen: "Listen" },
   ja: { listen: "聞く" },
 };
 
-function PairCard({ pair }: { pair: MinimalPair }) {
+function PairCard({
+  pair,
+  onCheck,
+}: {
+  pair: MinimalPair;
+  onCheck: (word: string) => void;
+}) {
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const play = useRecordedAudio();
@@ -697,74 +728,27 @@ function PairCard({ pair }: { pair: MinimalPair }) {
           </button>
         </div>
       ) : null}
-      <PronunciationCheck words={[pair.wordA, pair.wordB]} />
+      <PronunciationCheck words={[pair.wordA, pair.wordB]} onCheck={onCheck} />
     </article>
   );
 }
 
-const checkCopy = {
-  en: {
-    say: (word: string) => `Say “${word}”…`,
-    correct: (word: string) => `Heard “${word}” — great!`,
-    retry: (heard: string) => `Heard “${heard}”. Try again!`,
-    nothing: "I couldn’t hear that.",
-    unsupported: "Pronunciation checking works in Chrome or Edge.",
-  },
-  ja: {
-    say: (word: string) => `「${word}」と言ってください…`,
-    correct: (word: string) => `「${word}」と聞こえました！`,
-    retry: (heard: string) => `「${heard}」と聞こえました。もう一度！`,
-    nothing: "聞き取れませんでした。",
-    unsupported: "発音判定はChrome / Edgeで利用できます。",
-  },
-};
-
-function PronunciationCheck({ words }: { words: string[] }) {
-  const { language } = useLanguage();
-  const copy = checkCopy[language];
-  const [feedback, setFeedback] = useState("");
-
-  function check(word: string) {
-    const Recognition =
-      window.SpeechRecognition ?? window.webkitSpeechRecognition;
-
-    if (!Recognition) {
-      setFeedback(copy.unsupported);
-      return;
-    }
-
-    // Stops any other running microphone check on the page.
-    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
-
-    const recognition = new Recognition();
-    recognition.lang = "en-US";
-    recognition.onresult = (event) => {
-      const heard = event.results[0]?.[0]?.transcript.toLowerCase() ?? "";
-      const isCorrect = heard.includes(word.toLowerCase());
-
-      if (isCorrect) {
-        playCorrectSound();
-      } else {
-        playIncorrectSound();
-      }
-      setFeedback(isCorrect ? copy.correct(word) : copy.retry(heard));
-    };
-    recognition.onerror = () => {
-      playIncorrectSound();
-      setFeedback(copy.nothing);
-    };
-    recognition.start();
-    setFeedback(copy.say(word));
-  }
-
+// Each word opens the AI pronunciation check in WordAssessmentModal.
+function PronunciationCheck({
+  words,
+  onCheck,
+}: {
+  words: string[];
+  onCheck: (word: string) => void;
+}) {
   return (
-    <div className="space-y-3 border-t border-white/10 pt-4">
+    <div className="border-t border-white/10 pt-4">
       <div className="flex flex-wrap gap-2">
         {words.map((word) => (
           <button
             key={word}
             type="button"
-            onClick={() => check(word)}
+            onClick={() => onCheck(word)}
             className="inline-flex h-9 items-center gap-2 border border-white bg-white px-3 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
           >
             <MicIcon />
@@ -772,7 +756,6 @@ function PronunciationCheck({ words }: { words: string[] }) {
           </button>
         ))}
       </div>
-      {feedback ? <p className="text-sm text-white/55">{feedback}</p> : null}
     </div>
   );
 }

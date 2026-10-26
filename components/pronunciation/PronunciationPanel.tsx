@@ -19,7 +19,7 @@ import type { PronunciationAssessmentState } from "./usePronunciationAssessment"
 import type { ServerStatus } from "./useServerStatus";
 import type { RecorderError } from "./useVoiceRecorder";
 
-const panelCopy = {
+export const panelCopy = {
   en: {
     title: "Results",
     attempts: (count: number) => (count === 1 ? "1 attempt" : `${count} attempts`),
@@ -159,16 +159,32 @@ const panelCopy = {
   },
 };
 
-type PanelCopy = (typeof panelCopy)[Language];
+export type PanelCopy = (typeof panelCopy)[Language];
 
-const primaryButtonClassName =
+export const primaryButtonClassName =
   "inline-flex h-11 items-center justify-center gap-2 border border-white bg-white px-4 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/25 disabled:hover:bg-white/10 disabled:hover:text-white/25";
 
-const secondaryButtonClassName =
+export const secondaryButtonClassName =
   "inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-black px-4 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none disabled:cursor-not-allowed disabled:text-white/30 disabled:hover:border-white/10";
 
-const labelClassName =
+export const labelClassName =
   "text-xs font-semibold uppercase tracking-[0.2em] text-white/40";
+
+/** The learner-facing text for a mic or server problem, or null if none. */
+export function assessmentNoticeText(
+  assessment: PronunciationAssessmentState,
+  copy: PanelCopy,
+  language: Language,
+) {
+  const { recorder, notice } = assessment;
+
+  if (recorder.error) return copy.recorderErrors[recorder.error];
+  if (notice?.kind === "tooQuiet") {
+    return language === "en" ? notice.message || copy.tooQuiet : copy.tooQuiet;
+  }
+  if (notice?.kind === "api") return copy.apiError(notice.status);
+  return null;
+}
 
 /**
  * Shows the AI pronunciation assessment for the pair card's "Say …" checks:
@@ -187,18 +203,9 @@ export function PronunciationPanel({
 }) {
   const { language } = useLanguage();
   const copy = panelCopy[language];
-  const { recorder, notice, result, target, isChecking } = assessment;
+  const { recorder, result, target, isChecking } = assessment;
   const isIdle = recorder.status === "idle" && !isChecking;
-
-  const noticeText = recorder.error
-    ? copy.recorderErrors[recorder.error]
-    : notice?.kind === "tooQuiet"
-      ? language === "en"
-        ? notice.message || copy.tooQuiet
-        : copy.tooQuiet
-      : notice?.kind === "api"
-        ? copy.apiError(notice.status)
-        : null;
+  const noticeText = assessmentNoticeText(assessment, copy, language);
 
   return (
     <section
@@ -330,7 +337,7 @@ function ListeningIndicator({ label }: { label: string }) {
   );
 }
 
-function PlaybackButton({ url, copy }: { url: string; copy: PanelCopy }) {
+export function PlaybackButton({ url, copy }: { url: string; copy: PanelCopy }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -370,7 +377,7 @@ function PlaybackButton({ url, copy }: { url: string; copy: PanelCopy }) {
   );
 }
 
-function CheckingIndicator({ label }: { label: string }) {
+export function CheckingIndicator({ label }: { label: string }) {
   return (
     <div
       role="status"
@@ -395,18 +402,18 @@ function CheckingIndicator({ label }: { label: string }) {
  * IPA for display, wrapped in exactly one pair of slashes. Uses `ipa` when
  * the server sends it, otherwise joins the IPA `phonemes`. Null if neither.
  */
-function formatIpa(ipa?: string | null, phonemes?: string[]) {
+export function formatIpa(ipa?: string | null, phonemes?: string[]) {
   const raw = ipa?.trim() || phonemes?.join("") || "";
   const bare = raw.replace(/^\/+|\/+$/g, "");
 
   return bare ? `/${bare}/` : null;
 }
 
-function isPerfect(word: PronunciationWord | undefined) {
+export function isPerfect(word: PronunciationWord | undefined) {
   return word !== undefined && word.score >= 100;
 }
 
-function findWord(words: PronunciationWord[], text: string) {
+export function findWord(words: PronunciationWord[], text: string) {
   return words.find((word) => word.word.toLowerCase() === text.toLowerCase());
 }
 
@@ -541,7 +548,7 @@ const phonemeStyles: Record<
  * One box per word: the expected IPA on top and what was heard below, each
  * heard sound coloured by whether it matched (see lib/phonemeAlignment.ts).
  */
-function IpaComparison({
+export function IpaComparison({
   words,
   heardPhonemes,
   copy,
@@ -655,7 +662,7 @@ const ringRadius = 40;
 const ringCircumference = 2 * Math.PI * ringRadius;
 
 // Circular score gauge; the arc fills to `score`% in the grade colour.
-function ScoreRing({
+export function ScoreRing({
   score,
   color,
   label,
