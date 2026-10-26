@@ -1046,14 +1046,14 @@ function PairPracticeCard({
     >
       <div
         ref={focusKind === "tongueTwister" ? focusTargetRef : undefined}
-        className={`border px-4 py-3 transition-colors ${
+        className={`border px-4 transition-colors ${
           focusKind === "tongueTwister"
-            ? "border-white bg-white/[0.06]"
-            : "border-white/10 bg-black"
+            ? "border-white bg-white/[0.06] py-5 text-center"
+            : "border-white/10 bg-black py-3"
         }`}
       >
         {focusKind === "tongueTwister" ? (
-          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+          <p className="mb-2 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
             <span
               aria-hidden="true"
               className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
