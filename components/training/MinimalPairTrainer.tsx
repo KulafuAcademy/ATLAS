@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import { LevelMeter } from "@/components/pronunciation/LevelMeter";
+import { PronunciationPanel } from "@/components/pronunciation/PronunciationPanel";
+import {
+  usePronunciationAssessment,
+  type AssessmentOutcome,
+} from "@/components/pronunciation/usePronunciationAssessment";
 import type { LocalizedText } from "@/lib/i18n";
+import { gradeByLetter } from "@/lib/pronunciationGrades";
 import type { MinimalPair } from "@/types/training";
 
 import { getPublicAudioPath } from "./audio";
@@ -37,7 +44,8 @@ type FeedbackType =
   | "pronunciation"
   | "tongueTwister"
   | "tongueTwisterPlayback";
-type FeedbackTone = "neutral" | "success" | "error";
+// "pending": work in progress (e.g. the AI check), shown with animated dots.
+type FeedbackTone = "neutral" | "pending" | "success" | "error";
 
 type CardFeedback = {
   pairId: string;
@@ -98,7 +106,6 @@ const trainerCopy = {
     speedSlow: "Slow (0.75x)",
     playing: (word: string) => `Playing: ${word}`,
     whichWord: "Which word did you hear?",
-    playQuizFirst: "Play quiz, listen, then choose.",
     correct: "Correct.",
     listeningIncorrect: (word: string) =>
       `Not quite. The answer was "${word}".`,
@@ -118,6 +125,13 @@ const trainerCopy = {
     secondsLeft: (seconds: number) => `${seconds}s`,
     sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
+    aiChecking: "Checking your pronunciation…",
+    aiScore: (score: number, verdict: string) =>
+      `Score ${score} · ${verdict}. See the details below.`,
+    aiFailed: "Couldn't score that one. See below and try again.",
+    micUnavailable: "The microphone isn't available. See below.",
+    sayThis: "Say this",
+    readThis: "Read this",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -151,7 +165,6 @@ const trainerCopy = {
     speedSlow: "ゆっくり (0.75倍)",
     playing: (word: string) => `再生中: ${word}`,
     whichWord: "どちらの単語に聞こえましたか？",
-    playQuizFirst: "先に「クイズ再生」を押してから、答えを選んでください。",
     correct: "正解です。",
     listeningIncorrect: (word: string) =>
       `惜しいです。正解は「${word}」でした。`,
@@ -174,6 +187,13 @@ const trainerCopy = {
     sayAfterCountdown: (word: string) =>
       `カウントダウン後に「${word}」を発音してください。`,
     saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
+    aiChecking: "発音をチェックしています…",
+    aiScore: (score: number, verdict: string) =>
+      `スコア ${score}・${verdict}。くわしくは下を見てね。`,
+    aiFailed: "スコアを出せませんでした。下を見て、もう一度ためしてね。",
+    micUnavailable: "マイクが使えません。下を見てください。",
+    sayThis: "これを言おう",
+    readThis: "これを読もう",
   },
 };
 
@@ -246,6 +266,7 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
       language={language}
       pair={pair}
       text={text}
+      useAiAssessment
     />
   );
 }
@@ -260,6 +281,12 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
  *   4. Tongue twister: say a whole sentence after a countdown; judged by
  *      useSentenceCheck and must match 100%.
  *
+ * With `useAiAssessment`, steps 3 and 4 record the learner during the
+ * answer window instead and score the clip with the wav2vec2 server; the
+ * steps are split into separate boxes and the full result shows in a
+ * PronunciationPanel right under the step that ran the check.
+ * See docs/pronunciation-assessment.md.
+ *
  * Only one mic session runs at a time. Steps 3 and 4 share the countdown
  * state, and `isBusy` disables their buttons while either is active.
  */
@@ -269,11 +296,13 @@ function PairPracticeCard({
   language,
   pair,
   text,
+  useAiAssessment = false,
 }: {
   copy: TrainerCopy;
   language: "en" | "ja";
   pair: MinimalPair;
   text: (value: LocalizedText) => string;
+  useAiAssessment?: boolean;
 }) {
   const [activeQuiz, setActiveQuiz] = useState<ActiveQuiz>(null);
   const [aiCheckTarget, setAiCheckTarget] = useState<string | null>(null);
@@ -289,6 +318,18 @@ function PairPracticeCard({
   const [wordSlow, setWordSlow] = useState(false);
   const [twisterSlow, setTwisterSlow] = useState(false);
   const tongueTwister = getTongueTwister(pair);
+  const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
+  const aiResultsRef = useRef<HTMLDivElement | null>(null);
+
+  // Bring a freshly loaded AI result into view.
+  useEffect(() => {
+    if (!assessment.result) return;
+
+    aiResultsRef.current?.scrollIntoView({
+      behavior: scrollBehavior(),
+      block: "start",
+    });
+  }, [assessment.result]);
 
   function updateCountdown(next: CountdownState) {
     countdownRef.current = next;
@@ -526,8 +567,9 @@ function PairPracticeCard({
 
   const sentenceCheck = useSentenceCheck(handleSentenceResult);
 
-  const isChecking =
-    countdown?.kind === "tongueTwister"
+  const isChecking = useAiAssessment
+    ? assessment.recorder.status !== "idle"
+    : countdown?.kind === "tongueTwister"
       ? sentenceCheck.isListening
       : Boolean(aiCheckTarget);
 
@@ -554,12 +596,12 @@ function PairPracticeCard({
     );
   }
 
+  // The "I hear …" buttons stay disabled until "Play quiz" sets a quiz for
+  // this pair, and again after each answer.
+  const quizReady = activeQuiz?.pairId === pair.id;
+
   function answerQuiz(answer: QuizTarget) {
-    if (!activeQuiz || activeQuiz.pairId !== pair.id) {
-      playIncorrectSound();
-      showFeedback("listening", "error", copy.playQuizFirst);
-      return;
-    }
+    if (!activeQuiz || !quizReady) return;
 
     if (answer === activeQuiz.target) {
       playCorrectSound();
@@ -574,9 +616,80 @@ function PairPracticeCard({
   }
 
   const isBusy =
-    countdown !== null || sentenceCheck.isListening || Boolean(aiCheckTarget);
+    countdown !== null ||
+    sentenceCheck.isListening ||
+    Boolean(aiCheckTarget) ||
+    (useAiAssessment && assessment.isBusy);
+
+  // AI mode for steps 3 and 4: ask for the mic on the tap, record during the
+  // answer window, then send the clip when the countdown ends.
+  function startAiAssessment(
+    kind: "pronunciation" | "tongueTwister",
+    target: string,
+  ) {
+    window.speechSynthesis?.cancel();
+    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+    showFeedback(
+      kind,
+      "neutral",
+      kind === "pronunciation"
+        ? copy.sayAfterCountdown(target)
+        : copy.saySentenceAfterCountdown,
+    );
+
+    void assessment.prepare(target).then((ready) => {
+      if (ready) return;
+
+      clearCountdown();
+      playIncorrectSound();
+      showFeedback(kind, "error", copy.micUnavailable);
+    });
+
+    startCountdown(
+      kind,
+      kind === "pronunciation"
+        ? pronunciationAnswerSeconds
+        : tongueTwisterAnswerSeconds,
+      () => assessment.startRecording(),
+      () => {
+        showFeedback(kind, "pending", copy.aiChecking);
+        assessment.finish((outcome) => handleAiOutcome(kind, outcome));
+      },
+    );
+  }
+
+  function handleAiOutcome(
+    kind: "pronunciation" | "tongueTwister",
+    outcome: AssessmentOutcome,
+  ) {
+    if (outcome.kind === "failed") {
+      playIncorrectSound();
+      showFeedback(kind, "error", copy.aiFailed);
+      return;
+    }
+
+    const { score, grade } = outcome.result;
+    const passed = grade.letter === "A" || grade.letter === "B";
+    const verdict =
+      gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict;
+
+    if (passed) {
+      playCorrectSound();
+    } else {
+      playIncorrectSound();
+    }
+    showFeedback(kind, passed ? "success" : "error", copy.aiScore(score, verdict));
+  }
 
   function startPronunciationTest(target: QuizTarget) {
+    if (useAiAssessment) {
+      startAiAssessment(
+        "pronunciation",
+        target === "A" ? pair.wordA : pair.wordB,
+      );
+      return;
+    }
+
     window.speechSynthesis?.cancel();
     showFeedback(
       "pronunciation",
@@ -746,168 +859,352 @@ function PairPracticeCard({
   const playbackFeedback = getFeedback("tongueTwisterPlayback");
   const answerFeedback = getFeedback("tongueTwister");
 
-  return (
-    <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
-      <div className="space-y-5">
-        <p className="text-xs uppercase tracking-[0.24em] text-white/35">
-          {pair.soundFocus}
-        </p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <WordLabel word={pair.wordA} />
-          <span className="text-sm text-white/30">vs</span>
-          <WordLabel word={pair.wordB} />
-        </div>
+  // With the AI check, each step sits in its own box and the AI result
+  // appears right under the step that ran it.
+  const separate = useAiAssessment;
+  // The AI recording's own mic stream drives the step's level meter.
+  const aiRecordingStream = useAiAssessment ? assessment.recorder.stream : null;
+  // While an AI check counts down or records, everything except that step
+  // is dimmed and the text to read is highlighted.
+  const focusKind: "pronunciation" | "tongueTwister" | null =
+    useAiAssessment && countdown
+      ? countdown.kind
+      : useAiAssessment && assessment.recorder.status !== "idle"
+        ? assessment.target === tongueTwister.text
+          ? "tongueTwister"
+          : "pronunciation"
+        : null;
+  const dimmedUnless = (kind: "pronunciation" | "tongueTwister" | "none") =>
+    focusKind !== null && focusKind !== kind;
+  const focusTargetRef = useRef<HTMLDivElement | null>(null);
+
+  // Each attempt (tap or Try again) starts from no focus, so this runs once
+  // per attempt, after the "Say this" card or highlighted sentence renders.
+  useEffect(() => {
+    if (!focusKind) return;
+
+    focusTargetRef.current?.scrollIntoView({
+      behavior: scrollBehavior(),
+      block: "center",
+    });
+  }, [focusKind]);
+  const resultsKind =
+    assessment.target === null
+      ? null
+      : assessment.target === tongueTwister.text
+        ? "tongueTwister"
+        : "pronunciation";
+
+  const pairHeader = (
+    <div className="space-y-5">
+      <p className="text-xs uppercase tracking-[0.24em] text-white/35">
+        {pair.soundFocus}
+      </p>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <WordLabel word={pair.wordA} />
+        <span className="text-sm text-white/30">vs</span>
+        <WordLabel word={pair.wordB} />
       </div>
-
-      <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
-        <SpeedToggle
-          copy={copy}
-          slow={wordSlow}
-          onToggle={() => setWordSlow((value) => !value)}
-        />
-        <TestGroup
-          step="1"
-          title={copy.listenTitle}
-          description={copy.listenDescription(pair.wordA, pair.wordB)}
-          feedback={getFeedback("listen")}
-        >
-          {[pair.wordA, pair.wordB].map((word) => (
-            <ActionButton
-              key={word}
-              onClick={() =>
-                void speak(
-                  word,
-                  "listen",
-                  getPublicAudioPath("words", pair.soundFocus, word),
-                  true,
-                  wordSlow,
-                )
-              }
-            >
-              {copy.listen(word)}
-            </ActionButton>
-          ))}
-        </TestGroup>
-
-        <TestGroup
-          step="2"
-          title={copy.listeningTitle}
-          description={copy.listeningDescription}
-          actionsClassName="grid gap-3"
-          feedback={getFeedback("listening")}
-        >
-          <ActionButton intent="primary" onClick={startQuiz}>
-            {copy.playQuiz}
-          </ActionButton>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ActionButton onClick={() => answerQuiz("A")}>
-              {copy.answer(pair.wordA)}
-            </ActionButton>
-            <ActionButton onClick={() => answerQuiz("B")}>
-              {copy.answer(pair.wordB)}
-            </ActionButton>
-          </div>
-        </TestGroup>
-
-        <TestGroup
-          step="3"
-          title={copy.pronunciationTitle}
-          description={copy.pronunciationDescription}
-          feedback={getFeedback("pronunciation")}
-        >
-          <ActionButton
-            intent="primary"
-            disabled={isBusy}
-            onClick={() => startPronunciationTest("A")}
-          >
-            {copy.speak(pair.wordA)}
-          </ActionButton>
-          <ActionButton
-            intent="primary"
-            disabled={isBusy}
-            onClick={() => startPronunciationTest("B")}
-          >
-            {copy.speak(pair.wordB)}
-          </ActionButton>
-          <CountdownDisplay
-            copy={copy}
-            countdown={countdown}
-            kind="pronunciation"
-          />
-          {aiCheckTarget && !isTouchDevice() ? <MicLevelMeter /> : null}
-        </TestGroup>
-
-        <SpeedToggle
-          copy={copy}
-          slow={twisterSlow}
-          onToggle={() => setTwisterSlow((value) => !value)}
-        />
-        <TestGroup
-          step="4"
-          title={copy.tongueTwisterTitle}
-          description={copy.tongueTwisterDescription}
-          actionsClassName="grid gap-3"
-          feedback={null}
-        >
-          <div className="border border-white/10 bg-black px-4 py-3">
-            <p className="text-lg font-semibold leading-8 text-white">
-              {tongueTwister.text}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-white/50">
-              {text(tongueTwister.note)}
-            </p>
-          </div>
-          <ActionButton
-            onClick={() =>
-              void speak(
-                tongueTwister.text,
-                "tongueTwisterPlayback",
-                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
-                true,
-                twisterSlow,
-              )
-            }
-          >
-            {copy.listenTongueTwister}
-          </ActionButton>
-          {playbackFeedback ? (
-            <FeedbackMessage feedback={playbackFeedback} />
-          ) : null}
-          <ActionButton
-            intent="primary"
-            disabled={isBusy}
-            onClick={() => {
-              window.speechSynthesis?.cancel();
-              showFeedback(
-                "tongueTwister",
-                "neutral",
-                copy.saySentenceAfterCountdown,
-              );
-              startCountdown(
-                "tongueTwister",
-                tongueTwisterAnswerSeconds,
-                () => sentenceCheck.start(tongueTwister.text),
-                () => sentenceCheck.finishListening(),
-              );
-            }}
-          >
-            {copy.saySentence}
-          </ActionButton>
-          <CountdownDisplay
-            copy={copy}
-            countdown={countdown}
-            kind="tongueTwister"
-          />
-          {sentenceCheck.isListening && !isTouchDevice() ? (
-            <MicLevelMeter />
-          ) : null}
-          {answerFeedback ? (
-            <FeedbackMessage feedback={answerFeedback} />
-          ) : null}
-        </TestGroup>
-      </div>
-    </article>
+    </div>
   );
+
+  const wordSpeedToggle = (
+    <SpeedToggle
+      copy={copy}
+      slow={wordSlow}
+      onToggle={() => setWordSlow((value) => !value)}
+    />
+  );
+
+  const twisterSpeedToggle = (
+    <SpeedToggle
+      copy={copy}
+      slow={twisterSlow}
+      onToggle={() => setTwisterSlow((value) => !value)}
+    />
+  );
+
+  // As its own box, step 1 has the word speed toggle as its top row
+  // (like step 4 with the sentence speed).
+  const listenStep = (
+    <TestGroup
+      step="1"
+      title={copy.listenTitle}
+      description={copy.listenDescription(pair.wordA, pair.wordB)}
+      actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
+      feedback={getFeedback("listen")}
+      separate={separate}
+      dimmed={dimmedUnless("none")}
+      header={separate ? wordSpeedToggle : undefined}
+    >
+      {[pair.wordA, pair.wordB].map((word) => (
+        <ActionButton
+          key={word}
+          onClick={() =>
+            void speak(
+              word,
+              "listen",
+              getPublicAudioPath("words", pair.soundFocus, word),
+              true,
+              wordSlow,
+            )
+          }
+        >
+          {copy.listen(word)}
+        </ActionButton>
+      ))}
+    </TestGroup>
+  );
+
+  const listeningStep = (
+    <TestGroup
+      step="2"
+      title={copy.listeningTitle}
+      description={copy.listeningDescription}
+      actionsClassName="grid gap-3"
+      feedback={getFeedback("listening")}
+      separate={separate}
+      dimmed={dimmedUnless("none")}
+    >
+      <ActionButton intent="primary" onClick={startQuiz}>
+        {copy.playQuiz}
+      </ActionButton>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ActionButton disabled={!quizReady} onClick={() => answerQuiz("A")}>
+          {copy.answer(pair.wordA)}
+        </ActionButton>
+        <ActionButton disabled={!quizReady} onClick={() => answerQuiz("B")}>
+          {copy.answer(pair.wordB)}
+        </ActionButton>
+      </div>
+    </TestGroup>
+  );
+
+  const pronunciationStep = (
+    <TestGroup
+      step="3"
+      title={copy.pronunciationTitle}
+      description={copy.pronunciationDescription}
+      actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
+      feedback={getFeedback("pronunciation")}
+      separate={separate}
+      dimmed={dimmedUnless("pronunciation")}
+    >
+      <ActionButton
+        intent="primary"
+        disabled={isBusy}
+        onClick={() => startPronunciationTest("A")}
+      >
+        {copy.speak(pair.wordA)}
+      </ActionButton>
+      <ActionButton
+        intent="primary"
+        disabled={isBusy}
+        onClick={() => startPronunciationTest("B")}
+      >
+        {copy.speak(pair.wordB)}
+      </ActionButton>
+      {focusKind === "pronunciation" && assessment.target ? (
+        <div
+          ref={focusTargetRef}
+          className="col-span-full border border-white bg-white/[0.06] px-4 py-5 text-center"
+        >
+          <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
+            />
+            {copy.sayThis}
+          </p>
+          <p className="mt-2 text-5xl font-semibold text-white md:text-6xl">
+            {assessment.target}
+          </p>
+        </div>
+      ) : null}
+      <CountdownDisplay
+        copy={copy}
+        countdown={countdown}
+        kind="pronunciation"
+      />
+      {aiRecordingStream && countdown?.kind === "pronunciation" ? (
+        <LevelMeter stream={aiRecordingStream} className="col-span-full" />
+      ) : null}
+      {aiCheckTarget && !isTouchDevice() ? <MicLevelMeter /> : null}
+    </TestGroup>
+  );
+
+  const tongueTwisterStep = (
+    <TestGroup
+      step="4"
+      title={copy.tongueTwisterTitle}
+      description={copy.tongueTwisterDescription}
+      actionsClassName="grid gap-3"
+      feedback={null}
+      separate={separate}
+      dimmed={dimmedUnless("tongueTwister")}
+      header={separate ? twisterSpeedToggle : undefined}
+    >
+      <div
+        ref={focusKind === "tongueTwister" ? focusTargetRef : undefined}
+        className={`border px-4 transition-colors ${
+          focusKind === "tongueTwister"
+            ? "border-white bg-white/[0.06] py-5 text-center"
+            : "border-white/10 bg-black py-3"
+        }`}
+      >
+        {focusKind === "tongueTwister" ? (
+          <p className="mb-2 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
+            />
+            {copy.readThis}
+          </p>
+        ) : null}
+        <p
+          className={`font-semibold text-white ${
+            focusKind === "tongueTwister"
+              ? "text-3xl leading-tight md:text-4xl"
+              : "text-lg leading-8"
+          }`}
+        >
+          {tongueTwister.text}
+        </p>
+        {/* Hidden while the learner reads it out, so the sentence has room. */}
+        {focusKind === "tongueTwister" ? null : (
+          <p className="mt-2 text-sm leading-6 text-white/50">
+            {text(tongueTwister.note)}
+          </p>
+        )}
+      </div>
+      <ActionButton
+        disabled={isBusy}
+        onClick={() =>
+          void speak(
+            tongueTwister.text,
+            "tongueTwisterPlayback",
+            getPublicAudioPath("twisters", pair.soundFocus, pair.id),
+            true,
+            twisterSlow,
+          )
+        }
+      >
+        {copy.listenTongueTwister}
+      </ActionButton>
+      {playbackFeedback ? (
+        <FeedbackMessage feedback={playbackFeedback} />
+      ) : null}
+      <ActionButton
+        intent="primary"
+        disabled={isBusy}
+        onClick={() => {
+          if (useAiAssessment) {
+            startAiAssessment("tongueTwister", tongueTwister.text);
+            return;
+          }
+
+          window.speechSynthesis?.cancel();
+          showFeedback(
+            "tongueTwister",
+            "neutral",
+            copy.saySentenceAfterCountdown,
+          );
+          startCountdown(
+            "tongueTwister",
+            tongueTwisterAnswerSeconds,
+            () => sentenceCheck.start(tongueTwister.text),
+            () => sentenceCheck.finishListening(),
+          );
+        }}
+      >
+        {copy.saySentence}
+      </ActionButton>
+      <CountdownDisplay
+        copy={copy}
+        countdown={countdown}
+        kind="tongueTwister"
+      />
+      {aiRecordingStream && countdown?.kind === "tongueTwister" ? (
+        <LevelMeter stream={aiRecordingStream} />
+      ) : null}
+      {sentenceCheck.isListening && !isTouchDevice() ? (
+        <MicLevelMeter />
+      ) : null}
+      {answerFeedback ? (
+        <FeedbackMessage feedback={answerFeedback} />
+      ) : null}
+    </TestGroup>
+  );
+
+  if (!useAiAssessment) {
+    return (
+      <article className="flex min-h-56 flex-col justify-between border border-white/10 bg-white/[0.02] p-5 transition hover:border-white/30">
+        {pairHeader}
+
+        <div className="mt-8 space-y-1 border-t border-white/10 pt-5">
+          {wordSpeedToggle}
+          {listenStep}
+          {listeningStep}
+          {pronunciationStep}
+          {twisterSpeedToggle}
+          {tongueTwisterStep}
+        </div>
+      </article>
+    );
+  }
+
+  const resultsPanel = (
+    <div
+      ref={aiResultsRef}
+      className={`scroll-mt-28 ${focusDimClassName(focusKind !== null)}`}
+    >
+      <PronunciationPanel
+        assessment={assessment}
+        tryAgainDisabled={isBusy}
+        onTryAgain={() => {
+          const target = assessment.target;
+          if (!target) return;
+
+          const kind =
+            target === tongueTwister.text ? "tongueTwister" : "pronunciation";
+
+          startAiAssessment(kind, target);
+        }}
+      />
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <section
+        className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(
+          dimmedUnless("none"),
+        )}`}
+      >
+        {pairHeader}
+      </section>
+      {listenStep}
+      {listeningStep}
+      {pronunciationStep}
+      {resultsKind === "pronunciation" ? resultsPanel : null}
+      {tongueTwisterStep}
+      {resultsKind === "tongueTwister" ? resultsPanel : null}
+    </div>
+  );
+}
+
+// Faded and not clickable while another step's check runs (so a stray tap
+// can't play audio into the recording).
+function focusDimClassName(dimmed: boolean) {
+  return `transition-opacity duration-300 ${
+    dimmed ? "pointer-events-none opacity-30" : ""
+  }`;
+}
+
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
 }
 
 function getTongueTwister(pair: MinimalPair) {
@@ -1217,6 +1514,9 @@ function TestGroup({
   description,
   actionsClassName = "grid gap-3 sm:grid-cols-2 xl:grid-cols-3",
   feedback,
+  separate = false,
+  header,
+  dimmed = false,
   children,
 }: {
   step: string;
@@ -1224,10 +1524,16 @@ function TestGroup({
   description: string;
   actionsClassName?: string;
   feedback: CardFeedback;
+  /** Render as its own box instead of a row inside the pair card. */
+  separate?: boolean;
+  /** Full-width row above the step (e.g. a speed toggle); separate boxes only. */
+  header?: ReactNode;
+  /** Fade out while another step's check is running; separate boxes only. */
+  dimmed?: boolean;
   children: ReactNode;
 }) {
-  return (
-    <div className="grid gap-4 border-b border-white/10 py-5 sm:grid-cols-[3rem_1fr]">
+  const content = (
+    <div className="grid gap-4 sm:grid-cols-[3rem_1fr]">
       <div className="flex h-9 w-9 items-center justify-center border border-white/15 text-sm font-semibold text-white">
         {step}
       </div>
@@ -1239,6 +1545,21 @@ function TestGroup({
         <div className={actionsClassName}>{children}</div>
         {feedback ? <FeedbackMessage feedback={feedback} /> : null}
       </div>
+    </div>
+  );
+
+  if (!separate) {
+    return <div className="border-b border-white/10 py-5">{content}</div>;
+  }
+
+  return (
+    <div
+      className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(dimmed)}`}
+    >
+      {header ? (
+        <div className="mb-5 border-b border-white/10 pb-4">{header}</div>
+      ) : null}
+      {content}
     </div>
   );
 }
@@ -1268,8 +1589,24 @@ function FeedbackMessage({
       className={`flex items-center gap-2 border px-3 py-2 text-sm font-medium ${feedbackClassName}`}
     >
       {icon ? <span aria-hidden="true">{icon}</span> : null}
+      {feedback.tone === "pending" ? <PendingDots /> : null}
       <span>{feedback.text}</span>
     </p>
+  );
+}
+
+// Three bouncing dots for "still working" messages.
+function PendingDots() {
+  return (
+    <span aria-hidden="true" className="flex items-center gap-1">
+      {[0, 150, 300].map((delay) => (
+        <span
+          key={delay}
+          className="h-1.5 w-1.5 rounded-full bg-white motion-safe:animate-bounce"
+          style={{ animationDelay: `${delay}ms` }}
+        />
+      ))}
+    </span>
   );
 }
 
