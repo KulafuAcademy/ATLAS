@@ -8,6 +8,7 @@ import {
   useWordCheck,
   WordAssessmentModal,
 } from "@/components/pronunciation/WordAssessmentModal";
+import type { WordCheckState } from "@/components/pronunciation/WordAssessmentModal";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import {
   getPublicAudioPath,
@@ -645,8 +646,8 @@ function QuickTest({
   );
 }
 
-// One AI word check (and one /health poll) shared by every card, shown in a
-// modal. Mounted only in speaking mode.
+// One AI check (and one /health poll) shared by every card, for words and
+// tongue twisters, shown in a modal. Mounted only in speaking mode.
 function SpeakingPairs({ pairs }: { pairs: MinimalPair[] }) {
   const check = useWordCheck();
 
@@ -654,16 +655,7 @@ function SpeakingPairs({ pairs }: { pairs: MinimalPair[] }) {
     <>
       <div className="grid gap-4 md:grid-cols-2">
         {pairs.map((pair) => (
-          <PairCard
-            key={pair.id}
-            pair={pair}
-            onCheck={(word) =>
-              check.start({
-                word,
-                audioPath: getPublicAudioPath("words", pair.soundFocus, word),
-              })
-            }
-          />
+          <PairCard key={pair.id} pair={pair} onCheck={check.start} />
         ))}
       </div>
       <WordAssessmentModal check={check} />
@@ -672,8 +664,8 @@ function SpeakingPairs({ pairs }: { pairs: MinimalPair[] }) {
 }
 
 const pairCardCopy = {
-  en: { listen: "Listen" },
-  ja: { listen: "聞く" },
+  en: { listen: "Listen", saySentence: "Say the sentence" },
+  ja: { listen: "聞く", saySentence: "文を発音する" },
 };
 
 function PairCard({
@@ -681,11 +673,16 @@ function PairCard({
   onCheck,
 }: {
   pair: MinimalPair;
-  onCheck: (word: string) => void;
+  onCheck: WordCheckState["start"];
 }) {
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const play = useRecordedAudio();
+  const twisterAudioPath = getPublicAudioPath(
+    "twisters",
+    pair.soundFocus,
+    pair.id,
+  );
 
   return (
     <article className="space-y-4 border border-white/10 bg-white/[0.02] p-5">
@@ -713,22 +710,44 @@ function PairCard({
           <p className="text-sm leading-6 text-white/55">
             {pair.tongueTwister.note[language]}
           </p>
-          <button
-            type="button"
-            onClick={() =>
-              play(
-                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
-                pair.tongueTwister!.text,
-              )
-            }
-            className="flex h-10 items-center gap-2 border border-white/10 bg-black px-3 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
-          >
-            <SpeakerIcon className="h-4 w-4 text-white/50" />
-            {copy.listen}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                play(twisterAudioPath, pair.tongueTwister!.text)
+              }
+              className="flex h-10 items-center gap-2 border border-white/10 bg-black px-3 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
+            >
+              <SpeakerIcon className="h-4 w-4 text-white/50" />
+              {copy.listen}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onCheck({
+                  kind: "sentence",
+                  word: pair.tongueTwister!.text,
+                  audioPath: twisterAudioPath,
+                })
+              }
+              className="flex h-10 items-center gap-2 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+            >
+              <MicIcon />
+              {copy.saySentence}
+            </button>
+          </div>
         </div>
       ) : null}
-      <PronunciationCheck words={[pair.wordA, pair.wordB]} onCheck={onCheck} />
+      <PronunciationCheck
+        words={[pair.wordA, pair.wordB]}
+        onCheck={(word) =>
+          onCheck({
+            kind: "word",
+            word,
+            audioPath: getPublicAudioPath("words", pair.soundFocus, word),
+          })
+        }
+      />
     </article>
   );
 }

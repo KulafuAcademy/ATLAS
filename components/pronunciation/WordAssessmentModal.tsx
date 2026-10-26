@@ -34,7 +34,8 @@ import type { PanelCopy } from "./PronunciationPanel";
 import { usePronunciationAssessment } from "./usePronunciationAssessment";
 
 const prepareSeconds = 3;
-const answerSeconds = 3;
+// Same answer windows as the pair page (MinimalPairTrainer).
+const answerSeconds = { word: 3, sentence: 8 };
 
 const modalCopy = {
   en: {
@@ -56,6 +57,8 @@ const modalCopy = {
 };
 
 type WordTarget = {
+  /** A single word, or a whole sentence such as the tongue twister. */
+  kind: "word" | "sentence";
   word: string;
   /** Recorded model pronunciation, played by the "Listen" button. */
   audioPath: string;
@@ -67,8 +70,8 @@ type CountdownState = {
 } | null;
 
 /**
- * Single-word AI check for the practice page: "Get ready" 3-2-1, record
- * for `answerSeconds`, then send the clip. `start()` must run from the tap
+ * AI check for a word or sentence on the practice page: "Get ready" 3-2-1,
+ * record for `answerSeconds`, then send the clip. `start()` must run from the tap
  * so the mic is requested inside the gesture (see usePronunciationAssessment).
  */
 export function useWordCheck() {
@@ -122,7 +125,7 @@ export function useWordCheck() {
 
       if (phase === "prepare") {
         phase = "answer";
-        remaining = answerSeconds;
+        remaining = answerSeconds[next.kind];
         setCountdown({ phase, remaining });
         playCountdownGo();
         assessment.startRecording();
@@ -230,7 +233,13 @@ export function WordAssessmentModal({ check }: { check: WordCheckState }) {
           </div>
 
           <div className="flex items-center justify-between gap-3 border border-white/10 bg-white/[0.02] px-4 py-3">
-            <p className="min-w-0 break-words text-3xl font-semibold text-white sm:text-4xl">
+            <p
+              className={`min-w-0 break-words font-semibold text-white ${
+                target.kind === "sentence"
+                  ? "text-xl leading-8 sm:text-2xl sm:leading-9"
+                  : "text-3xl sm:text-4xl"
+              }`}
+            >
               {target.word}
             </p>
             <button
@@ -291,7 +300,7 @@ export function WordAssessmentModal({ check }: { check: WordCheckState }) {
             <div aria-live="polite">
               <WordResult
                 result={result}
-                word={target.word}
+                target={target}
                 copy={resultCopy}
                 language={language}
               />
@@ -326,25 +335,33 @@ export function WordAssessmentModal({ check }: { check: WordCheckState }) {
 
 function WordResult({
   result,
-  word,
+  target,
   copy,
   language,
 }: {
   result: AnalyzeSuccess;
-  word: string;
+  target: WordTarget;
   copy: PanelCopy;
   language: Language;
 }) {
-  const scored = findWord(result.words, word) ?? result.words[0];
+  // "Say it like" only makes sense for a single word.
+  const scored =
+    target.kind === "word"
+      ? (findWord(result.words, target.word) ?? result.words[0])
+      : undefined;
   const expectedIpa = scored ? formatIpa(scored.ipa, scored.phonemes) : null;
   const verdict =
     language === "ja"
       ? (gradeByLetter(result.grade.letter)?.verdict.ja ?? result.grade.verdict)
       : result.grade.verdict;
   // Same rule as the full panel: a word that scored 100 has nothing to fix.
-  const issue = result.issues.find(
+  const fixableIssues = result.issues.filter(
     (item) => !isPerfect(findWord(result.words, item.word)),
   );
+  const issue = fixableIssues[0];
+  const wordsToFix = new Set(
+    fixableIssues.map((item) => item.word.toLowerCase()),
+  ).size;
 
   return (
     <div className="space-y-4">
@@ -369,6 +386,10 @@ function WordResult({
             <p className="flex items-center gap-1.5 text-sm text-white/60">
               <span aria-hidden="true">⭕️</span>
               {copy.everyCorrect}
+            </p>
+          ) : target.kind === "sentence" && wordsToFix > 0 ? (
+            <p className="text-sm text-white/60">
+              {copy.wordsToPractice(wordsToFix, result.words.length)}
             </p>
           ) : null}
         </div>
