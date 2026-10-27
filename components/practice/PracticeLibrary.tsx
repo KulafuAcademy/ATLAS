@@ -194,17 +194,22 @@ export function PracticeLibrary({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {active.pairs.map((pair, index) => {
             const isCurrent = mode === "listening" && index === quizIndex;
+            // Jumping to a pair only makes sense for the listening quiz.
+            const isSpeaking = mode === "speaking";
 
             return (
               <button
                 key={pair.id}
                 type="button"
                 aria-current={isCurrent ? "step" : undefined}
+                disabled={isSpeaking}
                 onClick={() => practicePair(index)}
-                className={`border p-4 text-left transition focus:outline-none ${
+                className={`border p-4 text-left transition focus:outline-none disabled:cursor-default ${
                   isCurrent
                     ? "border-white/45 bg-white/[0.09]"
-                    : "border-white/10 bg-white/[0.02] hover:border-white/35"
+                    : isSpeaking
+                      ? "border-white/10 bg-white/[0.02]"
+                      : "border-white/10 bg-white/[0.02] hover:border-white/35"
                 }`}
               >
                 <span
