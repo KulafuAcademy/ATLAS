@@ -77,17 +77,22 @@ export function PracticeLibrary({
   );
   const [mode, setMode] = useState<PracticeMode>(initialMode ?? "listening");
   const [quizIndex, setQuizIndex] = useState(0);
+  const [speakingIndex, setSpeakingIndex] = useState(0);
   const active =
     sections.find((section) => section.id === activeId) ?? sections[0];
   const category = categories.find((item) => item.id === activeId);
+  const currentIndex = mode === "listening" ? quizIndex : speakingIndex;
 
-  // Jump the listening quiz to the chosen pair and bring it into view.
+  // Jump the current mode to the chosen pair and bring it into view.
   function practicePair(index: number) {
-    setMode("listening");
-    setQuizIndex(index);
+    if (mode === "listening") {
+      setQuizIndex(index);
+    } else {
+      setSpeakingIndex(index);
+    }
     requestAnimationFrame(() =>
       document
-        .getElementById("listening")
+        .getElementById(mode === "listening" ? "listening" : "pronunciation")
         ?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
   }
@@ -106,6 +111,7 @@ export function PracticeLibrary({
               setActiveId(section.id);
               setMode("listening");
               setQuizIndex(0);
+              setSpeakingIndex(0);
             }}
             className={`h-10 shrink-0 border px-4 text-sm font-semibold transition focus:outline-none ${
               activeId === section.id
@@ -173,7 +179,11 @@ export function PracticeLibrary({
             onStudy={() => setMode("speaking")}
           />
         ) : (
-          <SpeakingPairs pairs={active.pairs} />
+          <SpeakingPairs
+            pairs={active.pairs}
+            index={speakingIndex}
+            onIndexChange={setSpeakingIndex}
+          />
         )}
       </div>
 
@@ -193,23 +203,18 @@ export function PracticeLibrary({
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {active.pairs.map((pair, index) => {
-            const isCurrent = mode === "listening" && index === quizIndex;
-            // Jumping to a pair only makes sense for the listening quiz.
-            const isSpeaking = mode === "speaking";
+            const isCurrent = index === currentIndex;
 
             return (
               <button
                 key={pair.id}
                 type="button"
                 aria-current={isCurrent ? "step" : undefined}
-                disabled={isSpeaking}
                 onClick={() => practicePair(index)}
-                className={`border p-4 text-left transition focus:outline-none disabled:cursor-default ${
+                className={`border p-4 text-left transition focus:outline-none ${
                   isCurrent
                     ? "border-white/45 bg-white/[0.09]"
-                    : isSpeaking
-                      ? "border-white/10 bg-white/[0.02]"
-                      : "border-white/10 bg-white/[0.02] hover:border-white/35"
+                    : "border-white/10 bg-white/[0.02] hover:border-white/35"
                 }`}
               >
                 <span
@@ -651,22 +656,62 @@ function QuickTest({
   );
 }
 
-// One AI check (and one /health poll) shared by every card, for words and
-// tongue twisters, shown in a modal. Mounted only in speaking mode.
-function SpeakingPairs({ pairs }: { pairs: MinimalPair[] }) {
+// Shows one pair at a time, like the listening quiz; `index` is owned by the
+// parent so the word pair list can jump to a pair. One AI check (and one
+// /health poll) is shared for words and tongue twisters, shown in a modal.
+function SpeakingPairs({
+  pairs,
+  index,
+  onIndexChange,
+}: {
+  pairs: MinimalPair[];
+  index: number;
+  onIndexChange: (index: number) => void;
+}) {
+  const { language } = useLanguage();
+  const copy = pairCardCopy[language];
   const check = useWordCheck();
+  const pair = pairs[index];
+
+  if (!pair) return null;
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2">
-        {pairs.map((pair) => (
-          <PairCard key={pair.id} pair={pair} onCheck={check.start} />
-        ))}
-      </div>
+      <section className="space-y-6 border border-white/10 bg-white/[0.02] p-5 sm:p-7">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-white/55">
+            {index + 1} / {pairs.length}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              aria-label={copy.previous}
+              disabled={index === 0}
+              onClick={() => onIndexChange(index - 1)}
+              className={navButtonClassName}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              aria-label={copy.next}
+              disabled={index === pairs.length - 1}
+              onClick={() => onIndexChange(index + 1)}
+              className={navButtonClassName}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+        <PairCard key={pair.id} pair={pair} onCheck={check.start} />
+      </section>
       <WordAssessmentModal check={check} />
     </>
   );
 }
+
+const navButtonClassName =
+  "grid h-10 w-10 place-items-center border border-white/10 text-xl text-white transition hover:border-white/35 focus:outline-none disabled:cursor-not-allowed disabled:text-white/20 disabled:hover:border-white/10";
 
 const pairCardCopy = {
   en: {
@@ -675,6 +720,8 @@ const pairCardCopy = {
     saySentence: "Say the sentence",
     listenTo: (word: string) => `Listen to ${word}`,
     sayWord: (word: string) => `Say ${word}`,
+    previous: "Previous pair",
+    next: "Next pair",
   },
   ja: {
     listen: "聞く",
@@ -682,6 +729,8 @@ const pairCardCopy = {
     saySentence: "文を発音する",
     listenTo: (word: string) => `${word}を聞く`,
     sayWord: (word: string) => `${word}を発音する`,
+    previous: "前のペア",
+    next: "次のペア",
   },
 };
 
@@ -702,21 +751,18 @@ function PairCard({
   );
 
   return (
-    <article className="space-y-4 border border-white/10 bg-white/[0.02] p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
-        {pair.soundFocus}
-      </p>
+    <article className="space-y-6">
       {/* Each word tile pairs listening and the AI check, like the sentence. */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {[pair.wordA, pair.wordB].map((word) => {
           const audioPath = getPublicAudioPath("words", pair.soundFocus, word);
 
           return (
             <div
               key={word}
-              className="space-y-3 border border-white/10 bg-black p-3"
+              className="space-y-4 border border-white/10 bg-black p-4 text-center sm:p-6"
             >
-              <p className="text-xl font-semibold text-white">{word}</p>
+              <p className="text-3xl font-semibold text-white">{word}</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
