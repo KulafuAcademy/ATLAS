@@ -799,7 +799,7 @@ function ScoreTag({ score, color }: { score: number; color: string }) {
   );
 }
 
-function IssueItem({
+export function IssueItem({
   issue,
   words,
   copy,

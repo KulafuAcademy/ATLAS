@@ -23,6 +23,7 @@ import {
   findWord,
   formatIpa,
   IpaComparison,
+  IssueItem,
   isPerfect,
   labelClassName,
   panelCopy,
@@ -421,7 +422,19 @@ function WordResult({
         </div>
       ) : null}
 
-      {issue ? (
+      {/* A sentence can miss several words, so name each one like the full panel. */}
+      {target.kind === "sentence" && fixableIssues.length > 0 ? (
+        <ul className="space-y-2">
+          {fixableIssues.map((item, index) => (
+            <IssueItem
+              key={`${item.word}-${index}`}
+              issue={item}
+              words={result.words}
+              copy={copy}
+            />
+          ))}
+        </ul>
+      ) : issue ? (
         <div className="space-y-2 border-l-2 border-white/30 pl-3 text-sm leading-6 text-white/70">
           <p>{issue.message}</p>
           {issue.tip ? (
