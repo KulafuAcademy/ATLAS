@@ -3,7 +3,13 @@
 import Link from "next/link";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { getLessonHref, getTestHref } from "@/lib/training";
+import { useCompletedPairs } from "@/lib/pairCompletion";
+import {
+  getLessonHref,
+  getPairHref,
+  getTestHref,
+  getTrainingSection,
+} from "@/lib/training";
 import type { TrainingCategory, TrainingProgress } from "@/types/training";
 
 type TrainingCategoryOverviewProps = {
@@ -21,7 +27,10 @@ const overviewCopy = {
     learn: "Learn",
     test: "Take test",
     progress: "Progress",
-    noProgress: "No test yet",
+    noProgress: "Not started",
+    pairsCleared: (cleared: number, total: number) =>
+      `${cleared} / ${total} pairs cleared`,
+    listeningTest: "Listening test",
     best: "Best",
     last: "Last",
     attempts: "Attempts",
@@ -35,7 +44,10 @@ const overviewCopy = {
     learn: "学ぶ",
     test: "テストを受ける",
     progress: "進捗",
-    noProgress: "まだテストなし",
+    noProgress: "まだ始めていません",
+    pairsCleared: (cleared: number, total: number) =>
+      `${cleared} / ${total} ペアクリア`,
+    listeningTest: "聞き取りテスト",
     best: "ベスト",
     last: "前回",
     attempts: "回数",
@@ -51,6 +63,7 @@ export function TrainingCategoryOverview({
 }: TrainingCategoryOverviewProps) {
   const { language, text } = useLanguage();
   const copy = overviewCopy[language];
+  const completedPairs = useCompletedPairs();
 
   return (
     <section className="space-y-6 border-t border-white/10 pt-10">
@@ -67,10 +80,21 @@ export function TrainingCategoryOverview({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
           const isAvailable = category.status === "available";
-          const progress = progressByCategory[category.id];
-          const bestPercentage = progress
-            ? Math.round((progress.bestScore / progress.total) * 100)
+          // Progress is pairs cleared on the per-pair page (tongue twister
+          // passed); see lib/pairCompletion.ts.
+          const pairs = getTrainingSection(category.id)?.pairs ?? [];
+          const clearedCount = pairs.filter((pair) =>
+            completedPairs.has(pair.id),
+          ).length;
+          const clearedPercentage = pairs.length
+            ? Math.round((clearedCount / pairs.length) * 100)
             : 0;
+          // "Take test" picks up at the first pair not cleared yet.
+          const nextPair = pairs.find((pair) => !completedPairs.has(pair.id));
+          const testHref = nextPair
+            ? getPairHref(category.id, nextPair.id)
+            : getTestHref(category.id);
+          const progress = progressByCategory[category.id];
 
           return (
             <article
@@ -108,21 +132,29 @@ export function TrainingCategoryOverview({
                       {copy.progress}
                     </p>
                     <p className="text-xs text-white/45">
-                      {progress
-                        ? `${copy.attempts}: ${progress.attempts}`
+                      {clearedCount
+                        ? copy.pairsCleared(clearedCount, pairs.length)
                         : copy.noProgress}
                     </p>
                   </div>
-                  <div className="h-1.5 bg-white/10">
+                  <div
+                    role="progressbar"
+                    aria-label={copy.progress}
+                    aria-valuemin={0}
+                    aria-valuemax={pairs.length}
+                    aria-valuenow={clearedCount}
+                    className="h-1.5 bg-white/10"
+                  >
                     <div
-                      className="h-full bg-white"
-                      style={{ width: `${bestPercentage}%` }}
+                      className="h-full bg-white transition-[width] duration-500"
+                      style={{ width: `${clearedPercentage}%` }}
                     />
                   </div>
                   {progress ? (
                     <p className="text-xs text-white/55">
-                      {copy.best}: {progress.bestScore} / {progress.total} ·{" "}
-                      {copy.last}: {progress.lastScore} / {progress.total}
+                      {copy.listeningTest} · {copy.best}: {progress.bestScore}{" "}
+                      / {progress.total} · {copy.last}: {progress.lastScore} /{" "}
+                      {progress.total} · {copy.attempts}: {progress.attempts}
                     </p>
                   ) : null}
                 </div>
@@ -133,7 +165,7 @@ export function TrainingCategoryOverview({
                   <Link href={getLessonHref(category.id)} className={buttonClassName}>
                     {copy.learn}
                   </Link>
-                  <Link href={getTestHref(category.id)} className={buttonClassName}>
+                  <Link href={testHref} className={buttonClassName}>
                     {copy.test}
                   </Link>
                 </div>

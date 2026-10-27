@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 export const completedPairsStorageKey = "atlas.completedPairs.v1";
 
@@ -62,5 +62,26 @@ export function usePairCompleted(pairId: string | null | undefined) {
           readCompletedPairs().includes(pairId)
         : false,
     () => false,
+  );
+}
+
+// Every completed pair ID. The snapshot is a joined string so it stays
+// equal between reads (useSyncExternalStore needs a stable value).
+function getCompletedPairsSnapshot() {
+  return [...new Set([...readCompletedPairs(), ...sessionCompleted])]
+    .sort()
+    .join("\n");
+}
+
+export function useCompletedPairs() {
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    getCompletedPairsSnapshot,
+    () => "",
+  );
+
+  return useMemo(
+    () => new Set(snapshot ? snapshot.split("\n") : []),
+    [snapshot],
   );
 }
