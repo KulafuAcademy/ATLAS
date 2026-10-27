@@ -11,10 +11,12 @@ import {
   type AssessmentOutcome,
 } from "@/components/pronunciation/usePronunciationAssessment";
 import type { LocalizedText } from "@/lib/i18n";
+import { markPairCompleted, usePairCompleted } from "@/lib/pairCompletion";
 import { gradeByLetter } from "@/lib/pronunciationGrades";
 import type { MinimalPair } from "@/types/training";
 
 import { getPublicAudioPath } from "./audio";
+import { LockIcon } from "./LockIcon";
 import {
   createAudioContext,
   playCorrectSound,
@@ -67,6 +69,8 @@ const prepareSeconds = 3;
 const pronunciationAnswerSeconds = 3;
 const tongueTwisterAnswerSeconds = 8;
 const slowPlaybackRate = 0.75;
+// AI score (0-100) needed to clear steps 3 and 4 on the per-pair page.
+export const passingScore = 60;
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -132,6 +136,15 @@ const trainerCopy = {
     micUnavailable: "The microphone isn't available. See below.",
     sayThis: "Say this",
     readThis: "Read this",
+    locked: (step: number) => `Finish step ${step} to unlock this.`,
+    cleared: "Cleared!",
+    listenGoal: "Tap both buttons and listen to each word.",
+    listeningGoal:
+      "Get 2 right in a row, one for each word. A wrong answer starts over.",
+    pronunciationGoal: `Get ${passingScore} points or more on both words.`,
+    tongueTwisterGoal: `Get ${passingScore} points or more to unlock the next word pair.`,
+    points: (points: number) => `${points} pts`,
+    sentence: "Sentence",
   },
   ja: {
     firstTraining: "最初のトレーニング",
@@ -194,6 +207,15 @@ const trainerCopy = {
     micUnavailable: "マイクが使えません。下を見てください。",
     sayThis: "これを言おう",
     readThis: "これを読もう",
+    locked: (step: number) => `ステップ${step}をクリアすると、ここがひらくよ。`,
+    cleared: "クリア！",
+    listenGoal: "2つのボタンを両方（りょうほう）おして、音を聞いてみよう。",
+    listeningGoal:
+      "2つの単語を1回ずつ、つづけて当てよう！まちがえると、さいしょからだよ。",
+    pronunciationGoal: `どちらの単語も${passingScore}点いじょうをとろう！`,
+    tongueTwisterGoal: `文を読んで${passingScore}点いじょうとると、次のペアにすすめるよ！`,
+    points: (points: number) => `${points}点`,
+    sentence: "文",
   },
 };
 
@@ -287,6 +309,18 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
  * PronunciationPanel right under the step that ran the check.
  * See docs/pronunciation-assessment.md.
  *
+ * With `useAiAssessment` the steps are also gated: each stays locked until
+ * the one before it is cleared.
+ *   1 is cleared by listening to both words.
+ *   2 by answering correctly twice in a row, once for each word (a wrong
+ *     answer resets the streak).
+ *   3 by scoring `passingScore` or more on both words.
+ *   4 by scoring `passingScore` or more on the sentence, which marks the
+ *     pair completed (lib/pairCompletion.ts) and unlocks the "Next" pair
+ *     link in LessonStepNav.
+ * A completed pair opens with every step unlocked. Progress inside a pair
+ * lives in component state; only completion is saved.
+ *
  * Only one mic session runs at a time. Steps 3 and 4 share the countdown
  * state, and `isBusy` disables their buttons while either is active.
  */
@@ -320,6 +354,30 @@ function PairPracticeCard({
   const tongueTwister = getTongueTwister(pair);
   const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
   const aiResultsRef = useRef<HTMLDivElement | null>(null);
+
+  // Step locking (per-pair page only); see the comment above.
+  const gated = useAiAssessment;
+  const pairCompleted = usePairCompleted(gated ? pair.id : null);
+  const [heardWords, setHeardWords] = useState<string[]>([]);
+  const [correctStreak, setCorrectStreak] = useState<QuizTarget[]>([]);
+  const [listeningPassed, setListeningPassed] = useState(false);
+  const [bestWordScores, setBestWordScores] = useState<Record<string, number>>(
+    {},
+  );
+  const [bestTwisterScore, setBestTwisterScore] = useState<number | null>(
+    null,
+  );
+  const listenCleared =
+    pairCompleted ||
+    (heardWords.includes(pair.wordA) && heardWords.includes(pair.wordB));
+  const listeningCleared =
+    pairCompleted || (listenCleared && listeningPassed);
+  const pronunciationCleared =
+    pairCompleted ||
+    (listeningCleared &&
+      [pair.wordA, pair.wordB].every(
+        (word) => (bestWordScores[word] ?? 0) >= passingScore,
+      ));
 
   // Bring a freshly loaded AI result into view.
   useEffect(() => {
@@ -606,8 +664,18 @@ function PairPracticeCard({
     if (answer === activeQuiz.target) {
       playCorrectSound();
       showFeedback("listening", "success", copy.correct);
+
+      const streak = correctStreak.includes(activeQuiz.target)
+        ? correctStreak
+        : [...correctStreak, activeQuiz.target];
+
+      setCorrectStreak(streak);
+      if (streak.length === 2) {
+        setListeningPassed(true);
+      }
     } else {
       playIncorrectSound();
+      setCorrectStreak([]);
       const correctWord = activeQuiz.target === "A" ? pair.wordA : pair.wordB;
       showFeedback("listening", "error", copy.listeningIncorrect(correctWord));
     }
@@ -653,13 +721,14 @@ function PairPracticeCard({
       () => assessment.startRecording(),
       () => {
         showFeedback(kind, "pending", copy.aiChecking);
-        assessment.finish((outcome) => handleAiOutcome(kind, outcome));
+        assessment.finish((outcome) => handleAiOutcome(kind, target, outcome));
       },
     );
   }
 
   function handleAiOutcome(
     kind: "pronunciation" | "tongueTwister",
+    target: string,
     outcome: AssessmentOutcome,
   ) {
     if (outcome.kind === "failed") {
@@ -669,6 +738,20 @@ function PairPracticeCard({
     }
 
     const { score, grade } = outcome.result;
+
+    if (kind === "pronunciation") {
+      setBestWordScores((scores) => ({
+        ...scores,
+        [target]: Math.max(scores[target] ?? 0, score),
+      }));
+    } else {
+      setBestTwisterScore((best) => Math.max(best ?? 0, score));
+
+      if (score >= passingScore) {
+        markPairCompleted(pair.id);
+      }
+    }
+
     const passed = grade.letter === "A" || grade.letter === "B";
     const verdict =
       gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict;
@@ -936,19 +1019,35 @@ function PairPracticeCard({
       separate={separate}
       dimmed={dimmedUnless("none")}
       header={separate ? wordSpeedToggle : undefined}
+      goal={
+        gated ? (
+          <StepGoal
+            copy={copy}
+            text={copy.listenGoal}
+            cleared={listenCleared}
+            items={[pair.wordA, pair.wordB].map((word) => ({
+              label: word,
+              done: listenCleared || heardWords.includes(word),
+            }))}
+          />
+        ) : undefined
+      }
     >
       {[pair.wordA, pair.wordB].map((word) => (
         <ActionButton
           key={word}
-          onClick={() =>
+          onClick={() => {
+            setHeardWords((words) =>
+              words.includes(word) ? words : [...words, word],
+            );
             void speak(
               word,
               "listen",
               getPublicAudioPath("words", pair.soundFocus, word),
               true,
               wordSlow,
-            )
-          }
+            );
+          }}
         >
           {copy.listen(word)}
         </ActionButton>
@@ -965,6 +1064,20 @@ function PairPracticeCard({
       feedback={getFeedback("listening")}
       separate={separate}
       dimmed={dimmedUnless("none")}
+      locked={gated && !listenCleared ? copy.locked(1) : undefined}
+      goal={
+        gated ? (
+          <StepGoal
+            copy={copy}
+            text={copy.listeningGoal}
+            cleared={listeningCleared}
+            items={(["A", "B"] as const).map((target) => ({
+              label: target === "A" ? pair.wordA : pair.wordB,
+              done: listeningCleared || correctStreak.includes(target),
+            }))}
+          />
+        ) : undefined
+      }
     >
       <ActionButton intent="primary" onClick={startQuiz}>
         {copy.playQuiz}
@@ -989,6 +1102,25 @@ function PairPracticeCard({
       feedback={getFeedback("pronunciation")}
       separate={separate}
       dimmed={dimmedUnless("pronunciation")}
+      locked={gated && !listeningCleared ? copy.locked(2) : undefined}
+      goal={
+        gated ? (
+          <StepGoal
+            copy={copy}
+            text={copy.pronunciationGoal}
+            cleared={pronunciationCleared}
+            items={[pair.wordA, pair.wordB].map((word) => {
+              const best = bestWordScores[word];
+
+              return {
+                label:
+                  best === undefined ? word : `${word} · ${copy.points(best)}`,
+                done: pronunciationCleared || (best ?? 0) >= passingScore,
+              };
+            })}
+          />
+        ) : undefined
+      }
     >
       <ActionButton
         intent="primary"
@@ -1043,6 +1175,25 @@ function PairPracticeCard({
       separate={separate}
       dimmed={dimmedUnless("tongueTwister")}
       header={separate ? twisterSpeedToggle : undefined}
+      locked={gated && !pronunciationCleared ? copy.locked(3) : undefined}
+      goal={
+        gated ? (
+          <StepGoal
+            copy={copy}
+            text={copy.tongueTwisterGoal}
+            cleared={pairCompleted}
+            items={[
+              {
+                label:
+                  bestTwisterScore === null
+                    ? copy.sentence
+                    : `${copy.sentence} · ${copy.points(bestTwisterScore)}`,
+                done: pairCompleted,
+              },
+            ]}
+          />
+        ) : undefined
+      }
     >
       <div
         ref={focusKind === "tongueTwister" ? focusTargetRef : undefined}
@@ -1517,6 +1668,8 @@ function TestGroup({
   separate = false,
   header,
   dimmed = false,
+  locked,
+  goal,
   children,
 }: {
   step: string;
@@ -1530,20 +1683,40 @@ function TestGroup({
   header?: ReactNode;
   /** Fade out while another step's check is running; separate boxes only. */
   dimmed?: boolean;
+  /** Hint shown while the step is locked; its actions can't be used. */
+  locked?: string;
+  /** What clears the step, under the description (hidden while locked). */
+  goal?: ReactNode;
   children: ReactNode;
 }) {
+  const actions = <div className={actionsClassName}>{children}</div>;
+
   const content = (
     <div className="grid gap-4 sm:grid-cols-[3rem_1fr]">
       <div className="flex h-9 w-9 items-center justify-center border border-white/15 text-sm font-semibold text-white">
-        {step}
+        {locked ? <LockIcon /> : step}
       </div>
       <div className="space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-white">{title}</p>
           <p className="text-sm leading-6 text-white/50">{description}</p>
         </div>
-        <div className={actionsClassName}>{children}</div>
-        {feedback ? <FeedbackMessage feedback={feedback} /> : null}
+        {locked ? (
+          <p className="flex items-center gap-2 border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-medium text-white/70">
+            <LockIcon />
+            <span>{locked}</span>
+          </p>
+        ) : (
+          goal
+        )}
+        {locked ? (
+          <div inert className="opacity-30">
+            {actions}
+          </div>
+        ) : (
+          actions
+        )}
+        {feedback && !locked ? <FeedbackMessage feedback={feedback} /> : null}
       </div>
     </div>
   );
@@ -1557,9 +1730,57 @@ function TestGroup({
       className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(dimmed)}`}
     >
       {header ? (
-        <div className="mb-5 border-b border-white/10 pb-4">{header}</div>
+        <div
+          inert={Boolean(locked)}
+          className={`mb-5 border-b border-white/10 pb-4 ${
+            locked ? "opacity-30" : ""
+          }`}
+        >
+          {header}
+        </div>
       ) : null}
       {content}
+    </div>
+  );
+}
+
+// The goal sentence for a gated step, with a chip per thing left to do.
+function StepGoal({
+  copy,
+  text,
+  cleared,
+  items,
+}: {
+  copy: TrainerCopy;
+  text: string;
+  cleared: boolean;
+  items: { label: string; done: boolean }[];
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-white/70">
+        {cleared ? (
+          <span className="border border-white bg-white px-2 py-0.5 text-xs font-semibold text-black">
+            {copy.cleared}
+          </span>
+        ) : null}
+        <span>{text}</span>
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <li
+            key={item.label}
+            className={`flex items-center gap-1.5 border px-2.5 py-1 text-xs font-semibold ${
+              item.done
+                ? "border-white bg-white text-black"
+                : "border-white/15 text-white/50"
+            }`}
+          >
+            <span aria-hidden="true">{item.done ? "✓" : "○"}</span>
+            {item.label}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
