@@ -679,9 +679,6 @@ function SpeakingPairs({
     <>
       <section className="space-y-6 border border-white/10 bg-white/[0.02] p-5 sm:p-7">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-sm text-white/55">
-            {index + 1} / {pairs.length}
-          </span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -702,6 +699,9 @@ function SpeakingPairs({
               ›
             </button>
           </div>
+          <span className="text-sm text-white/55">
+            {index + 1} / {pairs.length}
+          </span>
         </div>
         <PairCard key={pair.id} pair={pair} onCheck={check.start} />
       </section>
