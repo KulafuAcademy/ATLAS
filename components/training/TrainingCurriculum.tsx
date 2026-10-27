@@ -9,8 +9,8 @@ import { TrainingCategoryOverview } from "@/components/training/TrainingCategory
 import type { TrainingSection } from "@/data/trainingSections";
 import {
   getDailyPairs,
-  progressStorageKey,
-  withTestResult,
+  getSessionProgress,
+  saveTestResult,
   type ProgressByCategory,
 } from "@/lib/trainingProgress";
 import type { TrainingCategory } from "@/types/training";
@@ -58,29 +58,12 @@ export function TrainingCurriculum({
   const [practiceModes, setPracticeModes] = useState<
     Record<string, PracticeMode>
   >({});
+  // This visit's results (memory only); empty again after a refresh.
   const [progressByCategory, setProgressByCategory] =
-    useState<ProgressByCategory>({});
+    useState<ProgressByCategory>(getSessionProgress);
   const [pendingScrollTargetId, setPendingScrollTargetId] = useState<
     string | null
   >(null);
-
-  useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      const storedProgress = window.localStorage.getItem(progressStorageKey);
-
-      if (!storedProgress) {
-        return;
-      }
-
-      try {
-        setProgressByCategory(JSON.parse(storedProgress) as ProgressByCategory);
-      } catch {
-        window.localStorage.removeItem(progressStorageKey);
-      }
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, []);
 
   useEffect(() => {
     if (!pendingScrollTargetId) {
@@ -127,21 +110,8 @@ export function TrainingCurriculum({
   }
 
   function recordTestProgress(sectionId: string, score: number, total: number) {
-    setProgressByCategory((currentProgress) => {
-      const nextProgress = withTestResult(
-        currentProgress,
-        sectionId,
-        score,
-        total,
-      );
-
-      window.localStorage.setItem(
-        progressStorageKey,
-        JSON.stringify(nextProgress),
-      );
-
-      return nextProgress;
-    });
+    saveTestResult(sectionId, score, total);
+    setProgressByCategory(getSessionProgress());
   }
 
   return (

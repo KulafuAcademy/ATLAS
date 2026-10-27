@@ -2,7 +2,13 @@ import type { MinimalPair, TrainingProgress } from "@/types/training";
 
 export type ProgressByCategory = Record<string, TrainingProgress>;
 
-export const progressStorageKey = "atlas.trainingProgress.v1";
+// Kept in memory only (no backend yet): it survives moving between pages,
+// but closing or refreshing the site clears it.
+let sessionProgress: ProgressByCategory = {};
+
+export function getSessionProgress() {
+  return sessionProgress;
+}
 
 export function withTestResult(
   currentProgress: ProgressByCategory,
@@ -24,22 +30,9 @@ export function withTestResult(
   };
 }
 
-// Reads the stored progress, adds one test result, and writes it back.
+// Adds one test result to this visit's progress.
 export function saveTestResult(sectionId: string, score: number, total: number) {
-  let storedProgress: ProgressByCategory = {};
-
-  try {
-    storedProgress = JSON.parse(
-      window.localStorage.getItem(progressStorageKey) ?? "{}",
-    ) as ProgressByCategory;
-  } catch {
-    storedProgress = {};
-  }
-
-  window.localStorage.setItem(
-    progressStorageKey,
-    JSON.stringify(withTestResult(storedProgress, sectionId, score, total)),
-  );
+  sessionProgress = withTestResult(sessionProgress, sectionId, score, total);
 }
 
 export function getDailyPairs(sectionId: string, pairs: MinimalPair[]) {
