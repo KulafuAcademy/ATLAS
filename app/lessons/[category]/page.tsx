@@ -44,7 +44,9 @@ export default async function LessonPage({ params }: LessonPageProps) {
         title={section.title}
         description={section.description}
       />
-      {guide ? <LessonGuide guide={guide} /> : null}
+      {guide ? (
+        <LessonGuide guide={guide} soundFocus={section.pairs[0]?.soundFocus} />
+      ) : null}
       {practice ? (
         <LessonPractice practice={practice} soundFocus={section.pairs[0]?.soundFocus} />
       ) : null}
