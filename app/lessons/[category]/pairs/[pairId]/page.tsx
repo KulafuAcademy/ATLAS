@@ -65,7 +65,6 @@ export default async function PairPage({ params }: PairPageProps) {
               }
             : null
         }
-        lockNextUntilPairDone={pair.id}
       />
     </div>
   );
