@@ -43,7 +43,11 @@ export default async function PairPage({ params }: PairPageProps) {
           ja: "音を聞いて、聞き取りと発音のテストに挑戦し、最後に早口言葉を練習します。",
         }}
       />
-      <SinglePairPractice key={pair.id} pair={pair} />
+      <SinglePairPractice
+        key={pair.id}
+        pair={pair}
+        section={{ id: section.id, title: section.title, pairs: section.pairs }}
+      />
       <LessonStepNav
         back={{
           href: getLessonHref(section.id),

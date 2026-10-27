@@ -18,6 +18,10 @@ import type { MinimalPair } from "@/types/training";
 import { getPublicAudioPath } from "./audio";
 import { LockIcon } from "./LockIcon";
 import {
+  PairProgressTracker,
+  type TrackerSection,
+} from "./PairProgressTracker";
+import {
   createAudioContext,
   playCorrectSound,
   playIncorrectSound,
@@ -279,7 +283,13 @@ export function MinimalPairTrainer({
  * A single PairPracticeCard on its own, used by the per-pair test page.
  */
 
-export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
+export function SinglePairPractice({
+  pair,
+  section,
+}: {
+  pair: MinimalPair;
+  section: TrackerSection;
+}) {
   const { language, text } = useLanguage();
 
   return (
@@ -287,6 +297,7 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
       copy={trainerCopy[language]}
       language={language}
       pair={pair}
+      section={section}
       text={text}
       useAiAssessment
     />
@@ -321,6 +332,9 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
  * A completed pair opens with every step unlocked. Progress inside a pair
  * lives in component state; only completion is saved.
  *
+ * With a `section`, a PairProgressTracker sidebar shows the steps, results
+ * and the category's cleared pairs.
+ *
  * Only one mic session runs at a time. Steps 3 and 4 share the countdown
  * state, and `isBusy` disables their buttons while either is active.
  */
@@ -329,12 +343,14 @@ function PairPracticeCard({
   copy,
   language,
   pair,
+  section,
   text,
   useAiAssessment = false,
 }: {
   copy: TrainerCopy;
   language: "en" | "ja";
   pair: MinimalPair;
+  section?: TrackerSection;
   text: (value: LocalizedText) => string;
   useAiAssessment?: boolean;
 }) {
@@ -364,14 +380,15 @@ function PairPracticeCard({
   const [bestWordScores, setBestWordScores] = useState<Record<string, number>>(
     {},
   );
-  const [bestTwisterScore, setBestTwisterScore] = useState<number | null>(
-    null,
-  );
+  const [bestTwisterScore, setBestTwisterScore] = useState<number | null>(null);
+  // Counts for the progress tracker's results.
+  const [quizAnswered, setQuizAnswered] = useState(false);
+  const [pronunciationAttempts, setPronunciationAttempts] = useState(0);
+  const [twisterAttempts, setTwisterAttempts] = useState(0);
   const listenCleared =
     pairCompleted ||
     (heardWords.includes(pair.wordA) && heardWords.includes(pair.wordB));
-  const listeningCleared =
-    pairCompleted || (listenCleared && listeningPassed);
+  const listeningCleared = pairCompleted || (listenCleared && listeningPassed);
   const pronunciationCleared =
     pairCompleted ||
     (listeningCleared &&
@@ -661,6 +678,8 @@ function PairPracticeCard({
   function answerQuiz(answer: QuizTarget) {
     if (!activeQuiz || !quizReady) return;
 
+    setQuizAnswered(true);
+
     if (answer === activeQuiz.target) {
       playCorrectSound();
       showFeedback("listening", "success", copy.correct);
@@ -740,11 +759,13 @@ function PairPracticeCard({
     const { score, grade } = outcome.result;
 
     if (kind === "pronunciation") {
+      setPronunciationAttempts((count) => count + 1);
       setBestWordScores((scores) => ({
         ...scores,
         [target]: Math.max(scores[target] ?? 0, score),
       }));
     } else {
+      setTwisterAttempts((count) => count + 1);
       setBestTwisterScore((best) => Math.max(best ?? 0, score));
 
       if (score >= passingScore) {
@@ -761,7 +782,11 @@ function PairPracticeCard({
     } else {
       playIncorrectSound();
     }
-    showFeedback(kind, passed ? "success" : "error", copy.aiScore(score, verdict));
+    showFeedback(
+      kind,
+      passed ? "success" : "error",
+      copy.aiScore(score, verdict),
+    );
   }
 
   function startPronunciationTest(target: QuizTarget) {
@@ -1012,6 +1037,7 @@ function PairPracticeCard({
   const listenStep = (
     <TestGroup
       step="1"
+      anchorId={`step-1`}
       title={copy.listenTitle}
       description={copy.listenDescription(pair.wordA, pair.wordB)}
       actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
@@ -1058,6 +1084,7 @@ function PairPracticeCard({
   const listeningStep = (
     <TestGroup
       step="2"
+      anchorId={`step-2`}
       title={copy.listeningTitle}
       description={copy.listeningDescription}
       actionsClassName="grid gap-3"
@@ -1096,6 +1123,7 @@ function PairPracticeCard({
   const pronunciationStep = (
     <TestGroup
       step="3"
+      anchorId={`step-3`}
       title={copy.pronunciationTitle}
       description={copy.pronunciationDescription}
       actionsClassName={separate ? "grid gap-3 sm:grid-cols-2" : undefined}
@@ -1168,6 +1196,7 @@ function PairPracticeCard({
   const tongueTwisterStep = (
     <TestGroup
       step="4"
+      anchorId={`step-4`}
       title={copy.tongueTwisterTitle}
       description={copy.tongueTwisterDescription}
       actionsClassName="grid gap-3"
@@ -1278,12 +1307,8 @@ function PairPracticeCard({
       {aiRecordingStream && countdown?.kind === "tongueTwister" ? (
         <LevelMeter stream={aiRecordingStream} />
       ) : null}
-      {sentenceCheck.isListening && !isTouchDevice() ? (
-        <MicLevelMeter />
-      ) : null}
-      {answerFeedback ? (
-        <FeedbackMessage feedback={answerFeedback} />
-      ) : null}
+      {sentenceCheck.isListening && !isTouchDevice() ? <MicLevelMeter /> : null}
+      {answerFeedback ? <FeedbackMessage feedback={answerFeedback} /> : null}
     </TestGroup>
   );
 
@@ -1325,8 +1350,8 @@ function PairPracticeCard({
     </div>
   );
 
-  return (
-    <div className="space-y-4">
+  const steps = (
+    <div className="min-w-0 space-y-4">
       <section
         className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(
           dimmedUnless("none"),
@@ -1340,6 +1365,84 @@ function PairPracticeCard({
       {resultsKind === "pronunciation" ? resultsPanel : null}
       {tongueTwisterStep}
       {resultsKind === "tongueTwister" ? resultsPanel : null}
+    </div>
+  );
+
+  if (!section) {
+    return steps;
+  }
+
+  const trackerProps = {
+    pairId: pair.id,
+    section,
+    steps: [
+      {
+        anchorId: "step-1",
+        title: copy.listenTitle,
+        done: listenCleared,
+        unlocked: true,
+      },
+      {
+        anchorId: "step-2",
+        title: copy.listeningTitle,
+        done: listeningCleared,
+        unlocked: listenCleared,
+      },
+      {
+        anchorId: "step-3",
+        title: copy.pronunciationTitle,
+        done: pronunciationCleared,
+        unlocked: listeningCleared,
+      },
+      {
+        anchorId: "step-4",
+        title: copy.tongueTwisterTitle,
+        done: pairCompleted,
+        unlocked: pronunciationCleared,
+      },
+    ],
+    results: {
+      // Same streak as the step's goal: one correct answer per word.
+      listening: {
+        correct: listeningCleared ? 2 : correctStreak.length,
+        needed: 2,
+        answered: quizAnswered,
+      },
+      wordScores: [pair.wordA, pair.wordB].map((word) => ({
+        word,
+        best: bestWordScores[word],
+      })),
+      pronunciationAttempts,
+      twisterBest: bestTwisterScore,
+      twisterAttempts,
+    },
+  };
+  const trackerClassName = `min-[1700px]:sticky min-[1700px]:top-28 min-[1700px]:max-h-[calc(100vh-8rem)] min-[1700px]:overflow-y-auto ${focusDimClassName(
+    dimmedUnless("none"),
+  )}`;
+
+  // When the window is wide enough, the tracker sits in the empty margins
+  // beside the page column: this pair's steps and results on the left, the
+  // category's cleared pairs on the right. Each stays in view while
+  // scrolling (the absolute box spans the steps' height so the sticky aside
+  // can travel). Otherwise both follow the steps as a summary.
+  return (
+    <div className="relative space-y-4">
+      {steps}
+      <div className="min-[1700px]:absolute min-[1700px]:inset-y-0 min-[1700px]:right-[calc(100%+2rem)] min-[1700px]:w-64">
+        <PairProgressTracker
+          {...trackerProps}
+          part="pair"
+          className={trackerClassName}
+        />
+      </div>
+      <div className="min-[1700px]:absolute min-[1700px]:inset-y-0 min-[1700px]:left-[calc(100%+2rem)] min-[1700px]:w-64">
+        <PairProgressTracker
+          {...trackerProps}
+          part="category"
+          className={trackerClassName}
+        />
+      </div>
     </div>
   );
 }
@@ -1661,6 +1764,7 @@ function WordLabel({ word }: { word: string }) {
 
 function TestGroup({
   step,
+  anchorId,
   title,
   description,
   actionsClassName = "grid gap-3 sm:grid-cols-2 xl:grid-cols-3",
@@ -1673,6 +1777,8 @@ function TestGroup({
   children,
 }: {
   step: string;
+  /** Element ID the progress tracker links to; separate boxes only. */
+  anchorId?: string;
   title: string;
   description: string;
   actionsClassName?: string;
@@ -1727,7 +1833,8 @@ function TestGroup({
 
   return (
     <div
-      className={`border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(dimmed)}`}
+      id={anchorId}
+      className={`scroll-mt-28 border border-white/10 bg-white/[0.02] p-5 ${focusDimClassName(dimmed)}`}
     >
       {header ? (
         <div
