@@ -669,8 +669,20 @@ function SpeakingPairs({ pairs }: { pairs: MinimalPair[] }) {
 }
 
 const pairCardCopy = {
-  en: { listen: "Listen", saySentence: "Say the sentence" },
-  ja: { listen: "聞く", saySentence: "文を発音する" },
+  en: {
+    listen: "Listen",
+    say: "Say",
+    saySentence: "Say the sentence",
+    listenTo: (word: string) => `Listen to ${word}`,
+    sayWord: (word: string) => `Say ${word}`,
+  },
+  ja: {
+    listen: "聞く",
+    say: "発音",
+    saySentence: "文を発音する",
+    listenTo: (word: string) => `${word}を聞く`,
+    sayWord: (word: string) => `${word}を発音する`,
+  },
 };
 
 function PairCard({
@@ -694,20 +706,40 @@ function PairCard({
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
         {pair.soundFocus}
       </p>
+      {/* Each word tile pairs listening and the AI check, like the sentence. */}
       <div className="grid grid-cols-2 gap-2">
-        {[pair.wordA, pair.wordB].map((word) => (
-          <button
-            key={word}
-            type="button"
-            onClick={() =>
-              play(getPublicAudioPath("words", pair.soundFocus, word), word)
-            }
-            className="flex h-11 items-center justify-center gap-2 border border-white/10 bg-black px-3 font-semibold text-white transition hover:border-white/35 focus:outline-none"
-          >
-            <SpeakerIcon className="h-4 w-4 shrink-0 text-white/50" />
-            {word}
-          </button>
-        ))}
+        {[pair.wordA, pair.wordB].map((word) => {
+          const audioPath = getPublicAudioPath("words", pair.soundFocus, word);
+
+          return (
+            <div
+              key={word}
+              className="space-y-3 border border-white/10 bg-black p-3"
+            >
+              <p className="text-xl font-semibold text-white">{word}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  aria-label={copy.listenTo(word)}
+                  onClick={() => play(audioPath, word)}
+                  className="flex h-9 items-center justify-center gap-1.5 border border-white/10 bg-black px-2 text-xs font-semibold text-white transition hover:border-white/35 focus:outline-none"
+                >
+                  <SpeakerIcon className="h-3.5 w-3.5 shrink-0 text-white/50" />
+                  <span className="hidden sm:inline">{copy.listen}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={copy.sayWord(word)}
+                  onClick={() => onCheck({ kind: "word", word, audioPath })}
+                  className="flex h-9 items-center justify-center gap-1.5 border border-white bg-white px-2 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+                >
+                  <MicIcon />
+                  <span className="hidden sm:inline">{copy.say}</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
       {pair.tongueTwister ? (
         <div className="space-y-3 border border-white/10 bg-white/[0.03] p-4">
@@ -743,44 +775,7 @@ function PairCard({
           </div>
         </div>
       ) : null}
-      <PronunciationCheck
-        words={[pair.wordA, pair.wordB]}
-        onCheck={(word) =>
-          onCheck({
-            kind: "word",
-            word,
-            audioPath: getPublicAudioPath("words", pair.soundFocus, word),
-          })
-        }
-      />
     </article>
-  );
-}
-
-// Each word opens the AI pronunciation check in WordAssessmentModal.
-function PronunciationCheck({
-  words,
-  onCheck,
-}: {
-  words: string[];
-  onCheck: (word: string) => void;
-}) {
-  return (
-    <div className="border-t border-white/10 pt-4">
-      <div className="flex flex-wrap gap-2">
-        {words.map((word) => (
-          <button
-            key={word}
-            type="button"
-            onClick={() => onCheck(word)}
-            className="inline-flex h-9 items-center gap-2 border border-white bg-white px-3 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
-          >
-            <MicIcon />
-            {word}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
