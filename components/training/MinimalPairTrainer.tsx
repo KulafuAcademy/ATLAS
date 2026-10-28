@@ -1425,10 +1425,11 @@ function PairPracticeCard({
   // beside the page column: this pair's steps and results on the left, the
   // category's cleared pairs on the right. Each stays in view while
   // scrolling (the absolute box spans the steps' height so the sticky aside
-  // can travel). Otherwise both follow the steps as a summary.
+  // can travel). Otherwise this pair's progress sits above the steps and
+  // the cleared pairs follow them. Flex gap (not space-y) so the absolute
+  // trackers don't push the steps down on wide windows.
   return (
-    <div className="relative space-y-4">
-      {steps}
+    <div className="relative flex flex-col gap-4">
       <div className="min-[1700px]:absolute min-[1700px]:inset-y-0 min-[1700px]:right-[calc(100%+2rem)] min-[1700px]:w-64">
         <PairProgressTracker
           {...trackerProps}
@@ -1436,6 +1437,7 @@ function PairPracticeCard({
           className={trackerClassName}
         />
       </div>
+      {steps}
       <div className="min-[1700px]:absolute min-[1700px]:inset-y-0 min-[1700px]:left-[calc(100%+2rem)] min-[1700px]:w-64">
         <PairProgressTracker
           {...trackerProps}
