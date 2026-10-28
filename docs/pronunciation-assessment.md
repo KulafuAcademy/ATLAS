@@ -2,7 +2,9 @@
 
 On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the wav2vec2 pronunciation assessment server. On this page, each step is its own box. The full result appears in the **Results** panel **right under the step that ran the check**: under "Pronunciation test" for a word, and under "Tongue twister" for the sentence. The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
 
-This applies only on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
+This applies on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
+
+The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: each word's mic button, and "Say the sentence" in the tongue twister box, opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 8 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
 
 The server is a separate project. This app only records audio, sends it, and shows the result.
 
@@ -12,6 +14,7 @@ The server is a separate project. This app only records audio, sends it, and sho
 | --- | --- |
 | [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
 | [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
+| [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx) | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `ScoreRing`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`. |
 | [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
 | [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts) | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL. |
 | [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts) | Polls `GET /health` every 30 s. |

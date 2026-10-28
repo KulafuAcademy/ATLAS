@@ -4,6 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import {
+  useWordCheck,
+  WordAssessmentModal,
+} from "@/components/pronunciation/WordAssessmentModal";
+import type { WordCheckState } from "@/components/pronunciation/WordAssessmentModal";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import {
   getPublicAudioPath,
@@ -13,7 +18,6 @@ import {
   playCorrectSound,
   playIncorrectSound,
 } from "@/components/training/feedbackSounds";
-import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
 import type { TrainingSection } from "@/data/trainingSections";
 import { saveTestResult } from "@/lib/trainingProgress";
 import type { MinimalPair, TrainingCategory } from "@/types/training";
@@ -73,17 +77,22 @@ export function PracticeLibrary({
   );
   const [mode, setMode] = useState<PracticeMode>(initialMode ?? "listening");
   const [quizIndex, setQuizIndex] = useState(0);
+  const [speakingIndex, setSpeakingIndex] = useState(0);
   const active =
     sections.find((section) => section.id === activeId) ?? sections[0];
   const category = categories.find((item) => item.id === activeId);
+  const currentIndex = mode === "listening" ? quizIndex : speakingIndex;
 
-  // Jump the listening quiz to the chosen pair and bring it into view.
+  // Jump the current mode to the chosen pair and bring it into view.
   function practicePair(index: number) {
-    setMode("listening");
-    setQuizIndex(index);
+    if (mode === "listening") {
+      setQuizIndex(index);
+    } else {
+      setSpeakingIndex(index);
+    }
     requestAnimationFrame(() =>
       document
-        .getElementById("listening")
+        .getElementById(mode === "listening" ? "listening" : "pronunciation")
         ?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
   }
@@ -102,6 +111,7 @@ export function PracticeLibrary({
               setActiveId(section.id);
               setMode("listening");
               setQuizIndex(0);
+              setSpeakingIndex(0);
             }}
             className={`h-10 shrink-0 border px-4 text-sm font-semibold transition focus:outline-none ${
               activeId === section.id
@@ -169,11 +179,11 @@ export function PracticeLibrary({
             onStudy={() => setMode("speaking")}
           />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {active.pairs.map((pair) => (
-              <PairCard key={pair.id} pair={pair} />
-            ))}
-          </div>
+          <SpeakingPairs
+            pairs={active.pairs}
+            index={speakingIndex}
+            onIndexChange={setSpeakingIndex}
+          />
         )}
       </div>
 
@@ -193,7 +203,7 @@ export function PracticeLibrary({
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {active.pairs.map((pair, index) => {
-            const isCurrent = mode === "listening" && index === quizIndex;
+            const isCurrent = index === currentIndex;
 
             return (
               <button
@@ -646,35 +656,136 @@ function QuickTest({
   );
 }
 
+// Shows one pair at a time, like the listening quiz; `index` is owned by the
+// parent so the word pair list can jump to a pair. One AI check (and one
+// /health poll) is shared for words and tongue twisters, shown in a modal.
+function SpeakingPairs({
+  pairs,
+  index,
+  onIndexChange,
+}: {
+  pairs: MinimalPair[];
+  index: number;
+  onIndexChange: (index: number) => void;
+}) {
+  const { language } = useLanguage();
+  const copy = pairCardCopy[language];
+  const check = useWordCheck();
+  const pair = pairs[index];
+
+  if (!pair) return null;
+
+  return (
+    <>
+      <section className="space-y-6 border border-white/10 bg-white/[0.02] p-5 sm:p-7">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              aria-label={copy.previous}
+              disabled={index === 0}
+              onClick={() => onIndexChange(index - 1)}
+              className={navButtonClassName}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              aria-label={copy.next}
+              disabled={index === pairs.length - 1}
+              onClick={() => onIndexChange(index + 1)}
+              className={navButtonClassName}
+            >
+              ›
+            </button>
+          </div>
+          <span className="text-sm text-white/55">
+            {index + 1} / {pairs.length}
+          </span>
+        </div>
+        <PairCard key={pair.id} pair={pair} onCheck={check.start} />
+      </section>
+      <WordAssessmentModal check={check} />
+    </>
+  );
+}
+
+const navButtonClassName =
+  "grid h-10 w-10 place-items-center border border-white/10 text-xl text-white transition hover:border-white/35 focus:outline-none disabled:cursor-not-allowed disabled:text-white/20 disabled:hover:border-white/10";
+
 const pairCardCopy = {
-  en: { listen: "Listen" },
-  ja: { listen: "聞く" },
+  en: {
+    listen: "Listen",
+    say: "Say",
+    saySentence: "Say the sentence",
+    listenTo: (word: string) => `Listen to ${word}`,
+    sayWord: (word: string) => `Say ${word}`,
+    previous: "Previous pair",
+    next: "Next pair",
+  },
+  ja: {
+    listen: "聞く",
+    say: "発音",
+    saySentence: "文を発音する",
+    listenTo: (word: string) => `${word}を聞く`,
+    sayWord: (word: string) => `${word}を発音する`,
+    previous: "前のペア",
+    next: "次のペア",
+  },
 };
 
-function PairCard({ pair }: { pair: MinimalPair }) {
+function PairCard({
+  pair,
+  onCheck,
+}: {
+  pair: MinimalPair;
+  onCheck: WordCheckState["start"];
+}) {
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const play = useRecordedAudio();
+  const twisterAudioPath = getPublicAudioPath(
+    "twisters",
+    pair.soundFocus,
+    pair.id,
+  );
 
   return (
-    <article className="space-y-4 border border-white/10 bg-white/[0.02] p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
-        {pair.soundFocus}
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        {[pair.wordA, pair.wordB].map((word) => (
-          <button
-            key={word}
-            type="button"
-            onClick={() =>
-              play(getPublicAudioPath("words", pair.soundFocus, word), word)
-            }
-            className="flex h-11 items-center justify-center gap-2 border border-white/10 bg-black px-3 font-semibold text-white transition hover:border-white/35 focus:outline-none"
-          >
-            <SpeakerIcon className="h-4 w-4 shrink-0 text-white/50" />
-            {word}
-          </button>
-        ))}
+    <article className="space-y-6">
+      {/* Each word tile pairs listening and the AI check, like the sentence. */}
+      <div className="grid grid-cols-2 gap-3">
+        {[pair.wordA, pair.wordB].map((word) => {
+          const audioPath = getPublicAudioPath("words", pair.soundFocus, word);
+
+          return (
+            <div
+              key={word}
+              className="space-y-4 border border-white/10 bg-black p-4 text-center sm:p-6"
+            >
+              <p className="text-3xl font-semibold text-white">{word}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  aria-label={copy.listenTo(word)}
+                  onClick={() => play(audioPath, word)}
+                  className="flex h-9 items-center justify-center gap-1.5 border border-white/10 bg-black px-2 text-xs font-semibold text-white transition hover:border-white/35 focus:outline-none"
+                >
+                  <SpeakerIcon className="h-3.5 w-3.5 shrink-0 text-white/50" />
+                  <span className="hidden sm:inline">{copy.listen}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={copy.sayWord(word)}
+                  onClick={() => onCheck({ kind: "word", word, audioPath })}
+                  className="flex h-9 items-center justify-center gap-1.5 border border-white bg-white px-2 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+                >
+                  <MicIcon />
+                  <span className="hidden sm:inline">{copy.say}</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
       {pair.tongueTwister ? (
         <div className="space-y-3 border border-white/10 bg-white/[0.03] p-4">
@@ -682,98 +793,35 @@ function PairCard({ pair }: { pair: MinimalPair }) {
           <p className="text-sm leading-6 text-white/55">
             {pair.tongueTwister.note[language]}
           </p>
-          <button
-            type="button"
-            onClick={() =>
-              play(
-                getPublicAudioPath("twisters", pair.soundFocus, pair.id),
-                pair.tongueTwister!.text,
-              )
-            }
-            className="flex h-10 items-center gap-2 border border-white/10 bg-black px-3 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
-          >
-            <SpeakerIcon className="h-4 w-4 text-white/50" />
-            {copy.listen}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                play(twisterAudioPath, pair.tongueTwister!.text)
+              }
+              className="flex h-10 items-center gap-2 border border-white/10 bg-black px-3 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
+            >
+              <SpeakerIcon className="h-4 w-4 text-white/50" />
+              {copy.listen}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onCheck({
+                  kind: "sentence",
+                  word: pair.tongueTwister!.text,
+                  audioPath: twisterAudioPath,
+                })
+              }
+              className="flex h-10 items-center gap-2 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+            >
+              <MicIcon />
+              {copy.saySentence}
+            </button>
+          </div>
         </div>
       ) : null}
-      <PronunciationCheck words={[pair.wordA, pair.wordB]} />
     </article>
-  );
-}
-
-const checkCopy = {
-  en: {
-    say: (word: string) => `Say “${word}”…`,
-    correct: (word: string) => `Heard “${word}” — great!`,
-    retry: (heard: string) => `Heard “${heard}”. Try again!`,
-    nothing: "I couldn’t hear that.",
-    unsupported: "Pronunciation checking works in Chrome or Edge.",
-  },
-  ja: {
-    say: (word: string) => `「${word}」と言ってください…`,
-    correct: (word: string) => `「${word}」と聞こえました！`,
-    retry: (heard: string) => `「${heard}」と聞こえました。もう一度！`,
-    nothing: "聞き取れませんでした。",
-    unsupported: "発音判定はChrome / Edgeで利用できます。",
-  },
-};
-
-function PronunciationCheck({ words }: { words: string[] }) {
-  const { language } = useLanguage();
-  const copy = checkCopy[language];
-  const [feedback, setFeedback] = useState("");
-
-  function check(word: string) {
-    const Recognition =
-      window.SpeechRecognition ?? window.webkitSpeechRecognition;
-
-    if (!Recognition) {
-      setFeedback(copy.unsupported);
-      return;
-    }
-
-    // Stops any other running microphone check on the page.
-    window.dispatchEvent(new Event(stopPronunciationCheckEvent));
-
-    const recognition = new Recognition();
-    recognition.lang = "en-US";
-    recognition.onresult = (event) => {
-      const heard = event.results[0]?.[0]?.transcript.toLowerCase() ?? "";
-      const isCorrect = heard.includes(word.toLowerCase());
-
-      if (isCorrect) {
-        playCorrectSound();
-      } else {
-        playIncorrectSound();
-      }
-      setFeedback(isCorrect ? copy.correct(word) : copy.retry(heard));
-    };
-    recognition.onerror = () => {
-      playIncorrectSound();
-      setFeedback(copy.nothing);
-    };
-    recognition.start();
-    setFeedback(copy.say(word));
-  }
-
-  return (
-    <div className="space-y-3 border-t border-white/10 pt-4">
-      <div className="flex flex-wrap gap-2">
-        {words.map((word) => (
-          <button
-            key={word}
-            type="button"
-            onClick={() => check(word)}
-            className="inline-flex h-9 items-center gap-2 border border-white bg-white px-3 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
-          >
-            <MicIcon />
-            {word}
-          </button>
-        ))}
-      </div>
-      {feedback ? <p className="text-sm text-white/55">{feedback}</p> : null}
-    </div>
   );
 }
 
