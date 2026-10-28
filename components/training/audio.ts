@@ -2,15 +2,25 @@ import { useEffect, useRef } from "react";
 
 import { speakWord } from "@/components/sounds/speak";
 
-// Builds the public MP3 path for a word or tongue-twister audio file.
+// Builds the public MP3 path for a word, tongue-twister or sentence audio file.
 // Files are fetched under /public/(folder)/(soundFocus)/(filename).mp3
 // Example: /public/words/R vs L/alive.mp3
 export function getPublicAudioPath(
-  folder: "words" | "twisters",
+  folder: "words" | "twisters" | "sentences",
   soundFocus: string,
   filename: string,
 ) {
   return `/${folder}/${encodeURIComponent(soundFocus)}/${encodeURIComponent(filename)}.mp3`;
+}
+
+// Turns a sentence into its audio file name.
+// Example: "Sit on the ship's seat." -> "sit-on-the-ships-seat"
+export function getSentenceFilename(sentence: string) {
+  return sentence
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 // Plays a recorded MP3, falling back to speech synthesis when the file is
