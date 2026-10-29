@@ -56,26 +56,27 @@ export function gradeByLetter(letter: string) {
 
 /**
  * Child-facing colours for `words[].status`. There is deliberately no red:
- * a word to practise is a soft amber, an "ok" word stays the theme white.
+ * a word to practise is a soft amber, a skipped or "ok" word stays the theme
+ * white.
  */
 export const wordStatusColors: Record<WordStatus, string> = {
   great: excellentColor,
   ok: "#ffffff",
   practice: "#fbbf24",
+  skipped: "#ffffff",
 };
 
 /** The amber used for anything the child should practise. */
 export const practiceColor = wordStatusColors.practice;
 
 /**
- * A word's status from the server, or, for older servers that don't send
- * it, the same cutoffs the server uses (≥ 85 great, ≥ 60 ok).
+ * A word's colour, from its server `status` only (never its score). A
+ * missing or unknown status falls back to the theme white.
  */
-export function wordStatus(word: { score: number; status?: WordStatus }): WordStatus {
-  if (word.status) return word.status;
-  if (word.score >= 85) return "great";
-  if (word.score >= 60) return "ok";
-  return "practice";
+export function wordStatusColor(status: string | undefined): string {
+  return status && Object.hasOwn(wordStatusColors, status)
+    ? wordStatusColors[status as WordStatus]
+    : wordStatusColors.ok;
 }
 
 /** The verdict colour for children: A/B keep their green, C/D turn amber. */

@@ -92,7 +92,7 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
   "expected": { "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k ..." },
   "heard":    { "phonemes": ["r","ɔ","k"], "soundsLike": "r-aw-k ..." },
   "words": [
-    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k", "status": "ok" }
+    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k", "status": "practice" }
   ],
   "issues": [
     { "word": "Rock", "message": "you said \"aw\" ... instead of \"ah\" ...", "tip": "Open your mouth wide..." }
@@ -117,9 +117,9 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 - `praise`: shown first, as the headline (`messageJa` in Japanese mode).
 - `focus`: 0–2 sounds to practise (max 1 for grade A/B), each with `message` and `tip` (and `...Ja` versions, both ≤ 80 chars). An empty array means nothing to fix.
 - `moreCount`: practice items left out of `focus`. **Not shown**, so children only see what to work on now.
-- `words[].status`: `"great"` | `"ok"` | `"practice"`. Only words named in `focus` are `"practice"`.
+- `words[].status`: from the word's sound-by-sound alignment. `"great"` = every sound right, nothing extra. `"practice"` = at least one sound wrong, missing or extra. `"skipped"` = the word wasn't said at all. `"ok"` is only sent by older servers. Every word in `focus[].wordIndexes` is `"practice"` or `"skipped"`, but there can be more amber words than `focus` shows (it holds at most 2), so don't assume amber means "in focus".
 
-All four are optional: an older server that doesn't send them gets the verdict headline, the per-issue list and a status derived from `score` (`wordStatus()` in `lib/pronunciationGrades.ts`: ≥ 85 great, ≥ 60 ok).
+All four are optional: an older server that doesn't send them gets the verdict headline, the per-issue list and white word chips. Word colour never comes from `score`.
 
 Nullable fields:
 
@@ -156,7 +156,7 @@ Top to bottom (`AssessmentResults` in `PronunciationPanel.tsx`):
 1. **Header:** "RESULTS", plus "N attempts" (scored attempts for this word or sentence during this visit). Before the first result, the header shows the server status instead.
 2. **Headline** (`ResultHeadline`): "🌟" + `praise.message`. Without `praise` (older server): the verdict in large text, green for A/B and amber for C/D, plus "🌟 Every sound was correct" when `allWordsCorrect`. The numeric `score` and the grade letter are **not shown** anywhere. Then `Target: "…"`.
 3. **ATLAS Assessment:** the `feedback` text in a rounded box labelled "ATLAS Assessment". Hidden when `feedback` is `null`.
-4. **Word by word:** a chip per word, coloured by `words[].status`. Tapping a chip shows "Say it like" (`soundsLike`, plus IPA from `phonemes`), and "We heard" only if the server sends `heardIpa`.
+4. **Word by word:** a chip per word, coloured by `words[].status` only (`wordStatusColor()`), with the status read out to screen readers ("said perfectly", "needs practice", "skipped"). Tapping a chip shows "Say it like" (`soundsLike`, plus IPA from `phonemes`), and "We heard" only if the server sends `heardIpa`.
 5. **What to fix** (`FocusList`): a card per `focus` item, with the `sound` in an amber box, then the message and tip. The section is hidden when `focus` is empty. Older servers without `focus` get the old list: `issues`, excluding words that scored 100, or "Nothing to fix…".
 6. **Details (IPA)** (`IpaDetails`): folded by default. One box per word with the expected IPA (`words[].phonemes`) and below it what was heard. The server sends `heard.phonemes` as one flat list with no word breaks, so `lib/phonemeAlignment.ts` matches it to the expected phonemes with an edit-distance (Levenshtein) alignment and splits it back into words. **Green** = correct, **amber** = a different sound, **dotted-underlined grey** = an extra sound, **struck-through grey** = missing. The legend shows a sample of each. Hidden if no word has phonemes.
 
@@ -176,7 +176,7 @@ The bands in `lib/pronunciationGrades.ts` match the server:
 Rules:
 
 - **No red in the child view.** The bands' colours above are kept for reference, but children only see:
-  - `wordStatusColors` for words: great = A green, ok = theme white, practice = soft amber `#fbbf24`.
+  - `wordStatusColors` for words: great = A green, practice = soft amber `#fbbf24`, skipped and ok = theme white. A missing or unknown status is also white.
   - The same amber for the `focus` sound boxes, "different sound" in the IPA details, and the C/D verdict (`childVerdictColor`).
 - A step that didn't pass shows a neutral summary, not ❌.
 - Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
@@ -220,7 +220,7 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] The "ATLAS Assessment" box is hidden when `feedback` is `null`.
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
 - [ ] "What to fix" shows at most 2 cards (sound box, message, tip) and never mentions `moreCount`. It's hidden when `focus` is empty.
-- [ ] Word chips: green = great, white = ok, amber = practice (only the `focus` words).
+- [ ] Word chips: green = great, amber = practice, white = skipped (or ok from an older server). `npm test` checks the "Green grass grows near a clear glass" example: white, white, amber, green, green, green, green.
 - [ ] "N attempts" goes up with each scored try of the same word, and is tracked separately per word or sentence.
 - [ ] "Try again" re-runs the same word or sentence, and scrolls the word card or sentence to the middle of the screen.
 - [ ] Tapping "Say right" shows a big "Say this: right" card centred on screen, and fades the other boxes. "Say the sentence" does the same with the sentence box highlighted. The fade ends when checking starts.

@@ -11,6 +11,7 @@ import type {
   PronunciationFocus,
   PronunciationIssue,
   PronunciationWord,
+  WordStatus,
 } from "@/lib/pronunciationApi";
 import { alignPhonemes, groupStepsByWord } from "@/lib/phonemeAlignment";
 import type { PhonemeStep } from "@/lib/phonemeAlignment";
@@ -18,7 +19,7 @@ import {
   childVerdictColor,
   gradeByLetter,
   practiceColor,
-  wordStatus,
+  wordStatusColor,
   wordStatusColors,
 } from "@/lib/pronunciationGrades";
 
@@ -42,6 +43,12 @@ export const panelCopy = {
     aiAssessment: "ATLAS Assessment",
     wordByWord: "Word by word",
     tapWord: "Tap a word to see how it should sound.",
+    wordStatusLabels: {
+      great: "said perfectly",
+      ok: "okay",
+      practice: "needs practice",
+      skipped: "skipped",
+    } satisfies Record<WordStatus, string>,
     sayItLike: "Say it like",
     weHeard: "We heard",
     notHeard: "We didn't hear this word. Try saying it a little louder!",
@@ -107,6 +114,12 @@ export const panelCopy = {
     aiAssessment: "ATLAS評価",
     wordByWord: "単語ごと",
     tapWord: "単語をタップすると、正しい音が見られます。",
+    wordStatusLabels: {
+      great: "かんぺき",
+      ok: "OK",
+      practice: "れんしゅうしよう",
+      skipped: "言えていない",
+    } satisfies Record<WordStatus, string>,
     sayItLike: "こう言おう",
     weHeard: "聞こえた音",
     notHeard: "この単語は聞こえませんでした。もう少し大きな声で言ってみよう！",
@@ -462,6 +475,7 @@ function AssessmentResults({
             <WordChip
               key={`${word.word}-${index}`}
               word={word}
+              copy={copy}
               selected={index === selectedIndex}
               onClick={() =>
                 setSelectedIndex((current) => (current === index ? null : index))
@@ -795,19 +809,27 @@ export function Verdict({ text, color }: { text: string; color: string }) {
 
 function WordChip({
   word,
+  copy,
   selected,
   onClick,
 }: {
   word: PronunciationWord;
+  copy: PanelCopy;
   selected: boolean;
   onClick: () => void;
 }) {
-  const color = wordStatusColors[wordStatus(word)];
+  const color = wordStatusColor(word.status);
+  // Colour alone doesn't tell a screen reader anything, so name the status.
+  const statusLabel =
+    word.status && Object.hasOwn(copy.wordStatusLabels, word.status)
+      ? copy.wordStatusLabels[word.status]
+      : null;
 
   return (
     <button
       type="button"
       aria-pressed={selected}
+      aria-label={statusLabel ? `${word.word}: ${statusLabel}` : undefined}
       onClick={onClick}
       className={`min-h-11 border border-b-4 px-3 text-xl font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
         selected ? "bg-white/[0.09]" : "bg-black hover:bg-white/[0.04]"
@@ -826,7 +848,7 @@ function WordDetail({
   word: PronunciationWord;
   copy: PanelCopy;
 }) {
-  const color = wordStatusColors[wordStatus(word)];
+  const color = wordStatusColor(word.status);
   const expectedIpa = formatIpa(word.ipa, word.phonemes);
   // The current server sends no per-word "heard" data (undefined), so the
   // column only shows when it does; null means the word wasn't heard.
@@ -882,7 +904,7 @@ export function IssueItem({
     <li className="space-y-2 border border-white/10 bg-black p-3">
       <p
         className="font-semibold text-white"
-        style={match ? { color: wordStatusColors[wordStatus(match)] } : undefined}
+        style={match ? { color: wordStatusColor(match.status) } : undefined}
       >
         {issue.word}
       </p>
