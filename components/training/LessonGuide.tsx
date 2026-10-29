@@ -4,8 +4,9 @@ import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { speakWord } from "@/components/sounds/speak";
 import type { LessonGuide as LessonGuideData, SoundGuide } from "@/data/lessonGuides";
+
+import { getPublicAudioPath, useRecordedAudio } from "./audio";
 
 const lessonSteps = [
   {
@@ -45,7 +46,13 @@ const guideCopy = {
   },
 };
 
-export function LessonGuide({ guide }: { guide: LessonGuideData }) {
+export function LessonGuide({
+  guide,
+  soundFocus,
+}: {
+  guide: LessonGuideData;
+  soundFocus?: string;
+}) {
   const { language, text } = useLanguage();
   const copy = guideCopy[language];
 
@@ -87,6 +94,7 @@ export function LessonGuide({ guide }: { guide: LessonGuideData }) {
             image={guide.image}
             side={index === 0 ? "left" : "right"}
             sound={sound}
+            soundFocus={soundFocus}
           />
         ))}
       </div>
@@ -98,12 +106,20 @@ function SoundCard({
   image,
   side,
   sound,
+  soundFocus,
 }: {
   image: string;
   side: "left" | "right";
   sound: SoundGuide;
+  soundFocus?: string;
 }) {
   const { text } = useLanguage();
+  const play = useRecordedAudio();
+
+  // Plays the recorded word when one exists, otherwise speech synthesis.
+  function playWord(word: string) {
+    play(soundFocus ? getPublicAudioPath("words", soundFocus, word) : null, word);
+  }
 
   return (
     <article className="border border-white/10 bg-white/[0.02]">
@@ -145,7 +161,7 @@ function SoundCard({
             <button
               key={word}
               type="button"
-              onClick={() => speakWord(word, 0.72)}
+              onClick={() => playWord(word)}
               className="flex h-10 items-center gap-2 border border-white/10 px-3 text-sm font-semibold text-white transition hover:border-white/35 focus:outline-none"
             >
               <SpeakerIcon className="h-4 w-4 text-white/50" />

@@ -2,10 +2,13 @@
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { speakWord } from "@/components/sounds/speak";
 import type { LessonPractice as LessonPracticeData } from "@/data/lessonPractice";
 
-import { getPublicAudioPath, useRecordedAudio } from "./audio";
+import {
+  getPublicAudioPath,
+  getSentenceFilename,
+  useRecordedAudio,
+} from "./audio";
 
 const practiceCopy = {
   en: {
@@ -29,7 +32,7 @@ export function LessonPractice({
   soundFocus,
 }: {
   practice: LessonPracticeData;
-  // Folder under /public/words holding this lesson's recorded clips.
+  // Folder under /public/words and /public/sentences holding this lesson's clips.
   soundFocus?: string;
 }) {
   const { language, text } = useLanguage();
@@ -38,6 +41,15 @@ export function LessonPractice({
 
   function playWord(word: string) {
     play(soundFocus ? getPublicAudioPath("words", soundFocus, word) : null, word);
+  }
+
+  function playSentence(sentence: string) {
+    play(
+      soundFocus
+        ? getPublicAudioPath("sentences", soundFocus, getSentenceFilename(sentence))
+        : null,
+      sentence,
+    );
   }
 
   return (
@@ -88,7 +100,7 @@ export function LessonPractice({
               <button
                 type="button"
                 aria-label={`${copy.play}: ${sentence}`}
-                onClick={() => speakWord(sentence, 0.72)}
+                onClick={() => playSentence(sentence)}
                 className="grid h-10 w-10 shrink-0 place-items-center border border-white/10 transition hover:border-white/35 focus:outline-none"
               >
                 <SpeakerIcon className="h-4 w-4 text-white/50" />
