@@ -123,6 +123,7 @@ const trainerCopy = {
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
     getReady: "Get ready...",
     speakNow: "Speak now",
+    stopSpeaking: "■ Stop, I'm done",
     secondsLeft: (seconds: number) => `${seconds}s`,
     sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
@@ -183,6 +184,7 @@ const trainerCopy = {
       "発音チェックを開始できませんでした。もう一度試してください。",
     getReady: "準備してください...",
     speakNow: "今話してください",
+    stopSpeaking: "■ ストップ（言えたよ）",
     secondsLeft: (seconds: number) => `${seconds}秒`,
     sayAfterCountdown: (word: string) =>
       `カウントダウン後に「${word}」を発音してください。`,
@@ -312,6 +314,8 @@ function PairPracticeCard({
   const [countdown, setCountdown] = useState<CountdownState>(null);
   const countdownRef = useRef<CountdownState>(null);
   const countdownTimerRef = useRef<number | null>(null);
+  // The running countdown's endAnswer, so "Stop" can end the answer early.
+  const endAnswerRef = useRef<(() => void) | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Separate speed settings: words (steps 1-2) and the tongue twister (step 4).
   const [wordSlow, setWordSlow] = useState(false);
@@ -341,7 +345,19 @@ function PairPracticeCard({
       countdownTimerRef.current = null;
     }
 
+    endAnswerRef.current = null;
     updateCountdown(null);
+  }
+
+  // "Stop" during the answer window: judge what was said so far instead of
+  // waiting for the countdown to run out.
+  function endAnswerEarly() {
+    const endAnswer = endAnswerRef.current;
+
+    if (countdownRef.current?.phase !== "answer" || !endAnswer) return;
+
+    clearCountdown();
+    endAnswer();
   }
 
   // Runs the two-phase countdown shared by steps 3 and 4:
@@ -359,6 +375,7 @@ function PairPracticeCard({
     let phase: "prepare" | "answer" = "prepare";
     let remaining = prepareSeconds;
 
+    endAnswerRef.current = endAnswer;
     updateCountdown({ kind, phase, remaining });
     playCountdownTick();
 
@@ -1124,6 +1141,11 @@ function PairPracticeCard({
         countdown={countdown}
         kind="tongueTwister"
       />
+      {countdown?.kind === "tongueTwister" && countdown.phase === "answer" ? (
+        <ActionButton intent="secondary" onClick={endAnswerEarly}>
+          {copy.stopSpeaking}
+        </ActionButton>
+      ) : null}
       {aiRecordingStream && countdown?.kind === "tongueTwister" ? (
         <LevelMeter stream={aiRecordingStream} />
       ) : null}
