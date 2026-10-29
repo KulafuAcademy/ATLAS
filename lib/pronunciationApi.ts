@@ -52,13 +52,19 @@ export type PronunciationWord = {
    */
   heardIpa?: string | null;
   /**
-   * Child-facing judgement; "practice" only for words named in `focus`.
-   * Missing on older servers (see `wordStatus()`).
+   * Child-facing judgement from the word's sound-by-sound alignment. The
+   * only thing that colours the word (see `wordStatusColor()`).
    */
   status?: WordStatus;
 };
 
-export type WordStatus = "great" | "ok" | "practice";
+/**
+ * - "great": every sound right, nothing extra.
+ * - "practice": at least one sound wrong, missing or extra.
+ * - "skipped": the word wasn't said at all.
+ * - "ok": only sent by older servers.
+ */
+export type WordStatus = "great" | "ok" | "practice" | "skipped";
 
 /** Something the learner did well, shown before anything to practise. */
 export type PronunciationPraise = {
