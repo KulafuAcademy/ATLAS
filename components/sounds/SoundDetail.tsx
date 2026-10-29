@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { speakWord } from "@/components/sounds/speak";
+import { getSoundAudioPath, useRecordedAudio } from "@/components/training/audio";
 import {
   formatBooleanRounded,
   formatCategory,
@@ -26,6 +26,8 @@ type SoundDetailProps = {
 export function SoundDetail({ symbol, related, learningStep, next }: SoundDetailProps) {
   const { language, text } = useLanguage();
   const copy = getSymbolCopy(symbol, language);
+  // Plays the recorded word when one exists, otherwise speech synthesis.
+  const play = useRecordedAudio();
   const facts: Array<[string, string]> =
     symbol.category === "vowel"
       ? [
@@ -94,7 +96,7 @@ export function SoundDetail({ symbol, related, learningStep, next }: SoundDetail
                 <button
                   key={word}
                   type="button"
-                  onClick={() => speakWord(word, 0.72)}
+                  onClick={() => play(getSoundAudioPath(symbol.category, word), word)}
                   className="flex items-center justify-center gap-2 border border-white/10 p-4 text-lg text-white transition hover:border-white/35"
                 >
                   <SpeakerIcon className="h-4 w-4 text-white/50" />

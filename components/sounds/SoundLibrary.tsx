@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { speakWord } from "@/components/sounds/speak";
+import { getSoundAudioPath, useRecordedAudio } from "@/components/training/audio";
 import { formatCategory, getSymbolCopy, uiText } from "@/lib/i18n";
 import type { IpaCategory, IpaSymbol } from "@/types/ipa";
 
@@ -19,6 +19,8 @@ export function SoundLibrary({ symbols }: SoundLibraryProps) {
   const { language, text } = useLanguage();
   const [category, setCategory] = useState<IpaCategory | "all">("all");
   const [query, setQuery] = useState("");
+  // Plays the recorded word when one exists, otherwise speech synthesis.
+  const play = useRecordedAudio();
 
   const visibleSymbols = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -129,7 +131,9 @@ export function SoundLibrary({ symbols }: SoundLibraryProps) {
                       <button
                         key={word}
                         type="button"
-                        onClick={() => speakWord(word)}
+                        onClick={() =>
+                          play(getSoundAudioPath(symbol.category, word), word, 0.8)
+                        }
                         className="inline-flex items-center gap-1.5 border border-white/10 px-2.5 py-1 text-xs text-white/65 transition hover:border-white/35 hover:text-white"
                       >
                         <SpeakerIcon className="h-3 w-3" />
