@@ -51,6 +51,35 @@ export type PronunciationWord = {
    * null would mean the word wasn't heard at all.
    */
   heardIpa?: string | null;
+  /**
+   * Child-facing judgement; "practice" only for words named in `focus`.
+   * Missing on older servers (see `wordStatus()`).
+   */
+  status?: WordStatus;
+};
+
+export type WordStatus = "great" | "ok" | "practice";
+
+/** Something the learner did well, shown before anything to practise. */
+export type PronunciationPraise = {
+  word: string | null;
+  message: string;
+  messageJa: string;
+};
+
+/** One sound to practise, grouped across every word it happened in. */
+export type PronunciationFocus = {
+  /** The target sound, e.g. "r", "v", "ee". */
+  sound: string | null;
+  /** Distinct words it happened in. */
+  words: string[];
+  /** Indexes into `words[]` of every occurrence. */
+  wordIndexes: number[];
+  count: number;
+  message: string;
+  messageJa: string;
+  tip: string;
+  tipJa: string;
 };
 
 export type PronunciationIssue = {
@@ -69,7 +98,17 @@ export type AnalyzeSuccess = {
   expected: PhonemeTranscription;
   heard: PhonemeTranscription;
   words: PronunciationWord[];
+  /** One entry per wrong sound. Not shown to children when `focus` is sent. */
   issues: PronunciationIssue[];
+  /** Missing on older servers. */
+  praise?: PronunciationPraise;
+  /**
+   * 0–2 sounds to practise (max 1 for grade A/B); empty means nothing to
+   * fix. Missing on older servers, which fall back to `issues`.
+   */
+  focus?: PronunciationFocus[];
+  /** Further practice items left out of `focus`. */
+  moreCount?: number;
   /** AI coach feedback; null when the coach is offline. */
   feedback: string | null;
 };

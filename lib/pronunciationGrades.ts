@@ -1,3 +1,5 @@
+import type { WordStatus } from "@/lib/pronunciationApi";
+
 /**
  * Grade bands for pronunciation scores. These match the bands the
  * pronunciation server uses, so a word scored here and the overall grade
@@ -50,4 +52,33 @@ export function gradeFor(score: number): PronunciationGradeBand {
 /** Looks up a band by letter, e.g. to translate the server's verdict. */
 export function gradeByLetter(letter: string) {
   return pronunciationGrades.find((grade) => grade.letter === letter);
+}
+
+/**
+ * Child-facing colours for `words[].status`. There is deliberately no red:
+ * a word to practise is a soft amber, an "ok" word stays the theme white.
+ */
+export const wordStatusColors: Record<WordStatus, string> = {
+  great: excellentColor,
+  ok: "#ffffff",
+  practice: "#fbbf24",
+};
+
+/** The amber used for anything the child should practise. */
+export const practiceColor = wordStatusColors.practice;
+
+/**
+ * A word's status from the server, or, for older servers that don't send
+ * it, the same cutoffs the server uses (≥ 85 great, ≥ 60 ok).
+ */
+export function wordStatus(word: { score: number; status?: WordStatus }): WordStatus {
+  if (word.status) return word.status;
+  if (word.score >= 85) return "great";
+  if (word.score >= 60) return "ok";
+  return "practice";
+}
+
+/** The verdict colour for children: A/B keep their green, C/D turn amber. */
+export function childVerdictColor(letter: string, color: string) {
+  return letter === "A" || letter === "B" ? color : practiceColor;
 }
