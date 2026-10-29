@@ -8,12 +8,19 @@ import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import type { Language } from "@/lib/i18n";
 import type {
   AnalyzeSuccess,
+  PronunciationFocus,
   PronunciationIssue,
   PronunciationWord,
 } from "@/lib/pronunciationApi";
 import { alignPhonemes, groupStepsByWord } from "@/lib/phonemeAlignment";
 import type { PhonemeStep } from "@/lib/phonemeAlignment";
-import { gradeByLetter, gradeFor } from "@/lib/pronunciationGrades";
+import {
+  childVerdictColor,
+  gradeByLetter,
+  practiceColor,
+  wordStatus,
+  wordStatusColors,
+} from "@/lib/pronunciationGrades";
 
 import type { PronunciationAssessmentState } from "./usePronunciationAssessment";
 import type { ServerStatus } from "./useServerStatus";
@@ -24,17 +31,13 @@ export const panelCopy = {
     title: "Results",
     attempts: (count: number) => (count === 1 ? "1 attempt" : `${count} attempts`),
     empty:
-      "Press a “Say …” button. Your score and tips will show up here.",
+      "Press a “Say …” button. Your results and tips will show up here.",
     practicing: "Practicing",
     listening: "Listening…",
     listen: "Listen to me",
     stopListening: "Stop",
     checking: "Checking… this can take a few seconds.",
-    score: "Score",
-    grade: "Grade",
     everyCorrect: "Every sound was correct",
-    wordsToPractice: (count: number, total: number) =>
-      `${count} of ${total} ${total === 1 ? "word needs" : "words need"} practice`,
     target: (target: string) => `Target: “${target}”`,
     aiAssessment: "ATLAS Assessment",
     wordByWord: "Word by word",
@@ -43,6 +46,7 @@ export const panelCopy = {
     weHeard: "We heard",
     notHeard: "We didn't hear this word. Try saying it a little louder!",
     ipa: "IPA",
+    ipaDetails: "Details (IPA)",
     shouldBe: "Should be",
     youSaid: "You said",
     ipaHint: "Top: how it should sound. Bottom: what we heard.",
@@ -92,17 +96,13 @@ export const panelCopy = {
   ja: {
     title: "結果",
     attempts: (count: number) => `${count}回目`,
-    empty: "「〜を発音する」ボタンを押すと、ここにスコアとコツが表示されます。",
+    empty: "「〜を発音する」ボタンを押すと、ここに結果とコツが表示されます。",
     practicing: "練習中",
     listening: "聞いています…",
     listen: "自分の声を聞く",
     stopListening: "とめる",
     checking: "チェック中… 数秒かかることがあります。",
-    score: "スコア",
-    grade: "評価",
     everyCorrect: "すべての音が正しく言えました",
-    wordsToPractice: (count: number, total: number) =>
-      `${total}語中${count}語を練習しよう`,
     target: (target: string) => `目標：「${target}」`,
     aiAssessment: "ATLAS評価",
     wordByWord: "単語ごと",
@@ -111,6 +111,7 @@ export const panelCopy = {
     weHeard: "聞こえた音",
     notHeard: "この単語は聞こえませんでした。もう少し大きな声で言ってみよう！",
     ipa: "IPA",
+    ipaDetails: "くわしく（IPA）",
     shouldBe: "正しい発音",
     youSaid: "あなたの発音",
     ipaHint: "上：正しい発音　下：聞こえた発音",
@@ -431,53 +432,23 @@ function AssessmentResults({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const selectedWord =
     selectedIndex === null ? undefined : result.words[selectedIndex];
-  const verdict =
-    language === "ja"
-      ? (gradeByLetter(result.grade.letter)?.verdict.ja ?? result.grade.verdict)
-      : result.grade.verdict;
-  // Words that already scored 100 have nothing left to fix.
-  const fixableIssues = result.issues.filter(
-    (issue) => !isPerfect(findWord(result.words, issue.word)),
-  );
-  const wordsToFix = new Set(
-    fixableIssues.map((issue) => issue.word.toLowerCase()),
-  ).size;
+  // Older servers send no `focus`; fall back to their per-sound `issues`,
+  // leaving out words that already scored 100.
+  const fixableIssues = result.focus
+    ? []
+    : result.issues.filter(
+        (issue) => !isPerfect(findWord(result.words, issue.word)),
+      );
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-5">
-        <ScoreRing
-          score={result.score}
-          color={result.grade.color}
-          label={copy.score}
-        />
-        <div className="min-w-0 space-y-1">
-          <p className="flex flex-wrap items-baseline gap-2">
-            <span
-              className="text-2xl font-bold"
-              style={{ color: result.grade.color }}
-              aria-label={`${copy.grade} ${result.grade.letter}`}
-            >
-              {result.grade.letter}
-            </span>
-            <span className="text-lg font-semibold text-white">{verdict}</span>
+      <div className="min-w-0 space-y-1">
+        <ResultHeadline result={result} copy={copy} language={language} />
+        {target ? (
+          <p className="break-words text-xs text-white/40">
+            {copy.target(target)}
           </p>
-          {result.allWordsCorrect ? (
-            <p className="flex items-center gap-1.5 text-sm text-white/60">
-              <span aria-hidden="true">⭕️</span>
-              {copy.everyCorrect}
-            </p>
-          ) : wordsToFix > 0 ? (
-            <p className="text-sm text-white/60">
-              {copy.wordsToPractice(wordsToFix, result.words.length)}
-            </p>
-          ) : null}
-          {target ? (
-            <p className="break-words text-xs text-white/40">
-              {copy.target(target)}
-            </p>
-          ) : null}
-        </div>
+        ) : null}
       </div>
 
       {result.feedback ? (
@@ -501,47 +472,201 @@ function AssessmentResults({
         {selectedWord ? <WordDetail word={selectedWord} copy={copy} /> : null}
       </ResultSection>
 
+      {result.focus ? (
+        // An empty `focus` means nothing to fix: the praise says it all.
+        result.focus.length > 0 ? (
+          <ResultSection title={copy.whatToFix}>
+            <FocusList
+              focus={result.focus}
+              copy={copy}
+              language={language}
+            />
+          </ResultSection>
+        ) : null
+      ) : (
+        <ResultSection title={copy.whatToFix}>
+          {fixableIssues.length > 0 ? (
+            <ul className="space-y-2">
+              {fixableIssues.map((issue, index) => (
+                <IssueItem
+                  key={`${issue.word}-${index}`}
+                  issue={issue}
+                  words={result.words}
+                  copy={copy}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm leading-6 text-white/70">{copy.nothingToFix}</p>
+          )}
+        </ResultSection>
+      )}
+
       {result.words.some((word) => word.phonemes?.length) ? (
-        <ResultSection title={copy.ipa}>
-          <IpaComparison
+        <div className="border-t border-white/10 pt-5">
+          <IpaDetails
             words={result.words}
             heardPhonemes={result.heard?.phonemes}
             copy={copy}
           />
-        </ResultSection>
+        </div>
       ) : null}
-
-      <ResultSection title={copy.whatToFix}>
-        {fixableIssues.length > 0 ? (
-          <ul className="space-y-2">
-            {fixableIssues.map((issue, index) => (
-              <IssueItem
-                key={`${issue.word}-${index}`}
-                issue={issue}
-                words={result.words}
-                copy={copy}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm leading-6 text-white/70">{copy.nothingToFix}</p>
-        )}
-      </ResultSection>
     </div>
   );
 }
 
-// How each heard sound is drawn. Colours reuse the grade bands (A correct,
-// D different, C extra); a missing sound is a struck-through theme grey so it
-// can't be confused with a different (red) one.
+/**
+ * The top of a result: the server's praise when it sends one, otherwise
+ * the verdict (amber, never red, for C and D).
+ */
+export function ResultHeadline({
+  result,
+  copy,
+  language,
+}: {
+  result: AnalyzeSuccess;
+  copy: PanelCopy;
+  language: Language;
+}) {
+  if (result.praise) {
+    const message =
+      language === "ja"
+        ? result.praise.messageJa || result.praise.message
+        : result.praise.message;
+
+    return (
+      <p className="flex items-start gap-2 text-xl font-bold leading-8 text-white">
+        <span aria-hidden="true">🌟</span>
+        {message}
+      </p>
+    );
+  }
+
+  const verdict =
+    language === "ja"
+      ? (gradeByLetter(result.grade.letter)?.verdict.ja ?? result.grade.verdict)
+      : result.grade.verdict;
+
+  return (
+    <div className="space-y-1">
+      <Verdict
+        text={verdict}
+        color={childVerdictColor(result.grade.letter, result.grade.color)}
+      />
+      {result.allWordsCorrect ? (
+        <p className="flex items-center gap-1.5 text-sm text-white/60">
+          <span aria-hidden="true">🌟</span>
+          {copy.everyCorrect}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Up to two sounds to practise, each with one tip. `moreCount` is
+ * deliberately not shown: children only see what to work on now.
+ */
+export function FocusList({
+  focus,
+  copy,
+  language,
+}: {
+  focus: PronunciationFocus[];
+  copy: PanelCopy;
+  language: Language;
+}) {
+  if (focus.length === 0) return null;
+
+  return (
+    <ul className="space-y-2">
+      {focus.map((item, index) => (
+        <FocusCard
+          key={`${item.sound}-${index}`}
+          item={item}
+          copy={copy}
+          language={language}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function FocusCard({
+  item,
+  copy,
+  language,
+}: {
+  item: PronunciationFocus;
+  copy: PanelCopy;
+  language: Language;
+}) {
+  const message =
+    language === "ja" ? item.messageJa || item.message : item.message;
+  const tip = language === "ja" ? item.tipJa || item.tip : item.tip;
+
+  return (
+    <li className="flex gap-3 border border-white/10 bg-black p-3">
+      {item.sound ? (
+        <span
+          aria-hidden="true"
+          className="grid h-11 min-w-11 shrink-0 place-items-center border-2 px-2 font-mono text-xl font-bold"
+          style={{ color: practiceColor, borderColor: practiceColor }}
+        >
+          {item.sound}
+        </span>
+      ) : null}
+      <div className="min-w-0 space-y-2">
+        <p className="font-semibold leading-6 text-white">{message}</p>
+        {tip ? (
+          <p className="border-l-2 border-white/30 pl-3 text-sm leading-6 text-white/70">
+            <span className="font-semibold text-white">{copy.tip}: </span>
+            {tip}
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+/** The IPA comparison, folded away by default so children aren't faced with it. */
+export function IpaDetails({
+  words,
+  heardPhonemes,
+  copy,
+}: {
+  words: PronunciationWord[];
+  heardPhonemes: string[] | undefined;
+  copy: PanelCopy;
+}) {
+  return (
+    <details className="group">
+      <summary
+        className={`${labelClassName} flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden`}
+      >
+        <span aria-hidden="true" className="transition group-open:rotate-90">
+          ▸
+        </span>
+        {copy.ipaDetails}
+      </summary>
+      <div className="mt-3">
+        <IpaComparison words={words} heardPhonemes={heardPhonemes} copy={copy} />
+      </div>
+    </details>
+  );
+}
+
+// How each heard sound is drawn. No red: a different sound is the practice
+// amber, an extra sound is dotted-underlined grey, and a missing sound is a
+// struck-through grey.
 const phonemeStyles: Record<
   PhonemeStep["kind"],
   { color?: string; className: string }
 > = {
-  match: { color: gradeByLetter("A")?.color, className: "" },
-  substitute: { color: gradeByLetter("D")?.color, className: "" },
+  match: { color: wordStatusColors.great, className: "" },
+  substitute: { color: practiceColor, className: "" },
   missing: { className: "text-white/40 line-through" },
-  extra: { color: gradeByLetter("C")?.color, className: "" },
+  extra: { className: "text-white/60 underline decoration-dotted" },
 };
 
 /**
@@ -658,60 +783,13 @@ function ResultSection({
   );
 }
 
-const ringRadius = 40;
-const ringCircumference = 2 * Math.PI * ringRadius;
-
-// Circular score gauge; the arc fills to `score`% in the grade colour.
-export function ScoreRing({
-  score,
-  color,
-  label,
-}: {
-  score: number;
-  color: string;
-  label: string;
-}) {
-  const [filled, setFilled] = useState(false);
-
-  useEffect(() => {
-    const frameId = requestAnimationFrame(() => setFilled(true));
-
-    return () => cancelAnimationFrame(frameId);
-  }, []);
-
-  const progress = Math.max(0, Math.min(100, score)) / 100;
-
+// The result headline. Children only see the verdict in the grade colour,
+// never the score or grade letter.
+export function Verdict({ text, color }: { text: string; color: string }) {
   return (
-    <div
-      role="img"
-      aria-label={`${label} ${score}`}
-      className="relative grid h-24 w-24 shrink-0 place-items-center"
-    >
-      <svg viewBox="0 0 100 100" aria-hidden="true" className="absolute inset-0 -rotate-90">
-        <circle
-          cx="50"
-          cy="50"
-          r={ringRadius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="9"
-          className="text-white/10"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={ringRadius}
-          fill="none"
-          stroke={color}
-          strokeWidth="9"
-          strokeLinecap="round"
-          strokeDasharray={ringCircumference}
-          strokeDashoffset={ringCircumference * (1 - (filled ? progress : 0))}
-          className="motion-safe:transition-[stroke-dashoffset] motion-safe:duration-700 motion-safe:ease-out"
-        />
-      </svg>
-      <span className="text-2xl font-bold tabular-nums text-white">{score}</span>
-    </div>
+    <p className="text-2xl font-bold" style={{ color }}>
+      {text}
+    </p>
   );
 }
 
@@ -724,18 +802,17 @@ function WordChip({
   selected: boolean;
   onClick: () => void;
 }) {
-  const grade = gradeFor(word.score);
+  const color = wordStatusColors[wordStatus(word)];
 
   return (
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={`${word.word}: ${word.score}`}
       onClick={onClick}
       className={`min-h-11 border border-b-4 px-3 text-xl font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
         selected ? "bg-white/[0.09]" : "bg-black hover:bg-white/[0.04]"
       }`}
-      style={{ color: grade.color, borderColor: grade.color }}
+      style={{ color, borderColor: color }}
     >
       {word.word}
     </button>
@@ -749,7 +826,7 @@ function WordDetail({
   word: PronunciationWord;
   copy: PanelCopy;
 }) {
-  const grade = gradeFor(word.score);
+  const color = wordStatusColors[wordStatus(word)];
   const expectedIpa = formatIpa(word.ipa, word.phonemes);
   // The current server sends no per-word "heard" data (undefined), so the
   // column only shows when it does; null means the word wasn't heard.
@@ -761,10 +838,12 @@ function WordDetail({
         hasHeard ? "sm:grid-cols-2" : ""
       }`}
     >
-      <div className={`flex items-center gap-3 ${hasHeard ? "sm:col-span-2" : ""}`}>
-        <p className="text-xl font-semibold text-white">{word.word}</p>
-        <ScoreTag score={word.score} color={grade.color} />
-      </div>
+      <p
+        className={`text-xl font-semibold ${hasHeard ? "sm:col-span-2" : ""}`}
+        style={{ color }}
+      >
+        {word.word}
+      </p>
       <div>
         <p className={labelClassName}>{copy.sayItLike}</p>
         <p className="mt-1 text-lg font-semibold text-white">{word.soundsLike}</p>
@@ -788,17 +867,6 @@ function WordDetail({
   );
 }
 
-function ScoreTag({ score, color }: { score: number; color: string }) {
-  return (
-    <span
-      className="inline-flex h-7 min-w-10 shrink-0 items-center justify-center border-2 px-1.5 text-xs font-bold tabular-nums"
-      style={{ borderColor: color, color }}
-    >
-      {score}
-    </span>
-  );
-}
-
 export function IssueItem({
   issue,
   words,
@@ -808,18 +876,16 @@ export function IssueItem({
   words: PronunciationWord[];
   copy: PanelCopy;
 }) {
-  const match = words.find(
-    (word) => word.word.toLowerCase() === issue.word.toLowerCase(),
-  );
+  const match = findWord(words, issue.word);
 
   return (
     <li className="space-y-2 border border-white/10 bg-black p-3">
-      <div className="flex items-center gap-2">
-        {match ? (
-          <ScoreTag score={match.score} color={gradeFor(match.score).color} />
-        ) : null}
-        <p className="font-semibold text-white">{issue.word}</p>
-      </div>
+      <p
+        className="font-semibold text-white"
+        style={match ? { color: wordStatusColors[wordStatus(match)] } : undefined}
+      >
+        {issue.word}
+      </p>
       <p className="text-sm leading-6 text-white/70">{issue.message}</p>
       {issue.tip ? (
         <p className="border-l-2 border-white/30 pl-3 text-sm leading-6 text-white/70">

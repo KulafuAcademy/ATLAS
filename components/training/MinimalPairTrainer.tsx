@@ -127,9 +127,8 @@ const trainerCopy = {
     sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
     aiChecking: "Checking your pronunciation…",
-    aiScore: (score: number, verdict: string) =>
-      `Score ${score} · ${verdict}. See the details below.`,
-    aiFailed: "Couldn't score that one. See below and try again.",
+    aiResult: (verdict: string) => `${verdict} · See the details below.`,
+    aiFailed: "Couldn't check that one. See below and try again.",
     micUnavailable: "The microphone isn't available. See below.",
     sayThis: "Say this",
     readThis: "Read this",
@@ -189,9 +188,8 @@ const trainerCopy = {
       `カウントダウン後に「${word}」を発音してください。`,
     saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
     aiChecking: "発音をチェックしています…",
-    aiScore: (score: number, verdict: string) =>
-      `スコア ${score}・${verdict}。くわしくは下を見てね。`,
-    aiFailed: "スコアを出せませんでした。下を見て、もう一度ためしてね。",
+    aiResult: (verdict: string) => `${verdict}・くわしくは下を見てね。`,
+    aiFailed: "チェックできませんでした。下を見て、もう一度ためしてね。",
     micUnavailable: "マイクが使えません。下を見てください。",
     sayThis: "これを言おう",
     readThis: "これを読もう",
@@ -669,7 +667,7 @@ function PairPracticeCard({
       return;
     }
 
-    const { score, grade } = outcome.result;
+    const { grade } = outcome.result;
     const passed = grade.letter === "A" || grade.letter === "B";
     const verdict =
       gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict;
@@ -679,7 +677,8 @@ function PairPracticeCard({
     } else {
       playIncorrectSound();
     }
-    showFeedback(kind, passed ? "success" : "error", copy.aiScore(score, verdict));
+    // Not passing is "neutral", not "error": no ❌ for a child who tried.
+    showFeedback(kind, passed ? "success" : "neutral", copy.aiResult(verdict));
   }
 
   function startPronunciationTest(target: QuizTarget) {
