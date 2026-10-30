@@ -534,12 +534,15 @@ function PairPracticeCard({
   // The answer countdown ends as soon as the recognizer finishes or fails.
   useEffect(() => {
     if (countdown?.phase === "answer" && !isChecking) {
-      clearCountdown();
+      const timer = window.setTimeout(clearCountdown, 0);
+      return () => window.clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countdown, isChecking]);
 
   function startQuiz() {
+    // Random selection happens only in response to the user's quiz-start action.
+    // eslint-disable-next-line react-hooks/purity
     const target: QuizTarget = Math.random() > 0.5 ? "A" : "B";
     const word = target === "A" ? pair.wordA : pair.wordB;
 
