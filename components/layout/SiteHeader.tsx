@@ -10,6 +10,16 @@ import { navItems } from "@/lib/navigation";
 export function SiteHeader() {
   const { text } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [publicAccess, setPublicAccess] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/staff/me", { cache: "no-store" })
+      .then((response) => response.json() as Promise<{ publicAccess?: boolean }>)
+      .then((session) => { if (!cancelled) setPublicAccess(session.publicAccess === true); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   // Close the mobile menu with Escape.
   useEffect(() => {
@@ -50,7 +60,7 @@ export function SiteHeader() {
             ))}
           </nav>
           <LanguageToggle />
-          <a href="/staff/logout" className="hidden text-xs text-white/55 transition hover:text-white min-[500px]:inline">Sign out</a>
+          {!publicAccess && <a href="/staff/logout" className="hidden text-xs text-white/55 transition hover:text-white min-[500px]:inline">Sign out</a>}
           {/* Phones: links move into a menu. */}
           <button
             type="button"
@@ -89,7 +99,7 @@ export function SiteHeader() {
           aria-label="Primary navigation"
           className="border-t border-white/10 px-6 pb-2 min-[500px]:hidden"
         >
-          <a href="/staff/logout" onClick={closeMenu} className="block border-b border-white/10 py-4 text-base text-white/70">Sign out</a>
+          {!publicAccess && <a href="/staff/logout" onClick={closeMenu} className="block border-b border-white/10 py-4 text-base text-white/70">Sign out</a>}
           {navItems.map((item) => (
             <Link
               key={item.href}
