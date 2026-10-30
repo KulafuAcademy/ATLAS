@@ -14,10 +14,10 @@ export function getPublicAudioPath(
 }
 
 // Builds the public MP3 path for a sound page example word.
-// Files are fetched under /public/(vowel|consonant)/(word).mp3
-// Example: /public/vowel/see.mp3
+// Files are fetched under /public/sound-examples/(vowel|consonant)/(word).mp3
+// Example: /public/sound-examples/vowel/see.mp3
 export function getSoundAudioPath(category: "vowel" | "consonant", word: string) {
-  return `/${category}/${encodeURIComponent(word)}.mp3`;
+  return `/sound-examples/${category}/${encodeURIComponent(word)}.mp3`;
 }
 
 // Turns a sentence into its audio file name.
