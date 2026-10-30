@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { getSoundAudioPath, useRecordedAudio } from "@/components/training/audio";
+import { getSoundAudioPath, useExclusiveAudio } from "@/components/training/audio";
 import { formatCategory, getSymbolCopy, uiText } from "@/lib/i18n";
 import type { IpaCategory, IpaSymbol } from "@/types/ipa";
 
@@ -20,7 +20,8 @@ export function SoundLibrary({ symbols }: SoundLibraryProps) {
   const [category, setCategory] = useState<IpaCategory | "all">("all");
   const [query, setQuery] = useState("");
   // Plays the recorded word when one exists, otherwise speech synthesis.
-  const play = useRecordedAudio();
+  // Only one word plays at a time; the others are locked until it ends.
+  const { activeId, play } = useExclusiveAudio();
 
   const visibleSymbols = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -127,19 +128,37 @@ export function SoundLibrary({ symbols }: SoundLibraryProps) {
 
                 <div>
                   <div className="mt-5 flex flex-wrap gap-2">
-                    {symbol.exampleWords.map((word) => (
-                      <button
-                        key={word}
-                        type="button"
-                        onClick={() =>
-                          play(getSoundAudioPath(symbol.category, word), word, 0.8)
-                        }
-                        className="inline-flex items-center gap-1.5 border border-white/10 px-2.5 py-1 text-xs text-white/65 transition hover:border-white/35 hover:text-white"
-                      >
-                        <SpeakerIcon className="h-3 w-3" />
-                        {word}
-                      </button>
-                    ))}
+                    {symbol.exampleWords.map((word) => {
+                      // A word can be on more than one card (e.g. "see"),
+                      // so the sound is part of the id.
+                      const id = `${symbol.slug}:${word}`;
+                      const playing = activeId === id;
+                      const locked = activeId !== null && !playing;
+
+                      return (
+                        <button
+                          key={word}
+                          type="button"
+                          disabled={locked}
+                          aria-pressed={playing}
+                          onClick={() =>
+                            play(id, getSoundAudioPath(symbol.category, word), word, 0.8)
+                          }
+                          className={`inline-flex items-center gap-1.5 border px-2.5 py-1 text-xs transition ${
+                            playing
+                              ? "border-white bg-white text-black"
+                              : `border-white/10 text-white/65 ${
+                                  locked ? "" : "hover:border-white/35 hover:text-white"
+                                }`
+                          }`}
+                        >
+                          <SpeakerIcon
+                            className={`h-3 w-3 ${playing ? "animate-pulse" : ""}`}
+                          />
+                          {word}
+                        </button>
+                      );
+                    })}
                   </div>
                   <Link
                     href={`/sounds/${symbol.slug}`}
