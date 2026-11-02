@@ -371,8 +371,8 @@ function GuidedBox({
 
 /**
  * A face that needs no reading: a smile to get ready, a wide-open
- * mouth to speak, happy closed eyes to rest, and eyebrows (one raised) with a
- * sideways look after the last try.
+ * mouth to speak, happy closed eyes to rest, and a raised eyebrow with a hand
+ * on the chin after the last try.
  */
 function Face({
   expression,
@@ -387,17 +387,25 @@ function Face({
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <circle cx="50" cy="50" r="34" strokeWidth="4" />
-
       {expression === "thinking" ? (
         <>
-          <circle cx="43" cy="41" r="4" fill="currentColor" stroke="none" />
-          <circle cx="65" cy="41" r="4" fill="currentColor" stroke="none" />
-          <path d="M36 32q6-3 12-1M56 31q6-5 12-2" strokeWidth="4" />
-          <path d="M41 65l17-4" strokeWidth="4" />
+          {/* The head's outline leaves a gap where the hand sits. */}
+          <path d="M41 82.8A34 34 0 1 0 24.1 72" strokeWidth="4" />
+          <ellipse cx="42" cy="43" rx="3.5" ry="4.5" fill="currentColor" stroke="none" />
+          <ellipse cx="61" cy="44" rx="3.5" ry="4.5" fill="currentColor" stroke="none" />
+          <path d="M33 33q6-7 13-1M54 33q7-2 14 0" strokeWidth="4" />
+          <path d="M44 58q8-1 14 3" strokeWidth="4" />
+          <path
+            d="M25 61q3-4 6 0l2 9 26-4q5 1 3 5l-20 6q1 6-4 8h-7q-6-2-6-9z"
+            strokeWidth="3"
+          />
         </>
-      ) : null}
+      ) : (
+        <circle cx="50" cy="50" r="34" strokeWidth="4" />
+      )}
+
       {expression === "rest" ? (
         <path d="M33 45q6-8 12 0M55 45q6-8 12 0" strokeWidth="4" />
       ) : null}
