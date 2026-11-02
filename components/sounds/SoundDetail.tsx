@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { speakWord } from "@/components/sounds/speak";
+import { getSoundAudioPath, useExclusiveAudio } from "@/components/training/audio";
 import {
   formatBooleanRounded,
   formatCategory,
@@ -26,6 +26,9 @@ type SoundDetailProps = {
 export function SoundDetail({ symbol, related, learningStep, next }: SoundDetailProps) {
   const { language, text } = useLanguage();
   const copy = getSymbolCopy(symbol, language);
+  // Plays the recorded word when one exists, otherwise speech synthesis.
+  // Only one word plays at a time; the others are locked until it ends.
+  const { activeId, play } = useExclusiveAudio();
   const facts: Array<[string, string]> =
     symbol.category === "vowel"
       ? [
@@ -90,17 +93,32 @@ export function SoundDetail({ symbol, related, learningStep, next }: SoundDetail
 
           <Panel title={text(uiText.exampleWords)}>
             <div className="grid gap-3 sm:grid-cols-3">
-              {symbol.exampleWords.map((word) => (
-                <button
-                  key={word}
-                  type="button"
-                  onClick={() => speakWord(word, 0.72)}
-                  className="flex items-center justify-center gap-2 border border-white/10 p-4 text-lg text-white transition hover:border-white/35"
-                >
-                  <SpeakerIcon className="h-4 w-4 text-white/50" />
-                  {word}
-                </button>
-              ))}
+              {symbol.exampleWords.map((word) => {
+                const playing = activeId === word;
+                const locked = activeId !== null && !playing;
+
+                return (
+                  <button
+                    key={word}
+                    type="button"
+                    disabled={locked}
+                    aria-pressed={playing}
+                    onClick={() =>
+                      play(word, getSoundAudioPath(symbol.category, word), word)
+                    }
+                    className={`flex items-center justify-center gap-2 border p-4 text-lg transition ${
+                      playing
+                        ? "border-white bg-white text-black"
+                        : `border-white/10 text-white ${locked ? "" : "hover:border-white/35"}`
+                    }`}
+                  >
+                    <SpeakerIcon
+                      className={`h-4 w-4 ${playing ? "animate-pulse text-black" : "text-white/50"}`}
+                    />
+                    {word}
+                  </button>
+                );
+              })}
             </div>
           </Panel>
 
