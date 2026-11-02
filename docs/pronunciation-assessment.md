@@ -15,14 +15,15 @@ Every single-word check, on the Practice page and in step 3 of the pair page, op
 ```
 tap "Say right" ─► ask for the mic once (one stream for all 3 tries)
 3 times:
-  GET READY  READY_MS (3000)              dark box, closed mouth, 3-2-1 with a tick
+  GET READY  READY_MS (3000)              dark box, smiling face, 3-2-1 with a tick
                                           each second (as for the tongue twister), hint
   go sound   200 ms, then the recorder starts (a new MediaRecorder, no timeslice)
   SPEAK      SPEAK_MS (2500), or SPEAK_LONG_MS (3500) for 9+ letters
                                           white box, open mouth, emptying bar,
                                           seconds left, mic level meter
   stop event, then
-  REST       REST_MS (1000)               dashed box, closed eyes, "Z", dot done
+  REST       REST_MS (1000)               dashed box, happy closed eyes (a thinking
+                                          face after the last try), dot done
 release the mic ─► POST /analyze-word ─► results
 ```
 

@@ -337,7 +337,11 @@ function GuidedBox({
         <ProgressDots doneTries={doneTries} current={tryNumber} />
       </div>
 
-      <Face phase={phase} />
+      <Face
+        expression={
+          phase === "rest" && tryNumber === TRY_COUNT ? "thinking" : phase
+        }
+      />
 
       {phase === "rest" ? null : (
         <SecondsLeft
@@ -366,13 +370,18 @@ function GuidedBox({
 }
 
 /**
- * A face that needs no reading: a closed mouth to get ready, a wide-open
- * mouth to speak, and closed eyes with "Z" to rest.
+ * A face that needs no reading: a smile to get ready, a wide-open
+ * mouth to speak, happy closed eyes to rest, and a raised eyebrow and sideways
+ * look after the last try.
  */
-function Face({ phase }: { phase: "ready" | "speak" | "rest" }) {
+function Face({
+  expression,
+}: {
+  expression: "ready" | "speak" | "rest" | "thinking";
+}) {
   return (
     <svg
-      viewBox="10 5 85 90"
+      viewBox="10 10 80 80"
       aria-hidden="true"
       className="h-16 w-16 shrink-0"
       fill="none"
@@ -381,20 +390,27 @@ function Face({ phase }: { phase: "ready" | "speak" | "rest" }) {
     >
       <circle cx="50" cy="50" r="34" strokeWidth="4" />
 
-      {phase === "rest" ? (
+      {expression === "thinking" ? (
         <>
-          <path d="M34 43q5 5 10 0M56 43q5 5 10 0" strokeWidth="4" />
-          <path d="M43 62q7 5 14 0" strokeWidth="4" />
-          <path d="M78 10h12l-12 13h12" strokeWidth="4" strokeLinejoin="round" />
+          <circle cx="43" cy="41" r="4" fill="currentColor" stroke="none" />
+          <circle cx="65" cy="41" r="4" fill="currentColor" stroke="none" />
+          <path d="M56 32q6-5 12-2" strokeWidth="4" />
+          <path d="M41 65l17-4" strokeWidth="4" />
         </>
-      ) : (
+      ) : null}
+      {expression === "rest" ? (
+        <path d="M33 45q6-8 12 0M55 45q6-8 12 0" strokeWidth="4" />
+      ) : null}
+      {expression === "ready" || expression === "speak" ? (
         <>
           <circle cx="39" cy="42" r="4" fill="currentColor" stroke="none" />
           <circle cx="61" cy="42" r="4" fill="currentColor" stroke="none" />
         </>
-      )}
-      {phase === "ready" ? <path d="M42 62h16" strokeWidth="4" /> : null}
-      {phase === "speak" ? (
+      ) : null}
+      {expression === "ready" || expression === "rest" ? (
+        <path d="M38 59q12 12 24 0" strokeWidth="4" />
+      ) : null}
+      {expression === "speak" ? (
         <ellipse cx="50" cy="63" rx="12" ry="13" fill="currentColor" stroke="none" />
       ) : null}
     </svg>
