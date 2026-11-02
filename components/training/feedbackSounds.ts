@@ -72,6 +72,38 @@ function getCountdownAudioContext() {
   return countdownAudioContext;
 }
 
+// Call from a tap, so iOS Safari lets the context play sounds later on.
+export function unlockCountdownAudio() {
+  getCountdownAudioContext();
+}
+
+const chimeSeconds = 0.12;
+// Audio is still leaving the speakers for a moment after the oscillator ends.
+const chimeTailMs = 40;
+const chimeResumeTimeoutMs = 100;
+
+// The short, soft "now" chime. Resolves when it's over, and straight away if
+// the audio can't play, so the flow never waits on a silent chime.
+export async function playReadyChime() {
+  const audioContext = getCountdownAudioContext();
+  if (!audioContext) return;
+
+  const isRunning = () => audioContext.state === "running";
+
+  if (!isRunning()) {
+    await Promise.race([
+      audioContext.resume().catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, chimeResumeTimeoutMs)),
+    ]);
+    if (!isRunning()) return;
+  }
+
+  playTone(audioContext, 880, 0, chimeSeconds, "sine");
+  await new Promise((resolve) =>
+    setTimeout(resolve, chimeSeconds * 1000 + chimeTailMs),
+  );
+}
+
 // Short, soft tick for each "get ready" second.
 export function playCountdownTick() {
   const audioContext = getCountdownAudioContext();

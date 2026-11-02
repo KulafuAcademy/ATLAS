@@ -30,21 +30,23 @@ export type Recording = {
   seconds: number;
 };
 
+export const micConstraints = { echoCancellation: true, noiseSuppression: true };
+
 export type RecorderStatus = "idle" | "starting" | "recording";
 
-function pickMimeType() {
+export function pickMimeType() {
   if (typeof MediaRecorder.isTypeSupported !== "function") return undefined;
 
   return mimeTypeCandidates.find((type) => MediaRecorder.isTypeSupported(type));
 }
 
-function fileNameFor(mimeType: string) {
-  if (mimeType.includes("mp4")) return "recording.mp4";
-  if (mimeType.includes("ogg")) return "recording.ogg";
-  return "recording.webm";
+export function audioExtensionFor(mimeType: string) {
+  if (mimeType.includes("mp4")) return "mp4";
+  if (mimeType.includes("ogg")) return "ogg";
+  return "webm";
 }
 
-function toRecorderError(error: unknown): RecorderError {
+export function toRecorderError(error: unknown): RecorderError {
   const name = error instanceof DOMException ? error.name : "";
 
   if (name === "NotAllowedError" || name === "SecurityError") return "denied";
@@ -54,7 +56,7 @@ function toRecorderError(error: unknown): RecorderError {
   return "failed";
 }
 
-function stopTracks(stream: MediaStream | null) {
+export function stopTracks(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
@@ -143,7 +145,7 @@ export function useVoiceRecorder({
     }
 
     preparingRef.current = navigator.mediaDevices
-      .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      .getUserMedia({ audio: micConstraints })
       .then((micStream) => {
         if (!mountedRef.current) {
           stopTracks(micStream);
@@ -234,7 +236,7 @@ export function useVoiceRecorder({
       const next = {
         blob,
         url: URL.createObjectURL(blob),
-        fileName: fileNameFor(type),
+        fileName: `recording.${audioExtensionFor(type)}`,
         seconds: Math.min(
           (performance.now() - startedAt) / 1000,
           maxRecordingSeconds,

@@ -8,6 +8,35 @@ The **Practice page** (`/practice`, Speaking mode) also scores single words and 
 
 The server is a separate project. This app only records audio, sends it, and shows the result.
 
+## Guided "say it 3 times" flow (single words)
+
+Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordModal`. Sentences keep the one-shot flow and `POST /analyze`.
+
+```
+tap "Say right" ─► first screen: word, listen button, slow-speech hint, Start
+tap Start       ─► ask for the mic once (one stream for all 3 tries)
+3 times:
+  GET READY  READY_MS (1500)              calm, closed mouth, seconds left, hint
+  chime      ≤ 120 ms, then the recorder starts (a new MediaRecorder, no timeslice)
+  SPEAK      SPEAK_MS (2500), or SPEAK_LONG_MS (3500) for 9+ letters
+                                          bright, open mouth, emptying ring,
+                                          seconds left, mic level meter
+  stop event, then
+  REST       REST_MS (1000)               darker calm, closed eyes, "Zz", dot done
+release the mic ─► POST /analyze-word ─► results
+```
+
+- **Pace:** the constants are at the top of `lib/guidedWordSession.ts`. Never shorten or skip a phase to speed things up: the fixed pace is what keeps children from rushing.
+- **Keeping clips clean:** SPEAK only appears once the chime is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
+- **Stopping:** the Stop button, closing the modal, hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
+- **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is mapped back to the child's real try number. If no try produced a clip, the "couldn't hear you" message shows without an upload.
+- **Upload errors:** network and 5xx errors keep the clips and offer "send again". 4xx errors can't change on a resend, so they only offer the whole flow again.
+- **No scores between tries.** The results name the best try, star its dot and say how many tries passed ("2/3", counting grade A or B). With none passed, an encouraging line replaces "0/3". The tries' scores in `attempts[]` aren't shown to children.
+- **Language:** follows the site's language toggle. The Japanese copy uses hiragana with only grade 1-2 kanji, and `resultCopy` swaps the harder words of the shared result UI. Text from the server (`messageJa`, `tipJa`, `feedback`) is shown as sent.
+- **Reduced motion:** the ring doesn't animate; the seconds left and the state changes remain.
+
+`lib/guidedWordSession.ts` has the state machine with no browser code, tested in `lib/guidedWordSession.test.mjs`. `useGuidedWordSession.ts` supplies the browser side (mic, recorder, chime, upload).
+
 ## Files
 
 | File | What it does |
@@ -15,6 +44,9 @@ The server is a separate project. This app only records audio, sends it, and sho
 | [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
 | [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
 | [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx) | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `Verdict`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`. |
+| [`components/pronunciation/GuidedWordModal.tsx`](../components/pronunciation/GuidedWordModal.tsx) | The guided 3-try flow's screens: first screen, GET READY / SPEAK / REST, loading and results. |
+| [`components/pronunciation/useGuidedWordSession.ts`](../components/pronunciation/useGuidedWordSession.ts) | Connects `lib/guidedWordSession.ts` to the mic, MediaRecorder, chime and upload. Cancels when the page is hidden or on unmount. |
+| [`lib/guidedWordSession.ts`](../lib/guidedWordSession.ts) | The flow's state machine and its timing constants. |
 | [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
 | [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts) | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL. |
 | [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts) | Polls `GET /health` every 30 s. |
@@ -138,6 +170,17 @@ Nullable fields:
 { "ok": false, "error": "too_short_or_quiet", "message": "Didn't catch that - the recording was too short or too quiet." }
 ```
 
+### `POST /analyze-word` (multipart/form-data)
+
+| Field | Value |
+| --- | --- |
+| `text` | The single word (more than one word returns 400) |
+| `audio` | One per try, in order, 1-3 times. Each extension must match its format: `try1.webm`, or `try1.mp4` on Safari. Max 10 MB each. |
+
+The 200 response has the same fields as `/analyze`, for the **best** try, plus `bestAttempt` and `attempts[]` (`{ attempt, ok, score, grade, heard }` or `{ attempt, ok: false, error }`, where `error` is `too_short_or_quiet` or `could_not_decode`). A failed try doesn't fail the request. If no try is usable, it returns 200 with `{ "ok": false, "error": "too_short_or_quiet", "message": "...", "bestAttempt": null, "attempts": [...] }`. If every clip is undecodable, it returns 415. Other errors are as below.
+
+### Errors
+
 **HTTP errors** return `{ "detail": "..." }`. `analyzePronunciation()` throws `PronunciationApiError` with `status` and `detail`:
 
 | Status | Meaning | Shown to the learner |
@@ -180,6 +223,7 @@ Rules:
   - The same amber for the `focus` sound boxes, "different sound" in the IPA details, and the C/D verdict (`childVerdictColor`).
 - A step that didn't pass shows a neutral summary, not ❌.
 - Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
+- The one exception is the guided flow's phase panels: one bright accent for SPEAK and two calm tones (`phaseStyles` in `GuidedWordModal.tsx`).
 - If the server's bands or status cutoffs ever change, update `pronunciationGrades.ts` to match.
 
 ## Copy and language
@@ -229,3 +273,11 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] The home page lesson grid still shows one combined card per pair.
 - [ ] The home page lesson grid still uses the browser speech check, and doesn't poll `/health`.
 - [ ] Layout works at phone width (~360 px) with no horizontal scroll.
+- [ ] **Guided flow, in Chrome and on a real iPhone (Safari, over HTTPS):** a word's "Say" shows the first screen without playing any audio, and the listen button plays the model. Start asks for the mic once, then all 3 tries run with no tapping.
+- [ ] The chime is audible before each SPEAK, is not in the clips, and the first sound of the word isn't cut off.
+- [ ] iOS: the second and third clips are not empty and upload as `.mp4`; audio still plays after the mic has been open; the mic indicator goes off at upload.
+- [ ] iOS: switching app mid-try returns to the first screen with the mic off.
+- [ ] GET READY and SPEAK count down, the level meter moves during SPEAK, and no score shows between tries.
+- [ ] The results name the best try, star its dot and show the "2/3" tally, in both languages. "Try again" re-runs all 3 tries.
+- [ ] Offline during upload: "send again" works without re-recording.
+- [ ] With "reduce motion" on, the ring doesn't animate but the numbers still count down.

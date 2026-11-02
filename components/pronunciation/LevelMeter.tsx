@@ -16,9 +16,12 @@ const meterWeights = [0.45, 0.75, 1, 0.75, 0.45];
 export function LevelMeter({
   stream,
   className = "",
+  onBright = false,
 }: {
   stream: MediaStream;
   className?: string;
+  /** Dark bars, for a bright background. */
+  onBright?: boolean;
 }) {
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
@@ -75,7 +78,9 @@ export function LevelMeter({
   return (
     <div
       aria-hidden="true"
-      className={`flex h-10 items-center justify-center gap-1.5 border border-white/10 bg-white/[0.02] ${className}`}
+      className={`flex h-10 items-center justify-center gap-1.5 border ${
+        onBright ? "border-black/20 bg-black/[0.04]" : "border-white/10 bg-white/[0.02]"
+      } ${className}`}
     >
       {meterWeights.map((_, index) => (
         <span
@@ -83,7 +88,7 @@ export function LevelMeter({
           ref={(element) => {
             barRefs.current[index] = element;
           }}
-          className="h-6 w-1.5 origin-center bg-white"
+          className={`h-6 w-1.5 origin-center ${onBright ? "bg-black" : "bg-white"}`}
           style={{ transform: "scaleY(0.12)" }}
         />
       ))}

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import { GuidedWordModal } from "@/components/pronunciation/GuidedWordModal";
+import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordModal";
 import { LevelMeter } from "@/components/pronunciation/LevelMeter";
 import { PronunciationPanel } from "@/components/pronunciation/PronunciationPanel";
 import {
@@ -323,6 +325,7 @@ function PairPracticeCard({
   const tongueTwister = getTongueTwister(pair);
   const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
   const aiResultsRef = useRef<HTMLDivElement | null>(null);
+  const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
 
   // Bring a freshly loaded AI result into view.
   useEffect(() => {
@@ -700,10 +703,15 @@ function PairPracticeCard({
 
   function startPronunciationTest(target: QuizTarget) {
     if (useAiAssessment) {
-      startAiAssessment(
-        "pronunciation",
-        target === "A" ? pair.wordA : pair.wordB,
-      );
+      const word = target === "A" ? pair.wordA : pair.wordB;
+
+      // Stop any step 1 audio, so it can't play into the recordings.
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setGuidedTarget({
+        word,
+        audioPath: getPublicAudioPath("words", pair.soundFocus, word),
+      });
       return;
     }
 
@@ -1211,6 +1219,18 @@ function PairPracticeCard({
       {resultsKind === "pronunciation" ? resultsPanel : null}
       {tongueTwisterStep}
       {resultsKind === "tongueTwister" ? resultsPanel : null}
+      <GuidedWordModal
+        target={guidedTarget}
+        onClose={() => setGuidedTarget(null)}
+        onResult={({ grade }) => {
+          // The details are in the modal, so the step only gets the verdict.
+          showFeedback(
+            "pronunciation",
+            grade.letter === "A" || grade.letter === "B" ? "success" : "neutral",
+            gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict,
+          );
+        }}
+      />
     </div>
   );
 }

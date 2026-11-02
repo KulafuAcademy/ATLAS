@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
+import { GuidedWordModal } from "@/components/pronunciation/GuidedWordModal";
+import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordModal";
 import {
   useWordCheck,
   WordAssessmentModal,
@@ -671,6 +673,7 @@ function SpeakingPairs({
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const check = useWordCheck();
+  const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
   const pair = pairs[index];
 
   if (!pair) return null;
@@ -703,9 +706,24 @@ function SpeakingPairs({
             {index + 1} / {pairs.length}
           </span>
         </div>
-        <PairCard key={pair.id} pair={pair} onCheck={check.start} />
+        <PairCard
+          key={pair.id}
+          pair={pair}
+          onCheck={(target) => {
+            // A single word gets the guided 3 tries; a sentence is checked once.
+            if (target.kind === "word") {
+              setGuidedTarget(target);
+            } else {
+              check.start(target);
+            }
+          }}
+        />
       </section>
       <WordAssessmentModal check={check} />
+      <GuidedWordModal
+        target={guidedTarget}
+        onClose={() => setGuidedTarget(null)}
+      />
     </>
   );
 }

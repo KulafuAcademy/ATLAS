@@ -23,12 +23,27 @@ export function getSentenceFilename(sentence: string) {
     .replace(/^-|-$/g, "");
 }
 
+// Dispatch this to stop every useRecordedAudio clip, e.g. before recording.
+export const stopRecordedAudioEvent = "atlas:stop-recorded-audio";
+
 // Plays a recorded MP3, falling back to speech synthesis when the file is
 // missing or fails to play. Only one clip plays at a time per component.
 export function useRecordedAudio() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => () => audioRef.current?.pause(), []);
+  useEffect(() => {
+    const stop = () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+    };
+
+    window.addEventListener(stopRecordedAudioEvent, stop);
+
+    return () => {
+      window.removeEventListener(stopRecordedAudioEvent, stop);
+      audioRef.current?.pause();
+    };
+  }, []);
 
   return function play(path: string | null, fallbackText: string, rate = 0.72) {
     audioRef.current?.pause();

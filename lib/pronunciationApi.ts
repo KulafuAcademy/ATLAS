@@ -128,6 +128,37 @@ export type AnalyzeRejected = {
 
 export type AnalyzeResponse = AnalyzeSuccess | AnalyzeRejected;
 
+/** One try in a POST /analyze-word request. Children never see its score. */
+export type WordAttempt =
+  | {
+      /** 1-based position of the clip in the request. */
+      attempt: number;
+      ok: true;
+      score: number;
+      grade: PronunciationGrade;
+      heard: PhonemeTranscription;
+    }
+  | {
+      attempt: number;
+      ok: false;
+      error: "too_short_or_quiet" | "could_not_decode" | (string & {});
+    };
+
+/** The same fields as /analyze, for the best try. */
+export type AnalyzeWordSuccess = AnalyzeSuccess & {
+  /** Matches `attempts[].attempt`. */
+  bestAttempt: number;
+  attempts: WordAttempt[];
+};
+
+/** Returned with HTTP 200 when no try could be scored. */
+export type AnalyzeWordRejected = AnalyzeRejected & {
+  bestAttempt: null;
+  attempts: WordAttempt[];
+};
+
+export type AnalyzeWordResponse = AnalyzeWordSuccess | AnalyzeWordRejected;
+
 /**
  * An HTTP error from the server (400, 401, 413, 415, ...), or `status: 0`
  * when the server couldn't be reached at all.
@@ -215,11 +246,41 @@ export async function analyzePronunciation({
   form.append("audio", audio, fileName);
   form.append("text", text);
 
+  return (await postForm("/analyze", form, signal)) as AnalyzeResponse;
+}
+
+/**
+ * POST /analyze-word. Scores 1-3 separately recorded tries of one word and
+ * returns the best. Throws PronunciationApiError for HTTP and network errors.
+ */
+export async function analyzeWordAttempts({
+  clips,
+  text,
+  signal,
+}: {
+  /** In the order they were said. Each extension must match its blob type. */
+  clips: { blob: Blob; fileName: string }[];
+  /** The single word the learner was asked to say. */
+  text: string;
+  signal?: AbortSignal;
+}): Promise<AnalyzeWordResponse> {
+  if (clips.some((clip) => clip.blob.size > maxAudioBytes)) {
+    throw new PronunciationApiError(413, "A recording is larger than 10 MB.");
+  }
+
+  const form = new FormData();
+  form.append("text", text);
+  clips.forEach((clip) => form.append("audio", clip.blob, clip.fileName));
+
+  return (await postForm("/analyze-word", form, signal)) as AnalyzeWordResponse;
+}
+
+async function postForm(path: string, form: FormData, signal?: AbortSignal) {
   let response: Response;
 
   try {
     // No Content-Type: the browser adds it with the multipart boundary.
-    response = await fetch(`${pronunciationApiUrl}/analyze`, {
+    response = await fetch(`${pronunciationApiUrl}${path}`, {
       method: "POST",
       headers: requestHeaders(),
       body: form,
@@ -243,5 +304,5 @@ export async function analyzePronunciation({
     throw new PronunciationApiError(502, "The server sent an unexpected response.");
   }
 
-  return body as AnalyzeResponse;
+  return body;
 }

@@ -431,7 +431,7 @@ export function findWord(words: PronunciationWord[], text: string) {
   return words.find((word) => word.word.toLowerCase() === text.toLowerCase());
 }
 
-function AssessmentResults({
+export function AssessmentResults({
   result,
   target,
   copy,
