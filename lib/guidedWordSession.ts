@@ -6,7 +6,9 @@ import type {
 
 // The fixed pace and visible gaps keep children from rushing. Tune them here,
 // but don't skip a phase.
-export const READY_MS = 1500;
+export const READY_MS = 3000;
+/** A countdown tick plays at the start of each of these during READY_MS. */
+export const READY_TICK_MS = 1000;
 export const SPEAK_MS = 2500;
 /** For words of LONG_WORD_LETTERS or more. */
 export const SPEAK_LONG_MS = 3500;
@@ -68,8 +70,10 @@ export type SessionEffects = {
   releaseMic: () => void;
   /** Stops any model audio, so it can't end up in a recording. */
   stopAudio: () => void;
-  /** Resolves when the chime has finished. */
-  playChime: () => Promise<void>;
+  /** One tick of the get-ready countdown. Doesn't wait for it to finish. */
+  playTick: () => void;
+  /** Resolves when the "speak now" sound has finished. */
+  playGoSound: () => Promise<void>;
   /** Resolves once recording has really begun. Rejects if it can't. */
   startRecording: (tryNumber: number) => Promise<void>;
   /** Resolves on the recorder's stop event; null if nothing was captured. */
@@ -84,7 +88,7 @@ export type SessionEffects = {
   wait: (ms: number, signal: AbortSignal) => Promise<void>;
 };
 
-const initialState: SessionState = {
+export const initialSessionState: SessionState = {
   phase: "idle",
   tryNumber: null,
   doneTries: 0,
@@ -103,9 +107,9 @@ function errorStatus(error: unknown) {
  * The "say it 3 times" flow:
  *   idle -> (ready -> speak -> rest) x3 -> uploading -> result
  *
- * The child only sees "speak" once the chime is over and the recorder is
+ * The child only sees "speak" once the go sound is over and the recorder is
  * running, and "rest" only after the recorder's stop event, so a clip never
- * contains the chime and is always complete. A failed try doesn't break the
+ * contains the sound and is always complete. A failed try doesn't break the
  * rhythm: it just produces no clip.
  *
  * A run ends with cancel(), which leaves any awaiting step to notice that it
@@ -114,7 +118,7 @@ function errorStatus(error: unknown) {
 export class GuidedWordSession {
   readonly speakMs: number;
   private readonly effects: SessionEffects;
-  private state = initialState;
+  private state = initialSessionState;
   private listeners = new Set<() => void>();
   private run: AbortController | null = null;
   private clips: SessionClip[] = [];
@@ -147,7 +151,7 @@ export class GuidedWordSession {
     this.run = run;
     this.clips = [];
     this.effects.stopAudio();
-    this.setState({ ...initialState, requestingMic: true });
+    this.setState({ ...initialSessionState, requestingMic: true });
 
     const micError = await this.effects.requestMic();
     if (this.run !== run) return;
@@ -155,7 +159,7 @@ export class GuidedWordSession {
     if (micError) {
       this.run = null;
       this.effects.releaseMic();
-      this.setState({ ...initialState, micError });
+      this.setState({ ...initialSessionState, micError });
       return;
     }
 
@@ -190,7 +194,7 @@ export class GuidedWordSession {
     this.effects.discardRecording();
     this.effects.stopAudio();
     this.effects.releaseMic();
-    this.setState(initialState);
+    this.setState(initialSessionState);
   };
 
   /** Resolves to false if the run was cancelled along the way. */
@@ -199,10 +203,14 @@ export class GuidedWordSession {
     const isStale = () => this.run !== run;
 
     this.setState({ phase: "ready", tryNumber });
-    await effects.wait(READY_MS, run.signal);
-    if (isStale()) return false;
 
-    await effects.playChime();
+    for (let left = READY_MS; left > 0; left -= READY_TICK_MS) {
+      effects.playTick();
+      await effects.wait(Math.min(left, READY_TICK_MS), run.signal);
+      if (isStale()) return false;
+    }
+
+    await effects.playGoSound();
     if (isStale()) return false;
 
     const started = await effects.startRecording(tryNumber).then(

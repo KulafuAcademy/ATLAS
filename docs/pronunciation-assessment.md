@@ -10,14 +10,14 @@ The server is a separate project. This app only records audio, sends it, and sho
 
 ## Guided "say it 3 times" flow (single words)
 
-Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordPanel` in the page, right under the word's buttons. Sentences keep the one-shot flow and `POST /analyze`.
+Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordPanel` in the page, right under the word's buttons, with the word in a "Say this" card. When the tries end, `GuidedWordResults` shows a separate Results section below the step. The page owns the state with `useGuidedWordSession()`, like `useWordCheck()`. Sentences keep the one-shot flow and `POST /analyze`.
 
 ```
-tap "Say right" ─► first screen: word, listen button, slow-speech hint, Start
-tap Start       ─► ask for the mic once (one stream for all 3 tries)
+tap "Say right" ─► ask for the mic once (one stream for all 3 tries)
 3 times:
-  GET READY  READY_MS (1500)              dark box, closed mouth, seconds left, hint
-  chime      ≤ 120 ms, then the recorder starts (a new MediaRecorder, no timeslice)
+  GET READY  READY_MS (3000)              dark box, closed mouth, 3-2-1 with a tick
+                                          each second (as for the tongue twister), hint
+  go sound   200 ms, then the recorder starts (a new MediaRecorder, no timeslice)
   SPEAK      SPEAK_MS (2500), or SPEAK_LONG_MS (3500) for 9+ letters
                                           white box, open mouth, emptying bar,
                                           seconds left, mic level meter
@@ -27,8 +27,8 @@ release the mic ─► POST /analyze-word ─► results
 ```
 
 - **Pace:** the constants are at the top of `lib/guidedWordSession.ts`. Never shorten or skip a phase to speed things up: the fixed pace is what keeps children from rushing.
-- **Keeping clips clean:** SPEAK only appears once the chime is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
-- **Locked while running:** the rest of the page is dimmed and can't be tapped (`onRunningChange`), so a stray tap can't play audio into a recording.
+- **Keeping clips clean:** SPEAK only appears once the go sound is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
+- **Locked while running:** the rest of the page is dimmed and can't be tapped (`isRunning`), so a stray tap can't play audio into a recording.
 - **Stopping:** the Stop button, closing the panel (×), hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
 - **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is looked up among the clips that were sent. If no try produced a clip, the "couldn't hear you" message shows without an upload.
 - **Upload errors:** network and 5xx errors keep the clips and offer "send again". 4xx errors can't change on a resend, so they only offer the whole flow again.
@@ -36,7 +36,7 @@ release the mic ─► POST /analyze-word ─► results
 - **Language:** follows the site's language toggle. The Japanese copy uses hiragana with only grade 1-2 kanji, and `resultCopy` swaps the harder words of the shared result UI. Text from the server (`messageJa`, `tipJa`, `feedback`) is shown as sent.
 - **Reduced motion:** the bar doesn't animate; the seconds left and the state changes remain.
 
-`lib/guidedWordSession.ts` has the state machine with no browser code, tested in `lib/guidedWordSession.test.mjs`. `useGuidedWordSession.ts` supplies the browser side (mic, recorder, chime, upload).
+`lib/guidedWordSession.ts` has the state machine with no browser code, tested in `lib/guidedWordSession.test.mjs`. `useGuidedWordSession.ts` supplies the browser side (mic, recorder, chime, upload) and holds the session for the page.
 
 ## Files
 
@@ -273,12 +273,13 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] The home page lesson grid still shows one combined card per pair.
 - [ ] The home page lesson grid still uses the browser speech check, and doesn't poll `/health`.
 - [ ] Layout works at phone width (~360 px) with no horizontal scroll.
-- [ ] **Guided flow, in Chrome and on a real iPhone (Safari, over HTTPS):** a word's "Say" shows the first screen without playing any audio, and the listen button plays the model. Start asks for the mic once, then all 3 tries run with no tapping.
-- [ ] The chime is audible before each SPEAK, is not in the clips, and the first sound of the word isn't cut off.
+- [ ] **Guided flow, in Chrome and on a real iPhone (Safari, over HTTPS):** a word's "Say" asks for the mic once, then all 3 tries run with no more tapping and no model audio.
+- [ ] The ticks and go sound are audible before each SPEAK, are not in the clips, and the first sound of the word isn't cut off.
 - [ ] iOS: the second and third clips are not empty and upload as `.mp4`; audio still plays after the mic has been open; the mic indicator goes off at upload.
-- [ ] iOS: switching app mid-try returns to the first screen with the mic off.
+- [ ] iOS: switching app mid-try closes the panel with the mic off.
 - [ ] GET READY and SPEAK count down, the level meter moves during SPEAK, and no score shows between tries.
 - [ ] The results start at the praise, in both languages, and "Listen to me" plays the best try. "Try again" re-runs all 3 tries.
+- [ ] The word stays in the "Say this" card during the tries, and the results appear in their own section below the pronunciation step.
 - [ ] While the tries run, the rest of the page is dimmed and its buttons can't be tapped. Closing the panel with × stops the tries.
 - [ ] Offline during upload: "send again" works without re-recording.
 - [ ] With "reduce motion" on, the bar doesn't animate but the numbers still count down.

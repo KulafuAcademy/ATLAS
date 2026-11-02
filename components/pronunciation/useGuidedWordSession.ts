@@ -4,11 +4,12 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { stopRecordedAudioEvent } from "@/components/training/audio";
 import {
-  playReadyChime,
+  playCountdownGoAndWait,
+  playCountdownTick,
   unlockCountdownAudio,
 } from "@/components/training/feedbackSounds";
 import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
-import { GuidedWordSession } from "@/lib/guidedWordSession";
+import { GuidedWordSession, initialSessionState } from "@/lib/guidedWordSession";
 import type { SessionClip, SessionEffects } from "@/lib/guidedWordSession";
 import { analyzeWordAttempts } from "@/lib/pronunciationApi";
 
@@ -57,7 +58,7 @@ function createBrowserEffects(
     getMicStream: () => stream,
 
     async requestMic() {
-      // Inside the tap, which is what lets iOS Safari play the chime later.
+      // Inside the tap, which is what lets iOS Safari play the sounds later.
       unlockCountdownAudio();
 
       if (!window.isSecureContext) return "insecure";
@@ -100,7 +101,8 @@ function createBrowserEffects(
       window.dispatchEvent(new Event(stopPronunciationCheckEvent));
     },
 
-    playChime: playReadyChime,
+    playTick: playCountdownTick,
+    playGoSound: playCountdownGoAndWait,
 
     startRecording(tryNumber) {
       return new Promise<void>((resolve, reject) => {
@@ -184,26 +186,40 @@ function createBrowserEffects(
   };
 }
 
-/**
- * Binds a GuidedWordSession to the component's lifetime. Hiding the page or
- * unmounting stops everything and discards the clips. Mount it once per word.
- */
-export function useGuidedWordSession(word: string) {
-  const [{ session, getMicStream }] = useState(() => {
-    const effects = createBrowserEffects(word);
+export type GuidedWordTarget = {
+  word: string;
+  /** Recorded model pronunciation; falls back to speech synthesis. */
+  audioPath: string;
+};
 
-    return {
-      session: new GuidedWordSession(word, effects),
-      getMicStream: effects.getMicStream,
-    };
-  });
+const subscribeToNothing = () => () => {};
+const getInitialState = () => initialSessionState;
+
+/**
+ * The guided flow's state, owned by the page so that GuidedWordPanel and
+ * GuidedWordResults can sit in different places. `open()` starts a new session
+ * for a word and begins its first try. Closing, opening another word, hiding the page or unmounting
+ * stops everything and discards the clips.
+ *
+ * While `isRunning`, the page must keep other audio from being started, so
+ * that it can't end up in a recording.
+ */
+export function useGuidedWordSession() {
+  const [flow, setFlow] = useState<{
+    target: GuidedWordTarget;
+    session: GuidedWordSession;
+    getMicStream: () => MediaStream | null;
+  } | null>(null);
+  const session = flow?.session ?? null;
   const state = useSyncExternalStore(
-    session.subscribe,
-    session.getState,
-    session.getState,
+    session?.subscribe ?? subscribeToNothing,
+    session?.getState ?? getInitialState,
+    getInitialState,
   );
 
   useEffect(() => {
+    if (!session) return;
+
     const cancelIfHidden = () => {
       if (document.hidden && session.isRunning) session.cancel();
     };
@@ -221,10 +237,34 @@ export function useGuidedWordSession(word: string) {
     };
   }, [session]);
 
+  /** Starts the tries straight away, so call it from the child's tap. */
+  function open(target: GuidedWordTarget) {
+    const effects = createBrowserEffects(target.word);
+    const nextSession = new GuidedWordSession(target.word, effects);
+
+    setFlow({ target, session: nextSession, getMicStream: effects.getMicStream });
+    void nextSession.start();
+  }
+
+  function close() {
+    setFlow(null);
+  }
+
   return {
+    target: flow?.target ?? null,
     session,
     state,
     /** The open mic stream, for the level meter. */
-    micStream: getMicStream(),
+    micStream: flow?.getMicStream() ?? null,
+    isRunning:
+      state.requestingMic ||
+      state.phase === "ready" ||
+      state.phase === "speak" ||
+      state.phase === "rest" ||
+      state.phase === "uploading",
+    open,
+    close,
   };
 }
+
+export type GuidedWordState = ReturnType<typeof useGuidedWordSession>;

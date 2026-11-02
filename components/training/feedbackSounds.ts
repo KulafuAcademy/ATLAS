@@ -77,14 +77,15 @@ export function unlockCountdownAudio() {
   getCountdownAudioContext();
 }
 
-const chimeSeconds = 0.12;
+const goSeconds = 0.2;
 // Audio is still leaving the speakers for a moment after the oscillator ends.
-const chimeTailMs = 40;
-const chimeResumeTimeoutMs = 100;
+const goTailMs = 40;
+const goResumeTimeoutMs = 100;
 
-// The short, soft "now" chime. Resolves when it's over, and straight away if
-// the audio can't play, so the flow never waits on a silent chime.
-export async function playReadyChime() {
+// playCountdownGo, for when recording starts right after it. Resolves when it's
+// over, and straight away if the audio can't play, so the flow never waits on
+// a silent sound.
+export async function playCountdownGoAndWait() {
   const audioContext = getCountdownAudioContext();
   if (!audioContext) return;
 
@@ -93,14 +94,14 @@ export async function playReadyChime() {
   if (!isRunning()) {
     await Promise.race([
       audioContext.resume().catch(() => {}),
-      new Promise((resolve) => setTimeout(resolve, chimeResumeTimeoutMs)),
+      new Promise((resolve) => setTimeout(resolve, goResumeTimeoutMs)),
     ]);
     if (!isRunning()) return;
   }
 
-  playTone(audioContext, 880, 0, chimeSeconds, "sine");
+  playCountdownGo();
   await new Promise((resolve) =>
-    setTimeout(resolve, chimeSeconds * 1000 + chimeTailMs),
+    setTimeout(resolve, goSeconds * 1000 + goTailMs),
   );
 }
 
@@ -118,6 +119,6 @@ export function playCountdownGo() {
   const audioContext = getCountdownAudioContext();
 
   if (audioContext) {
-    playTone(audioContext, 1320, 0, 0.2, "sine");
+    playTone(audioContext, 1320, 0, goSeconds, "sine");
   }
 }

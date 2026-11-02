@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { GuidedWordPanel } from "@/components/pronunciation/GuidedWordPanel";
-import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordPanel";
+import {
+  GuidedWordPanel,
+  GuidedWordResults,
+} from "@/components/pronunciation/GuidedWordPanel";
+import { useGuidedWordSession } from "@/components/pronunciation/useGuidedWordSession";
 import { LevelMeter } from "@/components/pronunciation/LevelMeter";
 import { PronunciationPanel } from "@/components/pronunciation/PronunciationPanel";
 import {
@@ -325,8 +328,8 @@ function PairPracticeCard({
   const tongueTwister = getTongueTwister(pair);
   const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
   const aiResultsRef = useRef<HTMLDivElement | null>(null);
-  const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
-  const [guidedRunning, setGuidedRunning] = useState(false);
+  const guided = useGuidedWordSession();
+  const guidedRunning = guided.isRunning;
 
   // Bring a freshly loaded AI result into view.
   useEffect(() => {
@@ -650,7 +653,7 @@ function PairPracticeCard({
   ) {
     window.speechSynthesis?.cancel();
     window.dispatchEvent(new Event(stopPronunciationCheckEvent));
-    setGuidedTarget(null);
+    guided.close();
     showFeedback(
       kind,
       "neutral",
@@ -711,7 +714,7 @@ function PairPracticeCard({
       // Stop any step 1 audio, so it can't play into the recordings.
       audioRef.current?.pause();
       audioRef.current = null;
-      setGuidedTarget({
+      guided.open({
         word,
         audioPath: getPublicAudioPath("words", pair.soundFocus, word),
       });
@@ -1033,14 +1036,7 @@ function PairPracticeCard({
       >
         {copy.speak(pair.wordB)}
       </ActionButton>
-      {guidedTarget ? (
-        <GuidedWordPanel
-          target={guidedTarget}
-          onClose={() => setGuidedTarget(null)}
-          onRunningChange={setGuidedRunning}
-          className="col-span-full"
-        />
-      ) : null}
+      <GuidedWordPanel guided={guided} className="col-span-full" />
       {focusKind === "pronunciation" && !guidedRunning && assessment.target ? (
         <div
           ref={focusTargetRef}
@@ -1228,6 +1224,7 @@ function PairPracticeCard({
       {listenStep}
       {listeningStep}
       {pronunciationStep}
+      <GuidedWordResults guided={guided} />
       {resultsKind === "pronunciation" ? resultsPanel : null}
       {tongueTwisterStep}
       {resultsKind === "tongueTwister" ? resultsPanel : null}

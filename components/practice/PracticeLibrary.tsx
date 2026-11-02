@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { GuidedWordPanel } from "@/components/pronunciation/GuidedWordPanel";
-import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordPanel";
+import {
+  GuidedWordPanel,
+  GuidedWordResults,
+} from "@/components/pronunciation/GuidedWordPanel";
+import { useGuidedWordSession } from "@/components/pronunciation/useGuidedWordSession";
 import {
   useWordCheck,
   WordAssessmentModal,
@@ -711,7 +714,6 @@ function SpeakingPairs({
           key={pair.id}
           pair={pair}
           onCheck={check.start}
-          guidedRunning={guidedRunning}
           onGuidedRunningChange={setGuidedRunning}
         />
       </section>
@@ -747,22 +749,27 @@ const pairCardCopy = {
 function PairCard({
   pair,
   onCheck,
-  guidedRunning,
   onGuidedRunningChange,
 }: {
   pair: MinimalPair;
   onCheck: WordCheckState["start"];
-  guidedRunning: boolean;
   onGuidedRunningChange: (running: boolean) => void;
 }) {
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const play = useRecordedAudio();
-  const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
+  const guided = useGuidedWordSession();
+  const guidedRunning = guided.isRunning;
   // A stray tap on these can't start audio during the recordings.
   const lockedClassName = `transition-opacity duration-300 ${
     guidedRunning ? "pointer-events-none opacity-30" : ""
   }`;
+  useEffect(() => {
+    onGuidedRunningChange(guidedRunning);
+  }, [guidedRunning, onGuidedRunningChange]);
+
+  useEffect(() => () => onGuidedRunningChange(false), [onGuidedRunningChange]);
+
   const twisterAudioPath = getPublicAudioPath(
     "twisters",
     pair.soundFocus,
@@ -797,7 +804,7 @@ function PairCard({
                   type="button"
                   aria-label={copy.sayWord(word)}
                   disabled={guidedRunning}
-                  onClick={() => setGuidedTarget({ word, audioPath })}
+                  onClick={() => guided.open({ word, audioPath })}
                   className="flex h-9 items-center justify-center gap-1.5 border border-white bg-white px-2 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
                 >
                   <MicIcon />
@@ -808,13 +815,8 @@ function PairCard({
           );
         })}
       </div>
-      {guidedTarget ? (
-        <GuidedWordPanel
-          target={guidedTarget}
-          onClose={() => setGuidedTarget(null)}
-          onRunningChange={onGuidedRunningChange}
-        />
-      ) : null}
+      <GuidedWordPanel guided={guided} />
+      <GuidedWordResults guided={guided} />
       {pair.tongueTwister ? (
         <div
           className={`space-y-3 border border-white/10 bg-white/[0.03] p-4 ${lockedClassName}`}
@@ -837,7 +839,7 @@ function PairCard({
             <button
               type="button"
               onClick={() => {
-                setGuidedTarget(null);
+                guided.close();
                 onCheck({
                   kind: "sentence",
                   word: pair.tongueTwister!.text,

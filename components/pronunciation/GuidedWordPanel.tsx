@@ -8,8 +8,6 @@ import {
 } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
-import { useRecordedAudio } from "@/components/training/audio";
 import { playCorrectSound } from "@/components/training/feedbackSounds";
 import { READY_MS, TRY_COUNT } from "@/lib/guidedWordSession";
 import type { SessionOutcome } from "@/lib/guidedWordSession";
@@ -26,21 +24,21 @@ import {
 } from "./PronunciationPanel";
 import type { PanelCopy } from "./PronunciationPanel";
 import { LevelMeter } from "./LevelMeter";
-import { useGuidedWordSession } from "./useGuidedWordSession";
+import type { GuidedWordState } from "./useGuidedWordSession";
 import type { RecorderError } from "./useVoiceRecorder";
 
 const guidedCopy = {
   en: {
     title: "Say it 3 times",
+    sayThis: "Say this",
     close: "Close",
-    start: "Start",
     startingMic: "Getting the microphone ready…",
-    listen: "Listen",
     hint: "Say it slowly and clearly",
     tryLabel: (tryNumber: number) => `Try ${tryNumber}`,
     ready: "Get ready…",
     speak: "Say it now!",
-    rest: "Done! Take a rest",
+    restNext: "Prepare for the next try",
+    restLast: "All done! Let's see how you did",
     checking: "Listening to your tries… just a moment",
     cancel: "Stop",
     again: "Try again",
@@ -53,23 +51,23 @@ const guidedCopy = {
       insecure: "The microphone can't be used on this page. Please ask a grown-up.",
       unsupported: "This browser can't record sound. Please ask a grown-up.",
       denied:
-        "We need your microphone to hear you! Allow the microphone in your browser settings, then press Start again. Ask a grown-up if you need help.",
-      noMicrophone: "We couldn't find a microphone. Plug one in and press Start again.",
-      failed: "The microphone didn't start. Please press Start again.",
+        "We need your microphone to hear you! Allow the microphone in your browser settings, then press Try again. Ask a grown-up if you need help.",
+      noMicrophone: "We couldn't find a microphone. Plug one in and press Try again.",
+      failed: "The microphone didn't start. Please press Try again.",
     } satisfies Record<RecorderError, string>,
   },
   // Hiragana, with only grade 1-2 kanji.
   ja: {
     title: "3かい 言って みよう",
+    sayThis: "これを 言おう",
     close: "とじる",
-    start: "はじめる",
     startingMic: "マイクを じゅんび中…",
-    listen: "お手本を 聞く",
     hint: "ゆっくり、はっきり 言おう",
     tryLabel: (tryNumber: number) => `${tryNumber}かいめ`,
     ready: "じゅんび…",
     speak: "いま 言って！",
-    rest: "おわり！ひとやすみ",
+    restNext: "つぎの じゅんびを しよう",
+    restLast: "ぜんぶ おわり！けっかを 見よう",
     checking: "きいているよ… ちょっと まってね",
     cancel: "やめる",
     again: "もう いちど",
@@ -94,6 +92,8 @@ const resultCopy: Record<Language, PanelCopy> = {
   en: panelCopy.en,
   ja: {
     ...panelCopy.ja,
+    title: "けっか",
+    target: (target: string) => `ことば：「${target}」`,
     listen: "じぶんの こえを 聞く",
     aiAssessment: "ATLASから",
     wordByWord: "ことば",
@@ -142,87 +142,44 @@ function useReducedMotion() {
   );
 }
 
-export type GuidedWordTarget = {
-  word: string;
-  /** Recorded model pronunciation; falls back to speech synthesis. */
-  audioPath: string;
-};
-
-/**
- * The guided "say it 3 times" flow for a single word, in the page. Removing it
- * (×, or unmounting) stops everything. While `onRunningChange` reports true,
- * the page must keep other audio from being started, so that it can't end up
- * in a recording. See docs/pronunciation-assessment.md.
- */
-export function GuidedWordPanel({
-  target,
-  onClose,
-  onRunningChange,
-  className = "",
-}: {
-  target: GuidedWordTarget;
-  onClose: () => void;
-  onRunningChange?: (running: boolean) => void;
-  className?: string;
-}) {
-  return (
-    <GuidedWordFlow
-      key={target.word}
-      target={target}
-      onClose={onClose}
-      onRunningChange={onRunningChange}
-      className={className}
-    />
-  );
+function scrollBehavior(): ScrollBehavior {
+  return window.matchMedia(reducedMotionQuery).matches ? "auto" : "smooth";
 }
 
-function GuidedWordFlow({
-  target,
-  onClose,
-  onRunningChange,
-  className,
+/**
+ * The guided "say it 3 times" flow for a single word, in the page: the word
+ * to say and the three tries. GuidedWordResults takes over once they're done.
+ * See docs/pronunciation-assessment.md.
+ */
+export function GuidedWordPanel({
+  guided,
+  className = "",
 }: {
-  target: GuidedWordTarget;
-  onClose: () => void;
-  onRunningChange?: (running: boolean) => void;
-  className: string;
+  guided: GuidedWordState;
+  className?: string;
 }) {
   const copy = useGuidedCopy();
-  const { session, state, micStream } = useGuidedWordSession(target.word);
-  const play = useRecordedAudio();
   const panelRef = useRef<HTMLElement | null>(null);
-  const onRunningChangeRef = useRef(onRunningChange);
-  const { phase, outcome } = state;
+  const { target, session, state, micStream } = guided;
+  const { phase } = state;
   const isGuiding = phase === "ready" || phase === "speak" || phase === "rest";
-  const isRunning = isGuiding || phase === "uploading" || state.requestingMic;
-  const view = phase === "idle" ? "intro" : phase === "result" ? "result" : "guiding";
+  // A cancelled session (the page was hidden) is idle with nothing to show.
+  const isOpen =
+    target !== null &&
+    phase !== "result" &&
+    (phase !== "idle" || state.requestingMic || state.micError !== null);
 
+  // Keep the word in the middle of the screen, on each opening and each retry.
   useEffect(() => {
-    onRunningChangeRef.current = onRunningChange;
-  });
+    if (!isOpen) return;
 
-  useEffect(() => {
-    onRunningChangeRef.current?.(isRunning);
-  }, [isRunning]);
-
-  useEffect(() => () => onRunningChangeRef.current?.(false), []);
-
-  // There's no modal to bring this to the child's attention.
-  useEffect(() => {
     panelRef.current?.scrollIntoView({
-      behavior: window.matchMedia(reducedMotionQuery).matches ? "auto" : "smooth",
-      block: view === "result" ? "start" : "center",
+      behavior: scrollBehavior(),
+      block: "center",
     });
-  }, [view]);
+  }, [isOpen, target]);
 
-  useEffect(() => {
-    if (outcome?.kind !== "success") return;
-
-    const { letter } = outcome.response.grade;
-
-    // No error sound here: a child who tried three times has done well.
-    if (letter === "A" || letter === "B") playCorrectSound();
-  }, [outcome]);
+  if (!target || !session || !isOpen) return null;
 
   return (
     <section
@@ -235,7 +192,7 @@ function GuidedWordFlow({
         <p className={labelClassName}>{copy.title}</p>
         <button
           type="button"
-          onClick={onClose}
+          onClick={guided.close}
           aria-label={copy.close}
           className="grid h-11 w-11 place-items-center border border-white/10 text-white/70 transition hover:border-white/35 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
@@ -245,20 +202,21 @@ function GuidedWordFlow({
         </button>
       </div>
 
+      {phase === "uploading" ? null : (
+        <WordCard word={target.word} dimmed={phase === "rest"} />
+      )}
+
       {phase === "idle" ? (
-        <IntroScreen
-          word={target.word}
+        <MicStatus
           requestingMic={state.requestingMic}
           micError={state.micError}
-          onListen={() => play(target.audioPath, target.word)}
-          onStart={session.start}
+          onRetry={session.start}
         />
       ) : null}
 
       {isGuiding && state.tryNumber !== null ? (
         <GuidedBox
           phase={phase}
-          word={target.word}
           tryNumber={state.tryNumber}
           doneTries={state.doneTries}
           speakMs={session.speakMs}
@@ -267,9 +225,8 @@ function GuidedWordFlow({
       ) : null}
 
       {phase === "uploading" ? (
-        <div className={`space-y-4 p-5 text-center ${panelBoxClassName}`}>
-          <p className="break-words text-3xl font-bold text-white">{target.word}</p>
-          <ProgressDots doneTries={TRY_COUNT} className="justify-center" />
+        <div className={`space-y-4 p-5 ${panelBoxClassName}`}>
+          <ProgressDots doneTries={TRY_COUNT} className="justify-center text-white" />
           <CheckingIndicator label={copy.checking} />
         </div>
       ) : null}
@@ -277,76 +234,71 @@ function GuidedWordFlow({
       {isGuiding || phase === "uploading" ? (
         <button
           type="button"
-          onClick={session.cancel}
+          onClick={guided.close}
           className={`${secondaryButtonClassName} w-full`}
         >
           {copy.cancel}
         </button>
       ) : null}
-
-      {phase === "result" && outcome ? (
-        <ResultScreen
-          word={target.word}
-          outcome={outcome}
-          onAgain={session.start}
-          onResend={session.resend}
-        />
-      ) : null}
     </section>
   );
 }
 
-function IntroScreen({
-  word,
-  requestingMic,
-  micError,
-  onListen,
-  onStart,
-}: {
-  word: string;
-  requestingMic: boolean;
-  micError: RecorderError | null;
-  onListen: () => void;
-  onStart: () => void;
-}) {
+// The word to read. It fades during REST, when there's nothing to say.
+function WordCard({ word, dimmed }: { word: string; dimmed: boolean }) {
   const copy = useGuidedCopy();
 
   return (
+    <div
+      className={`border px-4 py-5 text-center transition-opacity duration-300 ${
+        dimmed ? "border-white/20 opacity-30" : "border-white bg-white/[0.06]"
+      }`}
+    >
+      <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
+        />
+        {copy.sayThis}
+      </p>
+      <p className="mt-2 break-words text-5xl font-semibold text-white md:text-6xl">
+        {word}
+      </p>
+    </div>
+  );
+}
+
+// Before the first try: waiting for the mic, or why it can't be used.
+function MicStatus({
+  requestingMic,
+  micError,
+  onRetry,
+}: {
+  requestingMic: boolean;
+  micError: RecorderError | null;
+  onRetry: () => void;
+}) {
+  const copy = useGuidedCopy();
+
+  if (requestingMic || !micError) {
+    return (
+      <p role="status" className="text-center text-lg font-semibold text-white">
+        {copy.startingMic}
+      </p>
+    );
+  }
+
+  return (
     <div className="space-y-4">
-      <div className={`space-y-4 p-5 text-center ${panelBoxClassName}`}>
-        <p className="break-words text-5xl font-bold text-white">{word}</p>
-        <p className="text-lg font-semibold text-white">{copy.hint}</p>
-        <ProgressDots doneTries={0} className="justify-center" />
-      </div>
-
-      {micError ? (
-        <p
-          role="alert"
-          className="border border-white/20 bg-white/[0.04] px-3 py-2 text-base font-medium leading-7 text-white"
-        >
-          {copy.micErrors[micError]}
-        </p>
-      ) : null}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={onListen}
-          disabled={requestingMic}
-          className={`${secondaryButtonClassName} min-h-14`}
-        >
-          <SpeakerIcon className="h-5 w-5 shrink-0 text-white/50" />
-          {copy.listen}
-        </button>
-        <button
-          type="button"
-          onClick={onStart}
-          disabled={requestingMic}
-          className={bigPrimaryClassName}
-        >
-          {requestingMic ? copy.startingMic : copy.start}
-        </button>
-      </div>
+      <p
+        role="alert"
+        className="border border-white/20 bg-white/[0.04] px-3 py-2 text-base font-medium leading-7 text-white"
+      >
+        {copy.micErrors[micError]}
+      </p>
+      <button type="button" onClick={onRetry} className={bigPrimaryClassName}>
+        {copy.again}
+      </button>
     </div>
   );
 }
@@ -354,14 +306,12 @@ function IntroScreen({
 /** One try's GET READY, SPEAK or REST. */
 function GuidedBox({
   phase,
-  word,
   tryNumber,
   doneTries,
   speakMs,
   micStream,
 }: {
   phase: "ready" | "speak" | "rest";
-  word: string;
   tryNumber: number;
   doneTries: number;
   speakMs: number;
@@ -369,12 +319,18 @@ function GuidedBox({
 }) {
   const copy = useGuidedCopy();
   const label =
-    phase === "ready" ? copy.ready : phase === "speak" ? copy.speak : copy.rest;
+    phase === "ready"
+      ? copy.ready
+      : phase === "speak"
+        ? copy.speak
+        : tryNumber < TRY_COUNT
+          ? copy.restNext
+          : copy.restLast;
 
   return (
     <div
       data-phase={phase}
-      className={`flex min-h-[21rem] flex-col items-center justify-center gap-3 p-4 text-center ${phaseClassNames[phase]}`}
+      className={`flex min-h-[17rem] flex-col items-center justify-center gap-3 p-4 text-center ${phaseClassNames[phase]}`}
     >
       <div className="flex w-full items-center justify-between gap-3">
         <p className="text-lg font-bold">{copy.tryLabel(tryNumber)}</p>
@@ -396,15 +352,6 @@ function GuidedBox({
       >
         {label}
       </p>
-      {phase === "rest" ? null : (
-        <p
-          className={`max-w-full break-words font-bold ${
-            phase === "speak" ? "text-5xl" : "text-3xl"
-          }`}
-        >
-          {word}
-        </p>
-      )}
       {phase === "ready" ? (
         <p className="text-base font-semibold">{copy.hint}</p>
       ) : null}
@@ -551,7 +498,70 @@ function ProgressDots({
   );
 }
 
-function ResultScreen({
+/**
+ * The outcome of the three tries, in its own section so the page can place it
+ * under the step instead of inside it. Renders nothing until there is one.
+ */
+export function GuidedWordResults({
+  guided,
+  className = "",
+}: {
+  guided: GuidedWordState;
+  className?: string;
+}) {
+  const { language } = useLanguage();
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const { target, session, state } = guided;
+  const { outcome } = state;
+  const isShown = state.phase === "result" && outcome !== null;
+
+  useEffect(() => {
+    if (!isShown) return;
+
+    sectionRef.current?.scrollIntoView({
+      behavior: scrollBehavior(),
+      block: "start",
+    });
+  }, [isShown]);
+
+  useEffect(() => {
+    if (outcome?.kind !== "success") return;
+
+    const { letter } = outcome.response.grade;
+
+    // No error sound here: a child who tried three times has done well.
+    if (letter === "A" || letter === "B") playCorrectSound();
+  }, [outcome]);
+
+  if (!target || !session || !isShown) return null;
+
+  const copy = resultCopy[language];
+
+  return (
+    <section
+      ref={sectionRef}
+      data-guided-results
+      aria-label={copy.title}
+      className={`scroll-mt-28 border border-white/10 bg-white/[0.02] ${className}`}
+    >
+      <div className="border-b border-white/10 px-5 py-4">
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white">
+          {copy.title}
+        </p>
+      </div>
+      <div className="p-5">
+        <ResultContent
+          word={target.word}
+          outcome={outcome}
+          onAgain={session.start}
+          onResend={session.resend}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ResultContent({
   word,
   outcome,
   onAgain,
@@ -571,7 +581,7 @@ function ResultScreen({
         <div aria-live="polite">
           <AssessmentResults
             result={outcome.response}
-            target={null}
+            target={word}
             copy={resultCopy[language]}
             language={language}
           />
@@ -607,7 +617,7 @@ function ResultScreen({
 
   return (
     <div className="space-y-4">
-      <div className={`space-y-3 p-5 text-center ${panelBoxClassName}`}>
+      <div className="space-y-3 text-center">
         <p className="break-words text-3xl font-bold text-white">{word}</p>
         <p
           role="status"
