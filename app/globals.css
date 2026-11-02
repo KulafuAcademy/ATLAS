@@ -33,12 +33,6 @@ a {
   text-decoration: none;
 }
 
-@keyframes guided-ring-empty {
-  to {
-    stroke-dashoffset: 100;
-  }
-}
-
 ::selection {
   background: #ffffff;
   color: #000000;

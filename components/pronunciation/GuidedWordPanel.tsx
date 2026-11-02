@@ -14,13 +14,15 @@ import { playCorrectSound } from "@/components/training/feedbackSounds";
 import { READY_MS, TRY_COUNT } from "@/lib/guidedWordSession";
 import type { SessionOutcome } from "@/lib/guidedWordSession";
 import type { Language } from "@/lib/i18n";
-import type { AnalyzeWordSuccess } from "@/lib/pronunciationApi";
 
 import {
   AssessmentResults,
   CheckingIndicator,
+  labelClassName,
   panelCopy,
   PlaybackButton,
+  primaryButtonClassName,
+  secondaryButtonClassName,
 } from "./PronunciationPanel";
 import type { PanelCopy } from "./PronunciationPanel";
 import { LevelMeter } from "./LevelMeter";
@@ -110,19 +112,17 @@ function useGuidedCopy() {
   return guidedCopy[language];
 }
 
-// Two calm tones of one hue and one bright accent. Only SPEAK is bright, and
-// the tones also differ in lightness, so they read without colour vision.
-const phaseStyles = {
-  ready: { backgroundColor: "#22303f", color: "#ffffff" },
-  speak: { backgroundColor: "#facc15", color: "#000000" },
-  rest: { backgroundColor: "#121a22", color: "#ffffff" },
-};
+const panelBoxClassName = "border border-white/10 bg-white/[0.02]";
 
 const bigPrimaryClassName =
-  "inline-flex min-h-16 w-full items-center justify-center gap-2 border border-white bg-white px-6 text-2xl font-bold text-black transition hover:bg-black hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/40 disabled:hover:bg-white/10";
+  "inline-flex min-h-14 w-full items-center justify-center gap-2 border border-white bg-white px-4 text-lg font-bold text-black transition hover:bg-black hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/40 disabled:hover:bg-white/10";
 
-const bigSecondaryClassName =
-  "inline-flex min-h-14 w-full items-center justify-center gap-2 border border-white/20 bg-black px-6 text-lg font-semibold text-white transition hover:border-white/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50";
+// Each phase differs by more than colour: the box, the face and the text too.
+const phaseClassNames = {
+  ready: `${panelBoxClassName} text-white`,
+  speak: "border border-white bg-white text-black",
+  rest: "border border-dashed border-white/30 bg-black text-white/80",
+};
 
 const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
 
@@ -149,103 +149,71 @@ export type GuidedWordTarget = {
 };
 
 /**
- * The guided "say it 3 times" flow for a single word, in a modal. Render it
- * with a target from the child's tap. Closing it (×, Esc) stops everything.
- * See docs/pronunciation-assessment.md.
+ * The guided "say it 3 times" flow for a single word, in the page. Removing it
+ * (×, or unmounting) stops everything. While `onRunningChange` reports true,
+ * the page must keep other audio from being started, so that it can't end up
+ * in a recording. See docs/pronunciation-assessment.md.
  */
-export function GuidedWordModal({
+export function GuidedWordPanel({
   target,
   onClose,
-  onResult,
+  onRunningChange,
+  className = "",
 }: {
-  target: GuidedWordTarget | null;
+  target: GuidedWordTarget;
   onClose: () => void;
-  onResult?: (result: AnalyzeWordSuccess) => void;
+  onRunningChange?: (running: boolean) => void;
+  className?: string;
 }) {
-  const copy = useGuidedCopy();
-  const dialogRef = useRef<HTMLDialogElement | null>(null);
-  // A stray tap beside the panel mustn't end a session that's running.
-  const runningRef = useRef(false);
-  const isOpen = target !== null;
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (isOpen && !dialog.open) {
-      dialog.showModal();
-    } else if (!isOpen && dialog.open) {
-      dialog.close();
-    }
-  }, [isOpen]);
-
-  // Keep the page behind the modal from scrolling.
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const root = document.documentElement;
-    const previous = root.style.overflow;
-    root.style.overflow = "hidden";
-
-    return () => {
-      root.style.overflow = previous;
-    };
-  }, [isOpen]);
-
   return (
-    <dialog
-      ref={dialogRef}
-      aria-label={copy.title}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      onClose={() => {
-        if (isOpen) onClose();
-      }}
-      onClick={(event) => {
-        // A click on the dialog itself (not its content) is on the backdrop.
-        if (event.target === event.currentTarget && !runningRef.current) {
-          onClose();
-        }
-      }}
-      className="m-auto max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-xl overflow-y-auto border border-white/10 bg-black p-0 text-white backdrop:bg-black/80"
-    >
-      {target ? (
-        <GuidedWordFlow
-          key={target.word}
-          target={target}
-          onClose={onClose}
-          onResult={onResult}
-          runningRef={runningRef}
-        />
-      ) : null}
-    </dialog>
+    <GuidedWordFlow
+      key={target.word}
+      target={target}
+      onClose={onClose}
+      onRunningChange={onRunningChange}
+      className={className}
+    />
   );
 }
 
 function GuidedWordFlow({
   target,
   onClose,
-  onResult,
-  runningRef,
+  onRunningChange,
+  className,
 }: {
   target: GuidedWordTarget;
   onClose: () => void;
-  onResult?: (result: AnalyzeWordSuccess) => void;
-  runningRef: { current: boolean };
+  onRunningChange?: (running: boolean) => void;
+  className: string;
 }) {
   const copy = useGuidedCopy();
   const { session, state, micStream } = useGuidedWordSession(target.word);
   const play = useRecordedAudio();
-  const onResultRef = useRef(onResult);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const onRunningChangeRef = useRef(onRunningChange);
   const { phase, outcome } = state;
   const isGuiding = phase === "ready" || phase === "speak" || phase === "rest";
+  const isRunning = isGuiding || phase === "uploading" || state.requestingMic;
+  const view = phase === "idle" ? "intro" : phase === "result" ? "result" : "guiding";
 
   useEffect(() => {
-    onResultRef.current = onResult;
-    runningRef.current = isGuiding || phase === "uploading" || state.requestingMic;
+    onRunningChangeRef.current = onRunningChange;
   });
+
+  useEffect(() => {
+    onRunningChangeRef.current?.(isRunning);
+  }, [isRunning]);
+
+  useEffect(() => () => onRunningChangeRef.current?.(false), []);
+
+  // There's no modal to bring this to the child's attention.
+  useEffect(() => {
+    panelRef.current?.scrollIntoView({
+      behavior: window.matchMedia(reducedMotionQuery).matches ? "auto" : "smooth",
+      block: view === "result" ? "start" : "center",
+    });
+  }, [view]);
 
   useEffect(() => {
     if (outcome?.kind !== "success") return;
@@ -254,24 +222,24 @@ function GuidedWordFlow({
 
     // No error sound here: a child who tried three times has done well.
     if (letter === "A" || letter === "B") playCorrectSound();
-    onResultRef.current?.(outcome.response);
   }, [outcome]);
 
-  function listen() {
-    play(target.audioPath, target.word);
-  }
-
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <section
+      ref={panelRef}
+      data-guided-word
+      aria-label={copy.title}
+      className={`scroll-mt-28 space-y-4 border border-white/10 bg-black p-4 ${className}`}
+    >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-lg font-semibold text-white">{copy.title}</p>
+        <p className={labelClassName}>{copy.title}</p>
         <button
           type="button"
           onClick={onClose}
           aria-label={copy.close}
-          className="grid h-12 w-12 place-items-center border border-white/10 text-white/70 transition hover:border-white/35 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          className="grid h-11 w-11 place-items-center border border-white/10 text-white/70 transition hover:border-white/35 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
-          <span aria-hidden="true" className="text-2xl leading-none">
+          <span aria-hidden="true" className="text-xl leading-none">
             ×
           </span>
         </button>
@@ -282,13 +250,13 @@ function GuidedWordFlow({
           word={target.word}
           requestingMic={state.requestingMic}
           micError={state.micError}
-          onListen={listen}
+          onListen={() => play(target.audioPath, target.word)}
           onStart={session.start}
         />
       ) : null}
 
       {isGuiding && state.tryNumber !== null ? (
-        <GuidedPanel
+        <GuidedBox
           phase={phase}
           word={target.word}
           tryNumber={state.tryNumber}
@@ -299,8 +267,8 @@ function GuidedWordFlow({
       ) : null}
 
       {phase === "uploading" ? (
-        <div className="space-y-5 border border-white/10 p-6 text-center">
-          <p className="break-words text-4xl font-bold">{target.word}</p>
+        <div className={`space-y-4 p-5 text-center ${panelBoxClassName}`}>
+          <p className="break-words text-3xl font-bold text-white">{target.word}</p>
           <ProgressDots doneTries={TRY_COUNT} className="justify-center" />
           <CheckingIndicator label={copy.checking} />
         </div>
@@ -310,7 +278,7 @@ function GuidedWordFlow({
         <button
           type="button"
           onClick={session.cancel}
-          className={bigSecondaryClassName}
+          className={`${secondaryButtonClassName} w-full`}
         >
           {copy.cancel}
         </button>
@@ -324,7 +292,7 @@ function GuidedWordFlow({
           onResend={session.resend}
         />
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -344,48 +312,47 @@ function IntroScreen({
   const copy = useGuidedCopy();
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-5 border border-white/10 bg-white/[0.02] p-6 text-center">
-        <p className="break-words text-5xl font-bold sm:text-7xl">{word}</p>
-        <button
-          type="button"
-          onClick={onListen}
-          disabled={requestingMic}
-          className={bigSecondaryClassName}
-        >
-          <SpeakerIcon className="h-6 w-6 shrink-0 text-white/60" />
-          {copy.listen}
-        </button>
-        <p className="text-xl font-semibold text-white">{copy.hint}</p>
+    <div className="space-y-4">
+      <div className={`space-y-4 p-5 text-center ${panelBoxClassName}`}>
+        <p className="break-words text-5xl font-bold text-white">{word}</p>
+        <p className="text-lg font-semibold text-white">{copy.hint}</p>
         <ProgressDots doneTries={0} className="justify-center" />
       </div>
 
       {micError ? (
         <p
           role="alert"
-          className="border border-white/30 bg-white/[0.04] p-4 text-lg leading-8 text-white"
+          className="border border-white/20 bg-white/[0.04] px-3 py-2 text-base font-medium leading-7 text-white"
         >
           {copy.micErrors[micError]}
         </p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={onStart}
-        disabled={requestingMic}
-        className={bigPrimaryClassName}
-      >
-        {requestingMic ? copy.startingMic : copy.start}
-      </button>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onListen}
+          disabled={requestingMic}
+          className={`${secondaryButtonClassName} min-h-14`}
+        >
+          <SpeakerIcon className="h-5 w-5 shrink-0 text-white/50" />
+          {copy.listen}
+        </button>
+        <button
+          type="button"
+          onClick={onStart}
+          disabled={requestingMic}
+          className={bigPrimaryClassName}
+        >
+          {requestingMic ? copy.startingMic : copy.start}
+        </button>
+      </div>
     </div>
   );
 }
 
-/**
- * One try's GET READY, SPEAK or REST. They differ by colour, by the
- * character (and its ring) and by text.
- */
-function GuidedPanel({
+/** One try's GET READY, SPEAK or REST. */
+function GuidedBox({
   phase,
   word,
   tryNumber,
@@ -401,121 +368,85 @@ function GuidedPanel({
   micStream: MediaStream | null;
 }) {
   const copy = useGuidedCopy();
-  const reducedMotion = useReducedMotion();
   const label =
     phase === "ready" ? copy.ready : phase === "speak" ? copy.speak : copy.rest;
 
   return (
     <div
       data-phase={phase}
-      className="flex min-h-[26rem] flex-col items-center justify-between gap-4 p-5 text-center sm:p-6"
-      style={phaseStyles[phase]}
+      className={`flex min-h-[21rem] flex-col items-center justify-center gap-3 p-4 text-center ${phaseClassNames[phase]}`}
     >
       <div className="flex w-full items-center justify-between gap-3">
-        <p className="text-2xl font-bold">{copy.tryLabel(tryNumber)}</p>
+        <p className="text-lg font-bold">{copy.tryLabel(tryNumber)}</p>
         <ProgressDots doneTries={doneTries} current={tryNumber} />
       </div>
 
-      <div className="relative h-36 w-36 sm:h-44 sm:w-44">
-        <Character
-          key={`${phase}-${tryNumber}`}
-          phase={phase}
-          speakMs={speakMs}
-          animate={!reducedMotion}
-        />
-      </div>
+      <Face phase={phase} />
 
-      <div className="w-full space-y-3">
-        {phase === "rest" ? null : (
-          <SecondsLeft
-            key={`${phase}-${tryNumber}`}
-            durationMs={phase === "speak" ? speakMs : READY_MS}
-          />
-        )}
+      {phase === "rest" ? null : (
+        <SecondsLeft
+          key={`${phase}-${tryNumber}`}
+          durationMs={phase === "speak" ? speakMs : READY_MS}
+        />
+      )}
+      <p
+        role="status"
+        aria-live="assertive"
+        className="text-2xl font-bold [word-break:keep-all]"
+      >
+        {label}
+      </p>
+      {phase === "rest" ? null : (
         <p
-          role="status"
-          aria-live="assertive"
-          className="text-3xl font-bold [word-break:keep-all] sm:text-4xl"
+          className={`max-w-full break-words font-bold ${
+            phase === "speak" ? "text-5xl" : "text-3xl"
+          }`}
         >
-          {label}
+          {word}
         </p>
-        {phase === "rest" ? null : (
-          <p
-            className={`break-words font-bold ${
-              phase === "speak" ? "text-5xl sm:text-7xl" : "text-4xl"
-            }`}
-          >
-            {word}
-          </p>
-        )}
-        {phase === "ready" ? (
-          <p className="text-xl font-semibold">{copy.hint}</p>
-        ) : null}
-        {phase === "speak" && micStream ? (
-          <LevelMeter stream={micStream} onBright />
-        ) : null}
-      </div>
+      )}
+      {phase === "ready" ? (
+        <p className="text-base font-semibold">{copy.hint}</p>
+      ) : null}
+      {phase === "speak" ? (
+        <div className="w-full space-y-2">
+          <EmptyingBar key={tryNumber} durationMs={speakMs} />
+          {micStream ? <LevelMeter stream={micStream} onBright /> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 /**
  * A face that needs no reading: a closed mouth to get ready, a wide-open
- * mouth with an emptying ring to speak, and closed eyes with "Zz" to rest.
+ * mouth to speak, and closed eyes with "Z" to rest.
  */
-function Character({
-  phase,
-  speakMs,
-  animate,
-}: {
-  phase: "ready" | "speak" | "rest";
-  speakMs: number;
-  animate: boolean;
-}) {
+function Face({ phase }: { phase: "ready" | "speak" | "rest" }) {
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox="10 5 85 90"
       aria-hidden="true"
-      className="absolute inset-0 h-full w-full"
+      className="h-16 w-16 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
     >
-      {phase === "speak" ? (
-        <circle
-          cx="50"
-          cy="50"
-          r="46"
-          strokeWidth="7"
-          pathLength="100"
-          strokeDasharray="100"
-          transform="rotate(-90 50 50)"
-          style={
-            animate
-              ? { animation: `guided-ring-empty ${speakMs}ms linear forwards` }
-              : undefined
-          }
-        />
-      ) : null}
-      {phase === "ready" ? (
-        <circle cx="50" cy="50" r="46" strokeWidth="2" strokeDasharray="3 6" />
-      ) : null}
-
-      <circle cx="50" cy="50" r="34" strokeWidth="3" />
+      <circle cx="50" cy="50" r="34" strokeWidth="4" />
 
       {phase === "rest" ? (
         <>
-          <path d="M34 43q5 5 10 0M56 43q5 5 10 0" strokeWidth="3" />
-          <path d="M43 62q7 5 14 0" strokeWidth="3" />
-          <path d="M80 12h10l-10 12h10" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M34 43q5 5 10 0M56 43q5 5 10 0" strokeWidth="4" />
+          <path d="M43 62q7 5 14 0" strokeWidth="4" />
+          <path d="M78 10h12l-12 13h12" strokeWidth="4" strokeLinejoin="round" />
         </>
       ) : (
         <>
-          <circle cx="39" cy="42" r="3.5" fill="currentColor" stroke="none" />
-          <circle cx="61" cy="42" r="3.5" fill="currentColor" stroke="none" />
+          <circle cx="39" cy="42" r="4" fill="currentColor" stroke="none" />
+          <circle cx="61" cy="42" r="4" fill="currentColor" stroke="none" />
         </>
       )}
-      {phase === "ready" ? <path d="M42 62h16" strokeWidth="3" /> : null}
+      {phase === "ready" ? <path d="M42 62h16" strokeWidth="4" /> : null}
       {phase === "speak" ? (
         <ellipse cx="50" cy="63" rx="12" ry="13" fill="currentColor" stroke="none" />
       ) : null}
@@ -523,7 +454,6 @@ function Character({
   );
 }
 
-// The seconds left in a phase. With reduced motion, it replaces the ring's animation.
 function SecondsLeft({ durationMs }: { durationMs: number }) {
   const [remainingMs, setRemainingMs] = useState(durationMs);
 
@@ -537,9 +467,38 @@ function SecondsLeft({ durationMs }: { durationMs: number }) {
   }, [durationMs]);
 
   return (
-    <p aria-hidden="true" className="text-5xl font-bold tabular-nums">
+    <p aria-hidden="true" className="text-5xl font-bold leading-none tabular-nums">
       {Math.ceil(remainingMs / 1000)}
     </p>
+  );
+}
+
+// Shows how long is left. With reduced motion it stays full: the number counts.
+function EmptyingBar({ durationMs }: { durationMs: number }) {
+  const reducedMotion = useReducedMotion();
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => setStarted(true));
+
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  return (
+    <div aria-hidden="true" className="h-3 w-full overflow-hidden border border-black/30">
+      <div
+        data-emptying-bar
+        className="h-full bg-black"
+        style={
+          reducedMotion
+            ? undefined
+            : {
+                width: started ? "0%" : "100%",
+                transition: `width ${durationMs}ms linear`,
+              }
+        }
+      />
+    </div>
   );
 }
 
@@ -570,9 +529,11 @@ function ProgressDots({
             key={tryNumber}
             aria-label={copy.tryLabel(tryNumber)}
             aria-current={isCurrent ? "step" : undefined}
-            className={`grid place-items-center rounded-full border-current font-bold h-10 w-10 text-lg ${isCurrent ? "border-4" : "border"} ${isDone || isCurrent ? "" : "opacity-70"}`}
+            className={`grid h-9 w-9 place-items-center rounded-full border-current text-base font-bold ${
+              isCurrent ? "border-4" : "border"
+            } ${isDone || isCurrent ? "" : "opacity-70"}`}
           >
-            {/* Filled with the text colour, so it follows the panel behind it. */}
+            {/* Filled with the text colour, so it follows the box behind it. */}
             {isDone ? (
               <span
                 aria-hidden="true"
@@ -603,11 +564,6 @@ function ResultScreen({
 }) {
   const { language } = useLanguage();
   const copy = guidedCopy[language];
-  const again = (
-    <button type="button" onClick={onAgain} className={bigPrimaryClassName}>
-      {copy.again}
-    </button>
-  );
 
   if (outcome.kind === "success") {
     return (
@@ -621,12 +577,20 @@ function ResultScreen({
           />
         </div>
 
-        {outcome.bestClip ? (
-          <div className="grid">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {outcome.bestClip ? (
             <BestClipPlayback blob={outcome.bestClip.blob} />
-          </div>
-        ) : null}
-        {again}
+          ) : null}
+          <button
+            type="button"
+            onClick={onAgain}
+            className={`${primaryButtonClassName} ${
+              outcome.bestClip ? "" : "sm:col-span-2"
+            }`}
+          >
+            {copy.again}
+          </button>
+        </div>
       </div>
     );
   }
@@ -642,24 +606,30 @@ function ResultScreen({
   const canResend = outcome.kind === "uploadFailed" && outcome.canResend;
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-4 border border-white/10 bg-white/[0.02] p-6 text-center">
-        <p className="break-words text-4xl font-bold">{word}</p>
-        <p role="status" aria-live="polite" className="text-xl font-semibold leading-9">
+    <div className="space-y-4">
+      <div className={`space-y-3 p-5 text-center ${panelBoxClassName}`}>
+        <p className="break-words text-3xl font-bold text-white">{word}</p>
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-lg font-semibold leading-8 text-white"
+        >
           {message}
         </p>
       </div>
       {canResend ? (
-        <>
-          <button type="button" onClick={onResend} className={bigPrimaryClassName}>
-            {copy.resend}
-          </button>
-          <button type="button" onClick={onAgain} className={bigSecondaryClassName}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button type="button" onClick={onAgain} className={secondaryButtonClassName}>
             {copy.again}
           </button>
-        </>
+          <button type="button" onClick={onResend} className={primaryButtonClassName}>
+            {copy.resend}
+          </button>
+        </div>
       ) : (
-        again
+        <button type="button" onClick={onAgain} className={bigPrimaryClassName}>
+          {copy.again}
+        </button>
       )}
     </div>
   );
@@ -678,5 +648,7 @@ function BestClipPlayback({ blob }: { blob: Blob }) {
     return () => URL.revokeObjectURL(nextUrl);
   }, [blob]);
 
-  return url ? <PlaybackButton key={url} url={url} copy={resultCopy[language]} /> : null;
+  return url ? (
+    <PlaybackButton key={url} url={url} copy={resultCopy[language]} />
+  ) : null;
 }

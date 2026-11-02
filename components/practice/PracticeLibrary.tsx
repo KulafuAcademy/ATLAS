@@ -4,8 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { GuidedWordModal } from "@/components/pronunciation/GuidedWordModal";
-import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordModal";
+import { GuidedWordPanel } from "@/components/pronunciation/GuidedWordPanel";
+import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordPanel";
 import {
   useWordCheck,
   WordAssessmentModal,
@@ -673,7 +673,8 @@ function SpeakingPairs({
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const check = useWordCheck();
-  const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
+  // True during a word's guided tries, when nothing else may start audio.
+  const [guidedRunning, setGuidedRunning] = useState(false);
   const pair = pairs[index];
 
   if (!pair) return null;
@@ -686,7 +687,7 @@ function SpeakingPairs({
             <button
               type="button"
               aria-label={copy.previous}
-              disabled={index === 0}
+              disabled={index === 0 || guidedRunning}
               onClick={() => onIndexChange(index - 1)}
               className={navButtonClassName}
             >
@@ -695,7 +696,7 @@ function SpeakingPairs({
             <button
               type="button"
               aria-label={copy.next}
-              disabled={index === pairs.length - 1}
+              disabled={index === pairs.length - 1 || guidedRunning}
               onClick={() => onIndexChange(index + 1)}
               className={navButtonClassName}
             >
@@ -709,21 +710,12 @@ function SpeakingPairs({
         <PairCard
           key={pair.id}
           pair={pair}
-          onCheck={(target) => {
-            // A single word gets the guided 3 tries; a sentence is checked once.
-            if (target.kind === "word") {
-              setGuidedTarget(target);
-            } else {
-              check.start(target);
-            }
-          }}
+          onCheck={check.start}
+          guidedRunning={guidedRunning}
+          onGuidedRunningChange={setGuidedRunning}
         />
       </section>
       <WordAssessmentModal check={check} />
-      <GuidedWordModal
-        target={guidedTarget}
-        onClose={() => setGuidedTarget(null)}
-      />
     </>
   );
 }
@@ -755,13 +747,22 @@ const pairCardCopy = {
 function PairCard({
   pair,
   onCheck,
+  guidedRunning,
+  onGuidedRunningChange,
 }: {
   pair: MinimalPair;
   onCheck: WordCheckState["start"];
+  guidedRunning: boolean;
+  onGuidedRunningChange: (running: boolean) => void;
 }) {
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const play = useRecordedAudio();
+  const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
+  // A stray tap on these can't start audio during the recordings.
+  const lockedClassName = `transition-opacity duration-300 ${
+    guidedRunning ? "pointer-events-none opacity-30" : ""
+  }`;
   const twisterAudioPath = getPublicAudioPath(
     "twisters",
     pair.soundFocus,
@@ -771,7 +772,7 @@ function PairCard({
   return (
     <article className="space-y-6">
       {/* Each word tile pairs listening and the AI check, like the sentence. */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid grid-cols-2 gap-3 ${lockedClassName}`}>
         {[pair.wordA, pair.wordB].map((word) => {
           const audioPath = getPublicAudioPath("words", pair.soundFocus, word);
 
@@ -785,6 +786,7 @@ function PairCard({
                 <button
                   type="button"
                   aria-label={copy.listenTo(word)}
+                  disabled={guidedRunning}
                   onClick={() => play(audioPath, word)}
                   className="flex h-9 items-center justify-center gap-1.5 border border-white/10 bg-black px-2 text-xs font-semibold text-white transition hover:border-white/35 focus:outline-none"
                 >
@@ -794,7 +796,8 @@ function PairCard({
                 <button
                   type="button"
                   aria-label={copy.sayWord(word)}
-                  onClick={() => onCheck({ kind: "word", word, audioPath })}
+                  disabled={guidedRunning}
+                  onClick={() => setGuidedTarget({ word, audioPath })}
                   className="flex h-9 items-center justify-center gap-1.5 border border-white bg-white px-2 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
                 >
                   <MicIcon />
@@ -805,8 +808,17 @@ function PairCard({
           );
         })}
       </div>
+      {guidedTarget ? (
+        <GuidedWordPanel
+          target={guidedTarget}
+          onClose={() => setGuidedTarget(null)}
+          onRunningChange={onGuidedRunningChange}
+        />
+      ) : null}
       {pair.tongueTwister ? (
-        <div className="space-y-3 border border-white/10 bg-white/[0.03] p-4">
+        <div
+          className={`space-y-3 border border-white/10 bg-white/[0.03] p-4 ${lockedClassName}`}
+        >
           <p className="font-semibold text-white">{pair.tongueTwister.text}</p>
           <p className="text-sm leading-6 text-white/55">
             {pair.tongueTwister.note[language]}
@@ -824,13 +836,14 @@ function PairCard({
             </button>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                setGuidedTarget(null);
                 onCheck({
                   kind: "sentence",
                   word: pair.tongueTwister!.text,
                   audioPath: twisterAudioPath,
-                })
-              }
+                });
+              }}
               className="flex h-10 items-center gap-2 border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
             >
               <MicIcon />

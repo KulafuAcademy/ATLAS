@@ -4,36 +4,37 @@ On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say rig
 
 This applies on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
 
-The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: each word's mic button, and "Say the sentence" in the tongue twister box, opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 8 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
+The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: "Say the sentence" in the tongue twister box opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 8 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
 
 The server is a separate project. This app only records audio, sends it, and shows the result.
 
 ## Guided "say it 3 times" flow (single words)
 
-Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordModal`. Sentences keep the one-shot flow and `POST /analyze`.
+Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordPanel` in the page, right under the word's buttons. Sentences keep the one-shot flow and `POST /analyze`.
 
 ```
 tap "Say right" ─► first screen: word, listen button, slow-speech hint, Start
 tap Start       ─► ask for the mic once (one stream for all 3 tries)
 3 times:
-  GET READY  READY_MS (1500)              calm, closed mouth, seconds left, hint
+  GET READY  READY_MS (1500)              dark box, closed mouth, seconds left, hint
   chime      ≤ 120 ms, then the recorder starts (a new MediaRecorder, no timeslice)
   SPEAK      SPEAK_MS (2500), or SPEAK_LONG_MS (3500) for 9+ letters
-                                          bright, open mouth, emptying ring,
+                                          white box, open mouth, emptying bar,
                                           seconds left, mic level meter
   stop event, then
-  REST       REST_MS (1000)               darker calm, closed eyes, "Zz", dot done
+  REST       REST_MS (1000)               dashed box, closed eyes, "Z", dot done
 release the mic ─► POST /analyze-word ─► results
 ```
 
 - **Pace:** the constants are at the top of `lib/guidedWordSession.ts`. Never shorten or skip a phase to speed things up: the fixed pace is what keeps children from rushing.
 - **Keeping clips clean:** SPEAK only appears once the chime is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
-- **Stopping:** the Stop button, closing the modal, hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
+- **Locked while running:** the rest of the page is dimmed and can't be tapped (`onRunningChange`), so a stray tap can't play audio into a recording.
+- **Stopping:** the Stop button, closing the panel (×), hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
 - **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is looked up among the clips that were sent. If no try produced a clip, the "couldn't hear you" message shows without an upload.
 - **Upload errors:** network and 5xx errors keep the clips and offer "send again". 4xx errors can't change on a resend, so they only offer the whole flow again.
 - **No scores between tries.** The results are the best try's, from the shared result UI. They don't say which try was best, and `attempts[]` isn't shown to children. "Listen to me" plays the best try's clip.
 - **Language:** follows the site's language toggle. The Japanese copy uses hiragana with only grade 1-2 kanji, and `resultCopy` swaps the harder words of the shared result UI. Text from the server (`messageJa`, `tipJa`, `feedback`) is shown as sent.
-- **Reduced motion:** the ring doesn't animate; the seconds left and the state changes remain.
+- **Reduced motion:** the bar doesn't animate; the seconds left and the state changes remain.
 
 `lib/guidedWordSession.ts` has the state machine with no browser code, tested in `lib/guidedWordSession.test.mjs`. `useGuidedWordSession.ts` supplies the browser side (mic, recorder, chime, upload).
 
@@ -44,7 +45,7 @@ release the mic ─► POST /analyze-word ─► results
 | [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
 | [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
 | [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx) | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `Verdict`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`. |
-| [`components/pronunciation/GuidedWordModal.tsx`](../components/pronunciation/GuidedWordModal.tsx) | The guided 3-try flow's screens: first screen, GET READY / SPEAK / REST, loading and results. |
+| [`components/pronunciation/GuidedWordPanel.tsx`](../components/pronunciation/GuidedWordPanel.tsx) | The guided 3-try flow's screens: first screen, GET READY / SPEAK / REST, loading and results. |
 | [`components/pronunciation/useGuidedWordSession.ts`](../components/pronunciation/useGuidedWordSession.ts) | Connects `lib/guidedWordSession.ts` to the mic, MediaRecorder, chime and upload. Cancels when the page is hidden or on unmount. |
 | [`lib/guidedWordSession.ts`](../lib/guidedWordSession.ts) | The flow's state machine and its timing constants. |
 | [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
@@ -223,7 +224,6 @@ Rules:
   - The same amber for the `focus` sound boxes, "different sound" in the IPA details, and the C/D verdict (`childVerdictColor`).
 - A step that didn't pass shows a neutral summary, not ❌.
 - Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
-- The one exception is the guided flow's phase panels: one bright accent for SPEAK and two calm tones (`phaseStyles` in `GuidedWordModal.tsx`).
 - If the server's bands or status cutoffs ever change, update `pronunciationGrades.ts` to match.
 
 ## Copy and language
@@ -279,5 +279,6 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] iOS: switching app mid-try returns to the first screen with the mic off.
 - [ ] GET READY and SPEAK count down, the level meter moves during SPEAK, and no score shows between tries.
 - [ ] The results start at the praise, in both languages, and "Listen to me" plays the best try. "Try again" re-runs all 3 tries.
+- [ ] While the tries run, the rest of the page is dimmed and its buttons can't be tapped. Closing the panel with × stops the tries.
 - [ ] Offline during upload: "send again" works without re-recording.
-- [ ] With "reduce motion" on, the ring doesn't animate but the numbers still count down.
+- [ ] With "reduce motion" on, the bar doesn't animate but the numbers still count down.

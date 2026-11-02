@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { GuidedWordModal } from "@/components/pronunciation/GuidedWordModal";
-import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordModal";
+import { GuidedWordPanel } from "@/components/pronunciation/GuidedWordPanel";
+import type { GuidedWordTarget } from "@/components/pronunciation/GuidedWordPanel";
 import { LevelMeter } from "@/components/pronunciation/LevelMeter";
 import { PronunciationPanel } from "@/components/pronunciation/PronunciationPanel";
 import {
@@ -326,6 +326,7 @@ function PairPracticeCard({
   const assessment = usePronunciationAssessment({ enabled: useAiAssessment });
   const aiResultsRef = useRef<HTMLDivElement | null>(null);
   const [guidedTarget, setGuidedTarget] = useState<GuidedWordTarget | null>(null);
+  const [guidedRunning, setGuidedRunning] = useState(false);
 
   // Bring a freshly loaded AI result into view.
   useEffect(() => {
@@ -638,6 +639,7 @@ function PairPracticeCard({
     countdown !== null ||
     sentenceCheck.isListening ||
     Boolean(aiCheckTarget) ||
+    guidedRunning ||
     (useAiAssessment && assessment.isBusy);
 
   // AI mode for steps 3 and 4: ask for the mic on the tap, record during the
@@ -648,6 +650,7 @@ function PairPracticeCard({
   ) {
     window.speechSynthesis?.cancel();
     window.dispatchEvent(new Event(stopPronunciationCheckEvent));
+    setGuidedTarget(null);
     showFeedback(
       kind,
       "neutral",
@@ -891,8 +894,9 @@ function PairPracticeCard({
   const aiRecordingStream = useAiAssessment ? assessment.recorder.stream : null;
   // While an AI check counts down or records, everything except that step
   // is dimmed and the text to read is highlighted.
-  const focusKind: "pronunciation" | "tongueTwister" | null =
-    useAiAssessment && countdown
+  const focusKind: "pronunciation" | "tongueTwister" | null = guidedRunning
+    ? "pronunciation"
+    : useAiAssessment && countdown
       ? countdown.kind
       : useAiAssessment && assessment.recorder.status !== "idle"
         ? assessment.target === tongueTwister.text
@@ -1029,7 +1033,15 @@ function PairPracticeCard({
       >
         {copy.speak(pair.wordB)}
       </ActionButton>
-      {focusKind === "pronunciation" && assessment.target ? (
+      {guidedTarget ? (
+        <GuidedWordPanel
+          target={guidedTarget}
+          onClose={() => setGuidedTarget(null)}
+          onRunningChange={setGuidedRunning}
+          className="col-span-full"
+        />
+      ) : null}
+      {focusKind === "pronunciation" && !guidedRunning && assessment.target ? (
         <div
           ref={focusTargetRef}
           className="col-span-full border border-white bg-white/[0.06] px-4 py-5 text-center"
@@ -1219,18 +1231,6 @@ function PairPracticeCard({
       {resultsKind === "pronunciation" ? resultsPanel : null}
       {tongueTwisterStep}
       {resultsKind === "tongueTwister" ? resultsPanel : null}
-      <GuidedWordModal
-        target={guidedTarget}
-        onClose={() => setGuidedTarget(null)}
-        onResult={({ grade }) => {
-          // The details are in the modal, so the step only gets the verdict.
-          showFeedback(
-            "pronunciation",
-            grade.letter === "A" || grade.letter === "B" ? "success" : "neutral",
-            gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict,
-          );
-        }}
-      />
     </div>
   );
 }
