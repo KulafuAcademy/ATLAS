@@ -128,7 +128,7 @@ export type AnalyzeRejected = {
 
 export type AnalyzeResponse = AnalyzeSuccess | AnalyzeRejected;
 
-/** One try in a POST /analyze-word request. Children never see its score. */
+/** One try in a POST /analyze-word request, for teacher or debug views only. */
 export type WordAttempt =
   | {
       /** 1-based position of the clip in the request. */

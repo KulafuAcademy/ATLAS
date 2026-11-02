@@ -11,7 +11,7 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import { useRecordedAudio } from "@/components/training/audio";
 import { playCorrectSound } from "@/components/training/feedbackSounds";
-import { countPassedTries, READY_MS, TRY_COUNT } from "@/lib/guidedWordSession";
+import { READY_MS, TRY_COUNT } from "@/lib/guidedWordSession";
 import type { SessionOutcome } from "@/lib/guidedWordSession";
 import type { Language } from "@/lib/i18n";
 import type { AnalyzeWordSuccess } from "@/lib/pronunciationApi";
@@ -41,9 +41,6 @@ const guidedCopy = {
     rest: "Done! Take a rest",
     checking: "Listening to your tries… just a moment",
     cancel: "Stop",
-    best: (tryNumber: number) => `Your best was try ${tryNumber}!`,
-    passed: (count: number, total: number) => `You got ${count}/${total}!`,
-    nonePassed: "Keep going, you can do it!",
     again: "Try again",
     rejected: "We couldn't hear you. Try saying it a little louder!",
     resend: "Send again",
@@ -73,9 +70,6 @@ const guidedCopy = {
     rest: "おわり！ひとやすみ",
     checking: "きいているよ… ちょっと まってね",
     cancel: "やめる",
-    best: (tryNumber: number) => `いちばん よかったのは ${tryNumber}かいめ！`,
-    passed: (count: number, total: number) => `${count}/${total} できたよ！`,
-    nonePassed: "つぎは きっと できるよ！",
     again: "もう いちど",
     rejected: "きこえなかったよ。もう すこし 大きな こえで 言って みよう！",
     resend: "もう いちど おくる",
@@ -551,18 +545,15 @@ function SecondsLeft({ durationMs }: { durationMs: number }) {
 
 /**
  * One numbered dot per try. Done is filled (never a tick: it says the try is
- * over, not that it was right), the current one has a thick outline, and the
- * best one gets a star.
+ * over, not that it was right), and the current one has a thick outline.
  */
 function ProgressDots({
   doneTries,
   current,
-  best,
   className = "",
 }: {
   doneTries: number;
   current?: number;
-  best?: number;
   className?: string;
 }) {
   const copy = useGuidedCopy();
@@ -572,7 +563,6 @@ function ProgressDots({
       {Array.from({ length: TRY_COUNT }, (_, index) => {
         const tryNumber = index + 1;
         const isDone = tryNumber <= doneTries;
-        const isBest = tryNumber === best;
         const isCurrent = tryNumber === current && !isDone;
 
         return (
@@ -580,14 +570,10 @@ function ProgressDots({
             key={tryNumber}
             aria-label={copy.tryLabel(tryNumber)}
             aria-current={isCurrent ? "step" : undefined}
-            className={`grid place-items-center rounded-full border-current font-bold ${
-              isBest ? "h-14 w-14 border-4 text-2xl" : "h-10 w-10 text-lg"
-            } ${isCurrent ? "border-4" : "border"} ${isDone || isCurrent ? "" : "opacity-70"}`}
+            className={`grid place-items-center rounded-full border-current font-bold h-10 w-10 text-lg ${isCurrent ? "border-4" : "border"} ${isDone || isCurrent ? "" : "opacity-70"}`}
           >
             {/* Filled with the text colour, so it follows the panel behind it. */}
-            {isBest ? (
-              <span aria-hidden="true">★</span>
-            ) : isDone ? (
+            {isDone ? (
               <span
                 aria-hidden="true"
                 className="grid h-full w-full place-items-center rounded-full bg-current"
@@ -624,33 +610,16 @@ function ResultScreen({
   );
 
   if (outcome.kind === "success") {
-    const passedTries = countPassedTries(outcome.response.attempts);
-
     return (
       <div className="space-y-5">
-        <div aria-live="polite" className="space-y-4 text-center">
-          <p className="text-2xl font-bold leading-9 text-white [word-break:keep-all]">
-            {copy.best(outcome.bestTry)}
-          </p>
-          <p className="text-xl font-semibold text-white [word-break:keep-all]">
-            {/* No "0/3": that would only discourage a child who tried. */}
-            {passedTries > 0
-              ? copy.passed(passedTries, TRY_COUNT)
-              : copy.nonePassed}
-          </p>
-          <ProgressDots
-            doneTries={TRY_COUNT}
-            best={outcome.bestTry}
-            className="justify-center"
+        <div aria-live="polite">
+          <AssessmentResults
+            result={outcome.response}
+            target={null}
+            copy={resultCopy[language]}
+            language={language}
           />
         </div>
-
-        <AssessmentResults
-          result={outcome.response}
-          target={null}
-          copy={resultCopy[language]}
-          language={language}
-        />
 
         {outcome.bestClip ? (
           <div className="grid">

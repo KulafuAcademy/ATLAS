@@ -29,9 +29,9 @@ release the mic ─► POST /analyze-word ─► results
 - **Pace:** the constants are at the top of `lib/guidedWordSession.ts`. Never shorten or skip a phase to speed things up: the fixed pace is what keeps children from rushing.
 - **Keeping clips clean:** SPEAK only appears once the chime is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
 - **Stopping:** the Stop button, closing the modal, hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
-- **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is mapped back to the child's real try number. If no try produced a clip, the "couldn't hear you" message shows without an upload.
+- **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is looked up among the clips that were sent. If no try produced a clip, the "couldn't hear you" message shows without an upload.
 - **Upload errors:** network and 5xx errors keep the clips and offer "send again". 4xx errors can't change on a resend, so they only offer the whole flow again.
-- **No scores between tries.** The results name the best try, star its dot and say how many tries passed ("2/3", counting grade A or B). With none passed, an encouraging line replaces "0/3". The tries' scores in `attempts[]` aren't shown to children.
+- **No scores between tries.** The results are the best try's, from the shared result UI. They don't say which try was best, and `attempts[]` isn't shown to children. "Listen to me" plays the best try's clip.
 - **Language:** follows the site's language toggle. The Japanese copy uses hiragana with only grade 1-2 kanji, and `resultCopy` swaps the harder words of the shared result UI. Text from the server (`messageJa`, `tipJa`, `feedback`) is shown as sent.
 - **Reduced motion:** the ring doesn't animate; the seconds left and the state changes remain.
 
@@ -278,6 +278,6 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] iOS: the second and third clips are not empty and upload as `.mp4`; audio still plays after the mic has been open; the mic indicator goes off at upload.
 - [ ] iOS: switching app mid-try returns to the first screen with the mic off.
 - [ ] GET READY and SPEAK count down, the level meter moves during SPEAK, and no score shows between tries.
-- [ ] The results name the best try, star its dot and show the "2/3" tally, in both languages. "Try again" re-runs all 3 tries.
+- [ ] The results start at the praise, in both languages, and "Listen to me" plays the best try. "Try again" re-runs all 3 tries.
 - [ ] Offline during upload: "send again" works without re-recording.
 - [ ] With "reduce motion" on, the ring doesn't animate but the numbers still count down.

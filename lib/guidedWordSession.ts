@@ -2,7 +2,6 @@ import type { RecorderError } from "@/components/pronunciation/useVoiceRecorder"
 import type {
   AnalyzeWordResponse,
   AnalyzeWordSuccess,
-  WordAttempt,
 } from "@/lib/pronunciationApi";
 
 // The fixed pace and visible gaps keep children from rushing. Tune them here,
@@ -20,14 +19,6 @@ export function speakMsFor(word: string) {
   const letters = word.match(/\p{L}/gu)?.length ?? 0;
 
   return letters >= LONG_WORD_LETTERS ? SPEAK_LONG_MS : SPEAK_MS;
-}
-
-/** How many tries passed, using the app's pass rule: grade A or B. */
-export function countPassedTries(attempts: WordAttempt[]) {
-  return attempts.filter(
-    (attempt) =>
-      attempt.ok && (attempt.grade.letter === "A" || attempt.grade.letter === "B"),
-  ).length;
 }
 
 export type SessionPhase =
@@ -50,8 +41,7 @@ export type SessionOutcome =
   | {
       kind: "success";
       response: AnalyzeWordSuccess;
-      /** The child's try number (1-3) that scored best. */
-      bestTry: number;
+      /** The clip of the server's `bestAttempt`. */
       bestClip: SessionClip | null;
     }
   /** Nothing could be scored: the child should say it again. */
@@ -253,14 +243,11 @@ export class GuidedWordSession {
         return;
       }
 
-      // The server numbers the clips it got, which can be fewer than 3.
-      const bestClip = this.clips[response.bestAttempt - 1] ?? null;
-
       this.finish({
         kind: "success",
         response,
-        bestTry: bestClip?.tryNumber ?? response.bestAttempt,
-        bestClip,
+        // The server numbers the clips it got, which can be fewer than 3.
+        bestClip: this.clips[response.bestAttempt - 1] ?? null,
       });
     } catch (error) {
       if (this.run !== run) return;
