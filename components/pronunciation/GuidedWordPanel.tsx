@@ -371,8 +371,8 @@ function GuidedBox({
 
 /**
  * A face that needs no reading: a smile to get ready, a wide-open
- * mouth to speak, happy closed eyes to rest, and a raised eyebrow and sideways
- * look after the last try.
+ * mouth to speak, happy closed eyes to rest, and eyebrows (one raised) with a
+ * sideways look after the last try.
  */
 function Face({
   expression,
@@ -394,7 +394,7 @@ function Face({
         <>
           <circle cx="43" cy="41" r="4" fill="currentColor" stroke="none" />
           <circle cx="65" cy="41" r="4" fill="currentColor" stroke="none" />
-          <path d="M56 32q6-5 12-2" strokeWidth="4" />
+          <path d="M36 32q6-3 12-1M56 31q6-5 12-2" strokeWidth="4" />
           <path d="M41 65l17-4" strokeWidth="4" />
         </>
       ) : null}
