@@ -804,7 +804,13 @@ function PairCard({
                   type="button"
                   aria-label={copy.sayWord(word)}
                   disabled={guidedRunning}
-                  onClick={() => guided.open({ word, audioPath })}
+                  onClick={() =>
+                    guided.open({
+                      word,
+                      ipa: word === pair.wordA ? pair.ipaA : pair.ipaB,
+                      audioPath,
+                    })
+                  }
                   className="flex h-9 items-center justify-center gap-1.5 border border-white bg-white px-2 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
                 >
                   <MicIcon />

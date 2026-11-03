@@ -188,6 +188,7 @@ function createBrowserEffects(
 
 export type GuidedWordTarget = {
   word: string;
+  ipa?: string;
   /** Recorded model pronunciation; falls back to speech synthesis. */
   audioPath: string;
 };

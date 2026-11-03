@@ -10,7 +10,7 @@ The server is a separate project. This app only records audio, sends it, and sho
 
 ## Guided "say it 3 times" flow (single words)
 
-Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordPanel` in the page, right under the word's buttons, with the word in a "Say this" card. When the tries end, `GuidedWordResults` shows a separate Results section below the step. The page owns the state with `useGuidedWordSession()`, like `useWordCheck()`. Sentences keep the one-shot flow and `POST /analyze`.
+Every single-word check, on the Practice page and in step 3 of the pair page, opens `GuidedWordPanel` in the page, right under the word's buttons, with the word and its IPA in a "Say this" card. When the tries end, `GuidedWordResults` shows a separate Results section below the step. The page owns the state with `useGuidedWordSession()`, like `useWordCheck()`. Sentences keep the one-shot flow and `POST /analyze`.
 
 ```
 tap "Say right" ─► ask for the mic once (one stream for all 3 tries)

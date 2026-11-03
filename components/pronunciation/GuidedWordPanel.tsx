@@ -206,6 +206,7 @@ export function GuidedWordPanel({
       {phase === "uploading" ? null : (
         <WordCard
           word={target.word}
+          ipa={target.ipa}
           micActive={phase === "speak"}
           dimmed={phase === "rest"}
         />
@@ -253,10 +254,12 @@ export function GuidedWordPanel({
 // fades during REST, when there's nothing to say.
 function WordCard({
   word,
+  ipa,
   micActive,
   dimmed,
 }: {
   word: string;
+  ipa?: string;
   micActive: boolean;
   dimmed: boolean;
 }) {
@@ -284,6 +287,9 @@ function WordCard({
       <p className="mt-2 break-words text-5xl font-semibold text-white md:text-6xl">
         {word}
       </p>
+      {ipa ? (
+        <p className="mt-2 text-xl text-white/60 md:text-2xl">{ipa}</p>
+      ) : null}
     </div>
   );
 }
