@@ -203,7 +203,11 @@ export function GuidedWordPanel({
       </div>
 
       {phase === "uploading" ? null : (
-        <WordCard word={target.word} dimmed={phase === "rest"} />
+        <WordCard
+          word={target.word}
+          micActive={phase === "speak"}
+          dimmed={phase === "rest"}
+        />
       )}
 
       {phase === "idle" ? (
@@ -244,20 +248,35 @@ export function GuidedWordPanel({
   );
 }
 
-// The word to read. It fades during REST, when there's nothing to say.
-function WordCard({ word, dimmed }: { word: string; dimmed: boolean }) {
+// The word to read. It's highlighted only while the mic is recording, and it
+// fades during REST, when there's nothing to say.
+function WordCard({
+  word,
+  micActive,
+  dimmed,
+}: {
+  word: string;
+  micActive: boolean;
+  dimmed: boolean;
+}) {
   const copy = useGuidedCopy();
 
   return (
     <div
       className={`border px-4 py-5 text-center transition-opacity duration-300 ${
-        dimmed ? "border-white/20 opacity-30" : "border-white bg-white/[0.06]"
+        micActive
+          ? "border-white bg-white/[0.06]"
+          : dimmed
+            ? "border-white/20 opacity-30"
+            : "border-white/10 bg-white/[0.02]"
       }`}
     >
       <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
         <span
           aria-hidden="true"
-          className="h-2 w-2 rounded-full bg-white motion-safe:animate-pulse"
+          className={`h-2 w-2 rounded-full ${
+            micActive ? "bg-white motion-safe:animate-pulse" : "bg-white/40"
+          }`}
         />
         {copy.sayThis}
       </p>

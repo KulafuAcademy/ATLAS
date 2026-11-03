@@ -14,9 +14,10 @@ Every single-word check, on the Practice page and in step 3 of the pair page, op
 
 ```
 tap "Say right" ─► ask for the mic once (one stream for all 3 tries)
-3 times:
+first try only:
   GET READY  READY_MS (3000)              dark box, smiling face, 3-2-1 with a tick
                                           each second (as for the tongue twister), hint
+3 times:
   go sound   200 ms, then the recorder starts (a new MediaRecorder, no timeslice)
   SPEAK      SPEAK_MS (2500), or SPEAK_LONG_MS (3500) for 9+ letters
                                           white box, open mouth, emptying bar,
@@ -27,8 +28,9 @@ tap "Say right" ─► ask for the mic once (one stream for all 3 tries)
 release the mic ─► POST /analyze-word ─► results
 ```
 
-- **Pace:** the constants are at the top of `lib/guidedWordSession.ts`. Never shorten or skip a phase to speed things up: the fixed pace is what keeps children from rushing.
+- **Pace:** the constants are at the top of `lib/guidedWordSession.ts`. Only the first try has GET READY. Tries 2 and 3 go from REST straight to the go sound and SPEAK. Don't shorten or skip any other phase to speed things up: the fixed pace is what keeps children from rushing.
 - **Keeping clips clean:** SPEAK only appears once the go sound is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
+- **"Say this" card:** it has the white border and pulsing dot only during SPEAK, while the mic is recording. It's plain during GET READY and fades during REST.
 - **Locked while running:** the rest of the page is dimmed and can't be tapped (`isRunning`), so a stray tap can't play audio into a recording.
 - **Stopping:** the Stop button, closing the panel (×), hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
 - **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is looked up among the clips that were sent. If no try produced a clip, the "couldn't hear you" message shows without an upload.
@@ -275,10 +277,10 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] The home page lesson grid still uses the browser speech check, and doesn't poll `/health`.
 - [ ] Layout works at phone width (~360 px) with no horizontal scroll.
 - [ ] **Guided flow, in Chrome and on a real iPhone (Safari, over HTTPS):** a word's "Say" asks for the mic once, then all 3 tries run with no more tapping and no model audio.
-- [ ] The ticks and go sound are audible before each SPEAK, are not in the clips, and the first sound of the word isn't cut off.
+- [ ] The ticks are audible before the first SPEAK and the go sound before each SPEAK. Neither is in the clips, and the first sound of the word isn't cut off.
 - [ ] iOS: the second and third clips are not empty and upload as `.mp4`; audio still plays after the mic has been open; the mic indicator goes off at upload.
 - [ ] iOS: switching app mid-try closes the panel with the mic off.
-- [ ] GET READY and SPEAK count down, the level meter moves during SPEAK, and no score shows between tries.
+- [ ] GET READY counts down on try 1 only, tries 2 and 3 follow on from REST, SPEAK counts down, the level meter moves during SPEAK, and no score shows between tries.
 - [ ] The results start at the praise, in both languages, and "Listen to me" plays the best try. "Try again" re-runs all 3 tries.
 - [ ] The word stays in the "Say this" card during the tries, and the results appear in their own section below the pronunciation step.
 - [ ] While the tries run, the rest of the page is dimmed and its buttons can't be tapped. Closing the panel with × stops the tries.

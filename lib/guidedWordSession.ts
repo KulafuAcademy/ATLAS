@@ -6,6 +6,7 @@ import type {
 
 // The fixed pace and visible gaps keep children from rushing. Tune them here,
 // but don't skip a phase.
+/** Only the first try counts down. Later tries follow on from REST_MS. */
 export const READY_MS = 3000;
 /** A countdown tick plays at the start of each of these during READY_MS. */
 export const READY_TICK_MS = 1000;
@@ -105,7 +106,7 @@ function errorStatus(error: unknown) {
 
 /**
  * The "say it 3 times" flow:
- *   idle -> (ready -> speak -> rest) x3 -> uploading -> result
+ *   idle -> ready -> (speak -> rest) x3 -> uploading -> result
  *
  * The child only sees "speak" once the go sound is over and the recorder is
  * running, and "rest" only after the recorder's stop event, so a clip never
@@ -202,12 +203,14 @@ export class GuidedWordSession {
     const { effects } = this;
     const isStale = () => this.run !== run;
 
-    this.setState({ phase: "ready", tryNumber });
+    if (tryNumber === 1) {
+      this.setState({ phase: "ready", tryNumber });
 
-    for (let left = READY_MS; left > 0; left -= READY_TICK_MS) {
-      effects.playTick();
-      await effects.wait(Math.min(left, READY_TICK_MS), run.signal);
-      if (isStale()) return false;
+      for (let left = READY_MS; left > 0; left -= READY_TICK_MS) {
+        effects.playTick();
+        await effects.wait(Math.min(left, READY_TICK_MS), run.signal);
+        if (isStale()) return false;
+      }
     }
 
     await effects.playGoSound();
@@ -219,7 +222,7 @@ export class GuidedWordSession {
     );
     if (isStale()) return false;
 
-    this.setState({ phase: "speak" });
+    this.setState({ phase: "speak", tryNumber });
     await effects.wait(this.speakMs, run.signal);
     if (isStale()) return false;
 
