@@ -51,7 +51,8 @@ type FeedbackType =
   | "tongueTwister"
   | "tongueTwisterPlayback";
 // "pending": work in progress (e.g. the AI check), shown with animated dots.
-type FeedbackTone = "neutral" | "pending" | "success" | "error";
+// "playing": the text is what's being played, shown large under a label.
+type FeedbackTone = "neutral" | "pending" | "playing" | "success" | "error";
 
 type CardFeedback = {
   pairId: string;
@@ -73,6 +74,8 @@ const prepareSeconds = 3;
 const pronunciationAnswerSeconds = 3;
 const tongueTwisterAnswerSeconds = 8;
 const slowPlaybackRate = 0.75;
+// How long the "Playing" card stays up after the audio ends.
+const playingFeedbackLingerMs = 1000;
 
 type MinimalPairTrainerProps = {
   id?: string;
@@ -110,7 +113,7 @@ const trainerCopy = {
     speedLabel: "Playback speed",
     speedNormal: "Normal",
     speedSlow: "Slow (0.75x)",
-    playing: (word: string) => `Playing: ${word}`,
+    playing: "Playing",
     whichWord: "Which word did you hear?",
     correct: "Correct.",
     listeningIncorrect: (word: string) =>
@@ -169,7 +172,7 @@ const trainerCopy = {
     speedLabel: "再生速度",
     speedNormal: "通常",
     speedSlow: "ゆっくり (0.75倍)",
-    playing: (word: string) => `再生中: ${word}`,
+    playing: "再生中",
     whichWord: "どちらの単語に聞こえましたか？",
     correct: "正解です。",
     listeningIncorrect: (word: string) =>
@@ -322,6 +325,8 @@ function PairPracticeCard({
   // The running countdown's endAnswer, so "Stop" can end the answer early.
   const endAnswerRef = useRef<(() => void) | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playbackRunIdRef = useRef(0);
+  const hidePlayingTimerRef = useRef<number | null>(null);
   // Separate speed settings: words (steps 1-2) and the tongue twister (step 4).
   const [wordSlow, setWordSlow] = useState(false);
   const [twisterSlow, setTwisterSlow] = useState(false);
@@ -436,9 +441,31 @@ function PairPracticeCard({
       audioRef.current?.pause();
       audioRef.current = null;
       window.speechSynthesis?.cancel();
+      clearHidePlayingTimer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function clearHidePlayingTimer() {
+    if (hidePlayingTimerRef.current !== null) {
+      window.clearTimeout(hidePlayingTimerRef.current);
+      hidePlayingTimerRef.current = null;
+    }
+  }
+
+  // Ignored if a newer playback has started since `runId` began. The timer
+  // only clears the "Playing" card, never a message that replaced it.
+  function hidePlayingFeedbackSoon(runId: number) {
+    if (playbackRunIdRef.current !== runId) return;
+
+    clearHidePlayingTimer();
+    hidePlayingTimerRef.current = window.setTimeout(() => {
+      hidePlayingTimerRef.current = null;
+      setCardFeedback((current) =>
+        current?.tone === "playing" ? null : current,
+      );
+    }, playingFeedbackLingerMs);
+  }
 
   function showFeedback(
     type: FeedbackType,
@@ -475,6 +502,10 @@ function PairPracticeCard({
     showPlayingFeedback = true,
     slow = false,
   ) {
+    playbackRunIdRef.current += 1;
+    const runId = playbackRunIdRef.current;
+    clearHidePlayingTimer();
+
     // Stop any MP3 or speech that is already playing.
     if (audioRef.current) {
       audioRef.current.pause();
@@ -509,11 +540,13 @@ function PairPracticeCard({
         if (audioRef.current === audio) {
           audioRef.current = null;
         }
+
+        hidePlayingFeedbackSoon(runId);
       };
       audio.onerror = fallbackToTts;
 
       if (showPlayingFeedback) {
-        showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+        showFeedback(feedbackType, "playing", textToSpeak);
       }
 
       try {
@@ -547,10 +580,14 @@ function PairPracticeCard({
     utterance.rate = slow ? 0.85 * slowPlaybackRate : 0.85;
     utterance.pitch = 1;
 
+    const runId = playbackRunIdRef.current;
+    utterance.onend = () => hidePlayingFeedbackSoon(runId);
+    utterance.onerror = () => hidePlayingFeedbackSoon(runId);
+
     window.speechSynthesis.speak(utterance);
 
     if (showPlayingFeedback) {
-      showFeedback(feedbackType, "neutral", copy.playing(textToSpeak));
+      showFeedback(feedbackType, "playing", textToSpeak);
     }
   }
 
@@ -1040,7 +1077,7 @@ function PairPracticeCard({
       {focusKind === "pronunciation" && !guidedRunning && assessment.target ? (
         <div
           ref={focusTargetRef}
-          className="col-span-full border border-white bg-white/[0.06] px-4 py-5 text-center"
+          className="col-span-full border border-white bg-white/[0.12] px-4 py-5 text-center ring-1 ring-white"
         >
           <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
             <span
@@ -1081,7 +1118,7 @@ function PairPracticeCard({
         ref={focusKind === "tongueTwister" ? focusTargetRef : undefined}
         className={`border px-4 transition-colors ${
           focusKind === "tongueTwister"
-            ? "border-white bg-white/[0.06] py-5 text-center"
+            ? "border-white bg-white/[0.12] py-5 text-center ring-1 ring-white"
             : "border-white/10 bg-black py-3"
         }`}
       >
@@ -1613,6 +1650,31 @@ function FeedbackMessage({
 }: {
   feedback: NonNullable<CardFeedback>;
 }) {
+  if (feedback.tone === "playing") {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="col-span-full border border-white/10 bg-white/[0.02] px-4 py-5 text-center"
+      >
+        <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-white/40" />
+          {trainerCopy[feedback.language].playing}
+        </p>
+        {/* The tongue twister is a whole sentence, so it gets a smaller size. */}
+        <p
+          className={`mt-2 break-words font-semibold text-white ${
+            feedback.type === "tongueTwisterPlayback"
+              ? "text-3xl leading-tight md:text-4xl"
+              : "text-5xl md:text-6xl"
+          }`}
+        >
+          {feedback.text}
+        </p>
+      </div>
+    );
+  }
+
   const icon =
     feedback.tone === "success"
       ? "⭕️"

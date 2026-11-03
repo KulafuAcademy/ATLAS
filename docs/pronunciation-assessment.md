@@ -20,8 +20,9 @@ first try only:
 3 times:
   go sound   200 ms, then the recorder starts (a new MediaRecorder, no timeslice)
   SPEAK      SPEAK_MS (2500), or SPEAK_LONG_MS (3500) for 9+ letters
-                                          white box, open mouth, emptying bar,
-                                          seconds left, mic level meter
+                                          dark box (the word card above is the bright
+                                          one), open mouth, emptying bar, seconds
+                                          left, mic level meter
   stop event, then
   REST       REST_MS (1000)               dashed box, happy closed eyes (a thinking
                                           face after the last try), dot done

@@ -118,9 +118,10 @@ const bigPrimaryClassName =
   "inline-flex min-h-14 w-full items-center justify-center gap-2 border border-white bg-white px-4 text-lg font-bold text-black transition hover:bg-black hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/40 disabled:hover:bg-white/10";
 
 // Each phase differs by more than colour: the box, the face and the text too.
+// SPEAK stays dark so the highlighted word above it holds the attention.
 const phaseClassNames = {
   ready: `${panelBoxClassName} text-white`,
-  speak: "border border-white bg-white text-black",
+  speak: "border border-white/20 bg-white/[0.02] text-white/80",
   rest: "border border-dashed border-white/30 bg-black text-white/80",
 };
 
@@ -265,7 +266,7 @@ function WordCard({
     <div
       className={`border px-4 py-5 text-center transition-opacity duration-300 ${
         micActive
-          ? "border-white bg-white/[0.06]"
+          ? "border-white bg-white/[0.12] ring-1 ring-white"
           : dimmed
             ? "border-white/20 opacity-30"
             : "border-white/10 bg-white/[0.02]"
@@ -381,7 +382,7 @@ function GuidedBox({
       {phase === "speak" ? (
         <div className="w-full space-y-2">
           <EmptyingBar key={tryNumber} durationMs={speakMs} />
-          {micStream ? <LevelMeter stream={micStream} onBright /> : null}
+          {micStream ? <LevelMeter stream={micStream} /> : null}
         </div>
       ) : null}
     </div>
@@ -475,10 +476,10 @@ function EmptyingBar({ durationMs }: { durationMs: number }) {
   }, []);
 
   return (
-    <div aria-hidden="true" className="h-3 w-full overflow-hidden border border-black/30">
+    <div aria-hidden="true" className="h-3 w-full overflow-hidden border border-white/20">
       <div
         data-emptying-bar
-        className="h-full bg-black"
+        className="h-full bg-white/60"
         style={
           reducedMotion
             ? undefined
