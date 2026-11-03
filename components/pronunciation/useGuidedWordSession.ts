@@ -11,7 +11,7 @@ import {
 import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
 import { GuidedWordSession, initialSessionState } from "@/lib/guidedWordSession";
 import type { SessionClip, SessionEffects } from "@/lib/guidedWordSession";
-import { analyzeWordAttempts } from "@/lib/pronunciationApi";
+import { analyzePronunciation } from "@/lib/pronunciationApi";
 
 import {
   audioExtensionFor,
@@ -41,9 +41,8 @@ function waitFor(ms: number, signal: AbortSignal) {
 }
 
 /**
- * The browser side of the flow: one mic stream kept open across the tries,
- * with a new MediaRecorder for each one. No timeslice: Safari delivers the
- * whole clip reliably in one chunk on stop.
+ * The browser side of the flow: one mic stream and one MediaRecorder. No
+ * timeslice: Safari delivers the whole clip reliably in one chunk on stop.
  */
 function createBrowserEffects(
   word: string,
@@ -104,7 +103,7 @@ function createBrowserEffects(
     playTick: playCountdownTick,
     playGoSound: playCountdownGoAndWait,
 
-    startRecording(tryNumber) {
+    startRecording() {
       return new Promise<void>((resolve, reject) => {
         if (!stream?.active) {
           reject(new Error("The microphone stream has ended."));
@@ -128,11 +127,7 @@ function createBrowserEffects(
 
             resolveClip(
               blob.size > 0
-                ? {
-                    blob,
-                    fileName: `try${tryNumber}.${audioExtensionFor(type)}`,
-                    tryNumber,
-                  }
+                ? { blob, fileName: `recording.${audioExtensionFor(type)}` }
                 : null,
             );
           };
@@ -178,8 +173,13 @@ function createBrowserEffects(
       if (current.state !== "inactive") current.stop();
     },
 
-    upload(clips, signal) {
-      return analyzeWordAttempts({ clips, text: word, signal });
+    upload(clip, signal) {
+      return analyzePronunciation({
+        audio: clip.blob,
+        fileName: clip.fileName,
+        text: word,
+        signal,
+      });
     },
 
     wait: waitFor,
@@ -198,8 +198,8 @@ const getInitialState = () => initialSessionState;
 /**
  * The guided flow's state, owned by the page so that GuidedWordPanel and
  * GuidedWordResults can sit in different places. `open()` starts a new session
- * for a word and begins its first try. Closing, opening another word, hiding the page or unmounting
- * stops everything and discards the clips.
+ * for a word and begins it. Closing, opening another word, hiding the page or unmounting
+ * stops everything and discards the clip.
  *
  * While `isRunning`, the page must keep other audio from being started, so
  * that it can't end up in a recording.
@@ -237,10 +237,10 @@ export function useGuidedWordSession() {
     };
   }, [session]);
 
-  /** Starts the tries straight away, so call it from the child's tap. */
+  /** Starts straight away, so call it from the child's tap. */
   function open(target: GuidedWordTarget) {
     const effects = createBrowserEffects(target.word);
-    const nextSession = new GuidedWordSession(target.word, effects);
+    const nextSession = new GuidedWordSession(effects);
 
     setFlow({ target, session: nextSession, getMicStream: effects.getMicStream });
     void nextSession.start();

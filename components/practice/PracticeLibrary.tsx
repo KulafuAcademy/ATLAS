@@ -676,7 +676,7 @@ function SpeakingPairs({
   const { language } = useLanguage();
   const copy = pairCardCopy[language];
   const check = useWordCheck();
-  // True during a word's guided tries, when nothing else may start audio.
+  // True during a word's guided recording, when nothing else may start audio.
   const [guidedRunning, setGuidedRunning] = useState(false);
   const pair = pairs[index];
 

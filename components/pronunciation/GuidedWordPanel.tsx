@@ -9,7 +9,7 @@ import {
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { playCorrectSound } from "@/components/training/feedbackSounds";
-import { READY_MS, TRY_COUNT } from "@/lib/guidedWordSession";
+import { READY_MS, SPEAK_MS } from "@/lib/guidedWordSession";
 import type { SessionOutcome } from "@/lib/guidedWordSession";
 import type { Language } from "@/lib/i18n";
 
@@ -29,18 +29,18 @@ import type { RecorderError } from "./useVoiceRecorder";
 
 const guidedCopy = {
   en: {
-    title: "Say it 3 times",
+    title: "Say it",
     sayThis: "Say this",
     close: "Close",
     startingMic: "Getting the microphone ready…",
     hint: "Say it slowly and clearly",
-    tryLabel: (tryNumber: number) => `Try ${tryNumber}`,
+    repeatHint: "You can say it up to 3 times. Tap Stop when you're done.",
     ready: "Get ready…",
     speak: "Say it now!",
-    restNext: "Prepare for the next try",
-    restLast: "All done! Let's see how you did",
-    checking: "Listening to your tries… just a moment",
+    allDone: "All done! Let's see how you did",
+    checking: "Listening to you… just a moment",
     cancel: "Stop",
+    stopRecording: "Stop",
     again: "Try again",
     rejected: "We couldn't hear you. Try saying it a little louder!",
     resend: "Send again",
@@ -58,18 +58,18 @@ const guidedCopy = {
   },
   // Hiragana, with only grade 1-2 kanji.
   ja: {
-    title: "3かい 言って みよう",
+    title: "言って みよう",
     sayThis: "これを 言おう",
     close: "とじる",
     startingMic: "マイクを じゅんび中…",
     hint: "ゆっくり、はっきり 言おう",
-    tryLabel: (tryNumber: number) => `${tryNumber}かいめ`,
+    repeatHint: "3かいまで 言って いいよ。おわったら「とめる」を おしてね。",
     ready: "じゅんび…",
     speak: "いま 言って！",
-    restNext: "つぎの じゅんびを しよう",
-    restLast: "ぜんぶ おわり！けっかを 見よう",
+    allDone: "ぜんぶ おわり！けっかを 見よう",
     checking: "きいているよ… ちょっと まってね",
     cancel: "やめる",
+    stopRecording: "とめる",
     again: "もう いちど",
     rejected: "きこえなかったよ。もう すこし 大きな こえで 言って みよう！",
     resend: "もう いちど おくる",
@@ -147,8 +147,8 @@ function scrollBehavior(): ScrollBehavior {
 }
 
 /**
- * The guided "say it 3 times" flow for a single word, in the page: the word
- * to say and the three tries. GuidedWordResults takes over once they're done.
+ * The guided flow for a single word, in the page: the word to say and the
+ * recording. GuidedWordResults takes over once it's done.
  * See docs/pronunciation-assessment.md.
  */
 export function GuidedWordPanel({
@@ -218,24 +218,22 @@ export function GuidedWordPanel({
         />
       ) : null}
 
-      {isGuiding && state.tryNumber !== null ? (
+      {isGuiding ? (
         <GuidedBox
           phase={phase}
-          tryNumber={state.tryNumber}
-          doneTries={state.doneTries}
-          speakMs={session.speakMs}
           micStream={micStream}
+          onStopRecording={session.stopSpeaking}
         />
       ) : null}
 
       {phase === "uploading" ? (
         <div className={`space-y-4 p-5 ${panelBoxClassName}`}>
-          <ProgressDots doneTries={TRY_COUNT} className="justify-center text-white" />
           <CheckingIndicator label={copy.checking} />
         </div>
       ) : null}
 
-      {isGuiding || phase === "uploading" ? (
+      {/* During SPEAK, the box's own Stop ends the recording instead. */}
+      {phase === "ready" || phase === "rest" || phase === "uploading" ? (
         <button
           type="button"
           onClick={guided.close}
@@ -322,19 +320,15 @@ function MicStatus({
   );
 }
 
-/** One try's GET READY, SPEAK or REST. */
+/** GET READY before the recording, SPEAK during it, and REST once it's over. */
 function GuidedBox({
   phase,
-  tryNumber,
-  doneTries,
-  speakMs,
   micStream,
+  onStopRecording,
 }: {
   phase: "ready" | "speak" | "rest";
-  tryNumber: number;
-  doneTries: number;
-  speakMs: number;
   micStream: MediaStream | null;
+  onStopRecording: () => void;
 }) {
   const copy = useGuidedCopy();
   const label =
@@ -342,30 +336,19 @@ function GuidedBox({
       ? copy.ready
       : phase === "speak"
         ? copy.speak
-        : tryNumber < TRY_COUNT
-          ? copy.restNext
-          : copy.restLast;
+        : copy.allDone;
 
   return (
     <div
       data-phase={phase}
       className={`flex min-h-[17rem] flex-col items-center justify-center gap-3 p-4 text-center ${phaseClassNames[phase]}`}
     >
-      <div className="flex w-full items-center justify-between gap-3">
-        <p className="text-lg font-bold">{copy.tryLabel(tryNumber)}</p>
-        <ProgressDots doneTries={doneTries} current={tryNumber} />
-      </div>
-
-      <Face
-        expression={
-          phase === "rest" && tryNumber === TRY_COUNT ? "thinking" : phase
-        }
-      />
+      <Face expression={phase === "rest" ? "thinking" : phase} />
 
       {phase === "rest" ? null : (
         <SecondsLeft
-          key={`${phase}-${tryNumber}`}
-          durationMs={phase === "speak" ? speakMs : READY_MS}
+          key={phase}
+          durationMs={phase === "speak" ? SPEAK_MS : READY_MS}
         />
       )}
       <p
@@ -378,10 +361,22 @@ function GuidedBox({
       {phase === "ready" ? (
         <p className="text-base font-semibold">{copy.hint}</p>
       ) : null}
+      {phase === "rest" ? null : (
+        <p className="text-base font-semibold [word-break:keep-all]">
+          {copy.repeatHint}
+        </p>
+      )}
       {phase === "speak" ? (
         <div className="w-full space-y-2">
-          <EmptyingBar key={tryNumber} durationMs={speakMs} />
+          <EmptyingBar durationMs={SPEAK_MS} />
           {micStream ? <LevelMeter stream={micStream} onBright /> : null}
+          <button
+            type="button"
+            onClick={onStopRecording}
+            className="inline-flex min-h-14 w-full items-center justify-center border border-black bg-black px-4 text-lg font-bold text-white transition hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-black/50"
+          >
+            {copy.stopRecording}
+          </button>
         </div>
       ) : null}
     </div>
@@ -389,15 +384,10 @@ function GuidedBox({
 }
 
 /**
- * A face that needs no reading: a smile to get ready, a wide-open
- * mouth to speak, happy closed eyes to rest, and a raised eyebrow with a hand
- * on the chin after the last try.
+ * A face that needs no reading: a smile to get ready, a wide-open mouth to
+ * speak, and a raised eyebrow with a hand on the chin once it's all done.
  */
-function Face({
-  expression,
-}: {
-  expression: "ready" | "speak" | "rest" | "thinking";
-}) {
+function Face({ expression }: { expression: "ready" | "speak" | "thinking" }) {
   return (
     <svg
       viewBox="10 10 80 80"
@@ -425,16 +415,13 @@ function Face({
         <circle cx="50" cy="50" r="34" strokeWidth="4" />
       )}
 
-      {expression === "rest" ? (
-        <path d="M33 45q6-8 12 0M55 45q6-8 12 0" strokeWidth="4" />
-      ) : null}
       {expression === "ready" || expression === "speak" ? (
         <>
           <circle cx="39" cy="42" r="4" fill="currentColor" stroke="none" />
           <circle cx="61" cy="42" r="4" fill="currentColor" stroke="none" />
         </>
       ) : null}
-      {expression === "ready" || expression === "rest" ? (
+      {expression === "ready" ? (
         <path d="M38 59q12 12 24 0" strokeWidth="4" />
       ) : null}
       {expression === "speak" ? (
@@ -493,56 +480,7 @@ function EmptyingBar({ durationMs }: { durationMs: number }) {
 }
 
 /**
- * One numbered dot per try. Done is filled (never a tick: it says the try is
- * over, not that it was right), and the current one has a thick outline.
- */
-function ProgressDots({
-  doneTries,
-  current,
-  className = "",
-}: {
-  doneTries: number;
-  current?: number;
-  className?: string;
-}) {
-  const copy = useGuidedCopy();
-
-  return (
-    <ol className={`flex items-center gap-2 ${className}`}>
-      {Array.from({ length: TRY_COUNT }, (_, index) => {
-        const tryNumber = index + 1;
-        const isDone = tryNumber <= doneTries;
-        const isCurrent = tryNumber === current && !isDone;
-
-        return (
-          <li
-            key={tryNumber}
-            aria-label={copy.tryLabel(tryNumber)}
-            aria-current={isCurrent ? "step" : undefined}
-            className={`grid h-9 w-9 place-items-center rounded-full border-current text-base font-bold ${
-              isCurrent ? "border-4" : "border"
-            } ${isDone || isCurrent ? "" : "opacity-70"}`}
-          >
-            {/* Filled with the text colour, so it follows the box behind it. */}
-            {isDone ? (
-              <span
-                aria-hidden="true"
-                className="grid h-full w-full place-items-center rounded-full bg-current"
-              >
-                <span className="mix-blend-difference text-white">{tryNumber}</span>
-              </span>
-            ) : (
-              <span aria-hidden="true">{tryNumber}</span>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-/**
- * The outcome of the three tries, in its own section so the page can place it
+ * The outcome, in its own section so the page can place it
  * under the step instead of inside it. Renders nothing until there is one.
  */
 export function GuidedWordResults({
@@ -572,7 +510,7 @@ export function GuidedWordResults({
 
     const { letter } = outcome.response.grade;
 
-    // No error sound here: a child who tried three times has done well.
+    // No error sound here, so a lower grade never sounds like a failure.
     if (letter === "A" || letter === "B") playCorrectSound();
   }, [outcome]);
 
@@ -631,15 +569,11 @@ function ResultContent({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {outcome.bestClip ? (
-            <BestClipPlayback blob={outcome.bestClip.blob} />
-          ) : null}
+          <ClipPlayback blob={outcome.clip.blob} />
           <button
             type="button"
             onClick={onAgain}
-            className={`${primaryButtonClassName} ${
-              outcome.bestClip ? "" : "sm:col-span-2"
-            }`}
+            className={primaryButtonClassName}
           >
             {copy.again}
           </button>
@@ -688,7 +622,7 @@ function ResultContent({
   );
 }
 
-function BestClipPlayback({ blob }: { blob: Blob }) {
+function ClipPlayback({ blob }: { blob: Blob }) {
   const { language } = useLanguage();
   const [url, setUrl] = useState<string | null>(null);
 
