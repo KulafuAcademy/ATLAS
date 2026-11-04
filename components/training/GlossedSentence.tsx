@@ -6,19 +6,46 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { wordGlossary, wordTypeLabels } from "@/data/wordGlossary";
 import type { GlossaryEntry } from "@/data/wordGlossary";
+import { splitSentence } from "@/lib/sentenceTimings";
 
 const HOLD_DELAY_MS = 300;
 const VIEWPORT_GUTTER_PX = 16;
+// The shadow pads the highlight without moving the words around it.
+const SPOKEN_WORD_CLASS = "bg-white text-black shadow-[0_0_0_2px_#fff]";
 
-export function GlossedSentence({ sentence }: { sentence: string }) {
-  return sentence.split(/([A-Za-z']+)/).map((part, index) => {
+export function GlossedSentence({
+  sentence,
+  activeWord = -1,
+}: {
+  sentence: string;
+  // Index of the word being spoken, or -1 when none is.
+  activeWord?: number;
+}) {
+  return splitSentence(sentence).map((part, index) => {
+    if (index % 2 === 0) return part;
+
     const entry = wordGlossary[part.toLowerCase()];
+    const spoken = (index - 1) / 2 === activeWord;
 
-    return entry ? <GlossedWord key={index} word={part} entry={entry} /> : part;
+    return entry ? (
+      <GlossedWord key={index} word={part} entry={entry} spoken={spoken} />
+    ) : (
+      <span key={index} className={spoken ? SPOKEN_WORD_CLASS : undefined}>
+        {part}
+      </span>
+    );
   });
 }
 
-function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
+function GlossedWord({
+  word,
+  entry,
+  spoken,
+}: {
+  word: string;
+  entry: GlossaryEntry;
+  spoken: boolean;
+}) {
   const { text } = useLanguage();
   const [open, setOpen] = useState(false);
   const popoverId = useId();
@@ -103,8 +130,12 @@ function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
             hide();
           }
         }}
-        className={`cursor-help select-none underline decoration-dotted underline-offset-4 transition [-webkit-touch-callout:none] focus:outline-none ${
-          open ? "bg-white/10 decoration-white" : "decoration-white/50"
+        className={`cursor-help select-none underline decoration-dotted underline-offset-4 [-webkit-touch-callout:none] focus:outline-none ${
+          spoken
+            ? `${SPOKEN_WORD_CLASS} decoration-black`
+            : open
+              ? "bg-white/10 decoration-white"
+              : "decoration-white/50"
         }`}
       >
         {word}

@@ -1,0 +1,129 @@
+{
+  "bring-a-vest-to-the-beach": [
+    { "word": "Bring", "start": 0.155, "end": 0.485 },
+    { "word": "a", "start": 0.485, "end": 0.588 },
+    { "word": "vest", "start": 0.588, "end": 0.877 },
+    { "word": "to", "start": 0.877, "end": 1.104 },
+    { "word": "the", "start": 1.104, "end": 1.248 },
+    { "word": "beach", "start": 1.248, "end": 1.578 }
+  ],
+  "the-van-is-very-big": [
+    { "word": "The", "start": 0.128, "end": 0.331 },
+    { "word": "van", "start": 0.331, "end": 0.555 },
+    { "word": "is", "start": 0.555, "end": 0.718 },
+    { "word": "very", "start": 0.718, "end": 1.003 },
+    { "word": "big", "start": 1.003, "end": 1.309 }
+  ],
+  "vote-for-the-best-boat": [
+    { "word": "Vote", "start": 0.142, "end": 0.494 },
+    { "word": "for", "start": 0.494, "end": 0.69 },
+    { "word": "the", "start": 0.69, "end": 0.808 },
+    { "word": "best", "start": 0.808, "end": 1.062 },
+    { "word": "boat", "start": 1.062, "end": 1.395 }
+  ],
+  "lock-the-back-door": [
+    { "word": "Lock", "start": 0.14, "end": 0.424 },
+    { "word": "the", "start": 0.424, "end": 0.628 },
+    { "word": "back", "start": 0.628, "end": 0.831 },
+    { "word": "door", "start": 0.831, "end": 1.156 }
+  ],
+  "put-the-cap-in-the-bag": [
+    { "word": "Put", "start": 0.136, "end": 0.356 },
+    { "word": "the", "start": 0.356, "end": 0.516 },
+    { "word": "cap", "start": 0.516, "end": 0.756 },
+    { "word": "in", "start": 0.756, "end": 0.936 },
+    { "word": "the", "start": 0.936, "end": 1.056 },
+    { "word": "bag", "start": 1.056, "end": 1.356 }
+  ],
+  "the-cat-sat-on-the-bed": [
+    { "word": "The", "start": 0.128, "end": 0.311 },
+    { "word": "cat", "start": 0.311, "end": 0.535 },
+    { "word": "sat", "start": 0.535, "end": 0.779 },
+    { "word": "on", "start": 0.779, "end": 0.982 },
+    { "word": "the", "start": 0.982, "end": 1.104 },
+    { "word": "bed", "start": 1.104, "end": 1.389 }
+  ],
+  "laura-likes-rice": [
+    { "word": "Laura", "start": 0.121, "end": 0.44 },
+    { "word": "likes", "start": 0.44, "end": 0.716 },
+    { "word": "rice", "start": 0.716, "end": 1.077 }
+  ],
+  "the-red-light-is-on": [
+    { "word": "The", "start": 0.134, "end": 0.332 },
+    { "word": "red", "start": 0.332, "end": 0.551 },
+    { "word": "light", "start": 0.551, "end": 0.809 },
+    { "word": "is", "start": 0.809, "end": 1.007 },
+    { "word": "on", "start": 1.007, "end": 1.265 }
+  ],
+  "turn-right-on-the-long-road": [
+    { "word": "Turn", "start": 0.146, "end": 0.441 },
+    { "word": "right", "start": 0.441, "end": 0.677 },
+    { "word": "on", "start": 0.677, "end": 0.873 },
+    { "word": "the", "start": 0.873, "end": 0.972 },
+    { "word": "long", "start": 0.972, "end": 1.207 },
+    { "word": "road", "start": 1.207, "end": 1.542 }
+  ],
+  "save-the-shoes-for-sunday": [
+    { "word": "Save", "start": 0.142, "end": 0.545 },
+    { "word": "the", "start": 0.545, "end": 0.715 },
+    { "word": "shoes", "start": 0.715, "end": 0.99 },
+    { "word": "for", "start": 0.99, "end": 1.223 },
+    { "word": "Sunday", "start": 1.223, "end": 1.584 }
+  ],
+  "she-sells-sea-shells": [
+    { "word": "She", "start": 0.139, "end": 0.408 },
+    { "word": "sells", "start": 0.408, "end": 0.719 },
+    { "word": "sea", "start": 0.719, "end": 0.946 },
+    { "word": "shells", "start": 0.946, "end": 1.318 }
+  ],
+  "sit-on-the-ships-seat": [
+    { "word": "Sit", "start": 0.148, "end": 0.42 },
+    { "word": "on", "start": 0.42, "end": 0.54 },
+    { "word": "the", "start": 0.54, "end": 0.66 },
+    { "word": "ship's", "start": 0.66, "end": 1.06 },
+    { "word": "seat", "start": 1.06, "end": 1.439 }
+  ],
+  "i-feel-it-will-fit": [
+    { "word": "I", "start": 0.118, "end": 0.17 },
+    { "word": "feel", "start": 0.17, "end": 0.42 },
+    { "word": "it", "start": 0.42, "end": 0.54 },
+    { "word": "will", "start": 0.54, "end": 0.68 },
+    { "word": "fit", "start": 0.68, "end": 1.188 }
+  ],
+  "please-sit-in-this-seat": [
+    { "word": "Please", "start": 0.148, "end": 0.439 },
+    { "word": "sit", "start": 0.439, "end": 0.748 },
+    { "word": "in", "start": 0.748, "end": 0.883 },
+    { "word": "this", "start": 0.883, "end": 1.038 },
+    { "word": "seat", "start": 1.038, "end": 1.367 }
+  ],
+  "the-sheep-is-on-the-ship": [
+    { "word": "The", "start": 0.12, "end": 0.309 },
+    { "word": "sheep", "start": 0.309, "end": 0.604 },
+    { "word": "is", "start": 0.604, "end": 0.793 },
+    { "word": "on", "start": 0.793, "end": 0.962 },
+    { "word": "the", "start": 0.962, "end": 1.088 },
+    { "word": "ship", "start": 1.088, "end": 1.404 }
+  ],
+  "i-think-the-ship-sank": [
+    { "word": "I", "start": 0.114, "end": 0.18 },
+    { "word": "think", "start": 0.18, "end": 0.4 },
+    { "word": "the", "start": 0.4, "end": 0.48 },
+    { "word": "ship", "start": 0.48, "end": 0.76 },
+    { "word": "sank", "start": 0.76, "end": 1.246 }
+  ],
+  "thank-you-for-the-thin-book": [
+    { "word": "Thank", "start": 0.139, "end": 0.438 },
+    { "word": "you", "start": 0.438, "end": 0.608 },
+    { "word": "for", "start": 0.608, "end": 0.779 },
+    { "word": "the", "start": 0.779, "end": 0.929 },
+    { "word": "thin", "start": 0.929, "end": 1.163 },
+    { "word": "book", "start": 1.163, "end": 1.441 }
+  ],
+  "three-thick-sandwiches-please": [
+    { "word": "Three", "start": 0.127, "end": 0.415 },
+    { "word": "thick", "start": 0.415, "end": 0.702 },
+    { "word": "sandwiches", "start": 0.702, "end": 1.144 },
+    { "word": "please", "start": 1.144, "end": 1.675 }
+  ]
+}

@@ -33,19 +33,32 @@ export function getSentenceFilename(sentence: string) {
 // Plays a recorded MP3, falling back to speech synthesis when the file is
 // missing or fails to play. Only one clip plays at a time per component.
 // onEnd runs once, when the clip or its spoken fallback finishes.
+// onTime runs every frame with the clip's position, and never for the spoken fallback.
 export function useRecordedAudio() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const frameRef = useRef<number | null>(null);
 
-  useEffect(() => () => audioRef.current?.pause(), []);
+  useEffect(
+    () => () => {
+      audioRef.current?.pause();
+      if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    },
+    [],
+  );
 
   return function play(
     path: string | null,
     fallbackText: string,
     rate = 0.72,
     onEnd?: () => void,
+    onTime?: (seconds: number) => void,
   ) {
     audioRef.current?.pause();
     audioRef.current = null;
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
 
     let ended = false;
     const finish = () => {
@@ -84,6 +97,15 @@ export function useRecordedAudio() {
     };
     audio.onerror = fallbackToTts;
     audio.play().catch(fallbackToTts);
+
+    if (onTime) {
+      const tick = () => {
+        if (audioRef.current !== audio) return;
+        onTime(audio.currentTime);
+        frameRef.current = window.requestAnimationFrame(tick);
+      };
+      frameRef.current = window.requestAnimationFrame(tick);
+    }
   };
 }
 

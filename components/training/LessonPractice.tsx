@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
+
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { SpeakerIcon } from "@/components/sounds/SpeakerIcon";
 import type { LessonPractice as LessonPracticeData } from "@/data/lessonPractice";
+import { getActiveWordIndex, sentenceTimings } from "@/lib/sentenceTimings";
 
 import {
   getPublicAudioPath,
@@ -41,17 +44,31 @@ export function LessonPractice({
   const { language, text } = useLanguage();
   const copy = practiceCopy[language];
   const play = useRecordedAudio();
+  const [activeSentence, setActiveSentence] = useState<string | null>(null);
+  const [activeWord, setActiveWord] = useState(-1);
+
+  function clearHighlight() {
+    setActiveSentence(null);
+    setActiveWord(-1);
+  }
 
   function playWord(word: string) {
+    clearHighlight();
     play(soundFocus ? getPublicAudioPath("words", soundFocus, word) : null, word);
   }
 
   function playSentence(sentence: string) {
+    const filename = getSentenceFilename(sentence);
+    const timings = sentenceTimings[filename];
+
+    setActiveSentence(sentence);
+    setActiveWord(-1);
     play(
-      soundFocus
-        ? getPublicAudioPath("sentences", soundFocus, getSentenceFilename(sentence))
-        : null,
+      soundFocus ? getPublicAudioPath("sentences", soundFocus, filename) : null,
       sentence,
+      undefined,
+      clearHighlight,
+      timings ? (seconds) => setActiveWord(getActiveWordIndex(timings, seconds)) : undefined,
     );
   }
 
@@ -101,7 +118,10 @@ export function LessonPractice({
             >
               <span className="text-sm font-semibold text-white/50">{index + 1}</span>
               <p className="flex-1 text-white">
-                <GlossedSentence sentence={sentence} />
+                <GlossedSentence
+                  sentence={sentence}
+                  activeWord={sentence === activeSentence ? activeWord : -1}
+                />
               </p>
               <button
                 type="button"
