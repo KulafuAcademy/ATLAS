@@ -61,6 +61,8 @@ export type SessionState = {
   /** Waiting for the microphone (the phase is still idle). */
   requestingMic: boolean;
   micError: RecorderError | null;
+  /** The child pressed Stop, so whatever was recorded is being scored. */
+  stoppedEarly: boolean;
   outcome: SessionOutcome | null;
 };
 
@@ -95,6 +97,7 @@ export const initialSessionState: SessionState = {
   doneTries: 0,
   requestingMic: false,
   micError: null,
+  stoppedEarly: false,
   outcome: null,
 };
 
@@ -114,7 +117,8 @@ function errorStatus(error: unknown) {
  * rhythm: it just produces no clip.
  *
  * A run ends with cancel(), which leaves any awaiting step to notice that it
- * is stale and return without touching the next run.
+ * is stale and return without touching the next run. stopEarly() instead cuts
+ * the tries short and carries on to the upload within the same run.
  */
 export class GuidedWordSession {
   readonly speakMs: number;
@@ -122,6 +126,8 @@ export class GuidedWordSession {
   private state = initialSessionState;
   private listeners = new Set<() => void>();
   private run: AbortController | null = null;
+  /** Ends the wait of a speak or rest phase, on cancel() and on stopEarly(). */
+  private tryWait = new AbortController();
   private clips: SessionClip[] = [];
 
   constructor(word: string, effects: SessionEffects) {
@@ -150,6 +156,7 @@ export class GuidedWordSession {
 
     const run = new AbortController();
     this.run = run;
+    this.tryWait = new AbortController();
     this.clips = [];
     this.effects.stopAudio();
     this.setState({ ...initialSessionState, requestingMic: true });
@@ -167,8 +174,10 @@ export class GuidedWordSession {
     this.setState({ requestingMic: false });
 
     for (let tryNumber = 1; tryNumber <= TRY_COUNT; tryNumber += 1) {
-      if (!(await this.runTry(tryNumber, run))) return;
+      if (!(await this.runTry(tryNumber, run))) break;
     }
+
+    if (this.run !== run) return;
 
     this.effects.releaseMic();
     await this.upload(run);
@@ -187,10 +196,28 @@ export class GuidedWordSession {
     await this.upload(run);
   };
 
+  /**
+   * Ends the tries now and uploads what was recorded, including the try being
+   * spoken. Returns false, changing nothing, if there's no audio to upload.
+   */
+  stopEarly = () => {
+    const { phase } = this.state;
+    const hasAudio =
+      phase === "speak" || (phase === "rest" && this.clips.length > 0);
+
+    if (!hasAudio) return false;
+
+    this.setState({ phase: "uploading", tryNumber: null, stoppedEarly: true });
+    this.tryWait.abort();
+
+    return true;
+  };
+
   /** Stops everything, releases the mic and discards the clips. */
   cancel = () => {
     this.run?.abort();
     this.run = null;
+    this.tryWait.abort();
     this.clips = [];
     this.effects.discardRecording();
     this.effects.stopAudio();
@@ -198,10 +225,11 @@ export class GuidedWordSession {
     this.setState(initialSessionState);
   };
 
-  /** Resolves to false if the run was cancelled along the way. */
+  /** Resolves to false if the run was cancelled or stopped along the way. */
   private async runTry(tryNumber: number, run: AbortController) {
     const { effects } = this;
     const isStale = () => this.run !== run;
+    const isOver = () => isStale() || this.state.stoppedEarly;
 
     if (tryNumber === 1) {
       this.setState({ phase: "ready", tryNumber });
@@ -214,7 +242,7 @@ export class GuidedWordSession {
     }
 
     await effects.playGoSound();
-    if (isStale()) return false;
+    if (isOver()) return false;
 
     const started = await effects.startRecording(tryNumber).then(
       () => true,
@@ -222,8 +250,14 @@ export class GuidedWordSession {
     );
     if (isStale()) return false;
 
+    // Stopped before SPEAK showed, so this clip can't hold anything.
+    if (this.state.stoppedEarly) {
+      effects.discardRecording();
+      return false;
+    }
+
     this.setState({ phase: "speak", tryNumber });
-    await effects.wait(this.speakMs, run.signal);
+    await effects.wait(this.speakMs, this.tryWait.signal);
     if (isStale()) return false;
 
     const clip = started ? await effects.stopRecording() : null;
@@ -231,10 +265,13 @@ export class GuidedWordSession {
 
     if (clip) this.clips.push(clip);
 
-    this.setState({ phase: "rest", doneTries: tryNumber });
-    await effects.wait(REST_MS, run.signal);
+    this.setState({ doneTries: tryNumber });
+    if (this.state.stoppedEarly) return false;
 
-    return !isStale();
+    this.setState({ phase: "rest" });
+    await effects.wait(REST_MS, this.tryWait.signal);
+
+    return !isOver();
   }
 
   private async upload(run: AbortController) {

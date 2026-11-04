@@ -203,7 +203,7 @@ const getInitialState = () => initialSessionState;
  * The guided flow's state, owned by the page so that GuidedWordPanel and
  * GuidedWordResults can sit in different places. `open()` starts a new session
  * for a word and begins its first try. Closing, opening another word, hiding the page or unmounting
- * stops everything and discards the clips.
+ * stops everything and discards the clips. `stop()` keeps them and scores them.
  *
  * While `isRunning`, the page must keep other audio from being started, so
  * that it can't end up in a recording.
@@ -254,6 +254,11 @@ export function useGuidedWordSession() {
     setFlow(null);
   }
 
+  /** The Stop button: scores what was recorded, or closes if there's nothing. */
+  function stop() {
+    if (!session?.stopEarly()) close();
+  }
+
   return {
     target: flow?.target ?? null,
     session,
@@ -268,6 +273,7 @@ export function useGuidedWordSession() {
       state.phase === "uploading",
     open,
     close,
+    stop,
   };
 }
 

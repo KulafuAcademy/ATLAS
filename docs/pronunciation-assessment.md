@@ -33,7 +33,7 @@ release the mic ─► POST /analyze-word ─► results
 - **Keeping clips clean:** SPEAK only appears once the go sound is over and the recorder has started, and REST only after the recorder's stop event. Starting the session stops all model audio (`stopRecordedAudioEvent`).
 - **"Say this" card:** it has the white border and pulsing dot only during SPEAK, while the mic is recording. It's plain during GET READY and fades during REST.
 - **Locked while running:** the rest of the page is dimmed and can't be tapped (`isRunning`), so a stray tap can't play audio into a recording.
-- **Stopping:** the Stop button, closing the panel (×), hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
+- **Stopping:** the Stop button ends the tries and uploads what was recorded, including the try being spoken. With nothing recorded yet (during GET READY, or during an upload), it acts like closing. Closing the panel (×), hiding the page or unmounting all stop the timers, release the mic tracks, abort the upload and discard the clips.
 - **A try with no clip** (the recorder failed) keeps the rhythm and is left out of the upload. `attempts[]` numbers only the clips sent, so `bestAttempt` is looked up among the clips that were sent. If no try produced a clip, the "couldn't hear you" message shows without an upload.
 - **Upload errors:** network and 5xx errors keep the clips and offer "send again". 4xx errors can't change on a resend, so they only offer the whole flow again.
 - **No scores between tries.** The results are the best try's, from the shared result UI. They don't say which try was best, and `attempts[]` isn't shown to children. "Listen to me" plays the best try's clip.
@@ -286,6 +286,6 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] GET READY counts down on try 1 only, tries 2 and 3 follow on from REST, SPEAK counts down, the level meter moves during SPEAK, and no score shows between tries.
 - [ ] The results start at the praise, in both languages, and "Listen to me" plays the best try. "Try again" re-runs all 3 tries.
 - [ ] The word stays in the "Say this" card during the tries, and the results appear in their own section below the pronunciation step.
-- [ ] While the tries run, the rest of the page is dimmed and its buttons can't be tapped. Closing the panel with × stops the tries.
+- [ ] While the tries run, the rest of the page is dimmed and its buttons can't be tapped. Closing the panel with × stops the tries and discards them. Stop during SPEAK or REST sends what was recorded and shows the results; Stop during GET READY just closes.
 - [ ] Offline during upload: "send again" works without re-recording.
 - [ ] With "reduce motion" on, the bar doesn't animate but the numbers still count down.

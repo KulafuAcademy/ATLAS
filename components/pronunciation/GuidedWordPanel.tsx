@@ -232,15 +232,16 @@ export function GuidedWordPanel({
 
       {phase === "uploading" ? (
         <div className={`space-y-4 p-5 ${panelBoxClassName}`}>
-          <ProgressDots doneTries={TRY_COUNT} className="justify-center text-white" />
+          <ProgressDots doneTries={state.doneTries} className="justify-center text-white" />
           <CheckingIndicator label={copy.checking} />
         </div>
       ) : null}
 
-      {isGuiding || phase === "uploading" ? (
+      {/* Gone once Stop is pressed, so a double tap can't abort its upload. */}
+      {(isGuiding || phase === "uploading") && !state.stoppedEarly ? (
         <button
           type="button"
-          onClick={guided.close}
+          onClick={guided.stop}
           className={`${secondaryButtonClassName} w-full`}
         >
           {copy.cancel}
