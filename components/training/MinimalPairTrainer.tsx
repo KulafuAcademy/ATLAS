@@ -699,7 +699,7 @@ function PairPracticeCard({
         : copy.saySentenceAfterCountdown,
     );
 
-    void assessment.prepare(target).then((ready) => {
+    void assessment.prepare(target, pair.soundFocus).then((ready) => {
       if (ready) return;
 
       clearCountdown();
@@ -754,6 +754,7 @@ function PairPracticeCard({
       guided.open({
         word,
         ipa: target === "A" ? pair.ipaA : pair.ipaB,
+        soundFocus: pair.soundFocus,
         audioPath: getPublicAudioPath("words", pair.soundFocus, word),
       });
       return;

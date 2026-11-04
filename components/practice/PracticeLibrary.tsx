@@ -808,6 +808,7 @@ function PairCard({
                     guided.open({
                       word,
                       ipa: word === pair.wordA ? pair.ipaA : pair.ipaB,
+                      soundFocus: pair.soundFocus,
                       audioPath,
                     })
                   }
@@ -849,6 +850,7 @@ function PairCard({
                 onCheck({
                   kind: "sentence",
                   word: pair.tongueTwister!.text,
+                  soundFocus: pair.soundFocus,
                   audioPath: twisterAudioPath,
                 });
               }}

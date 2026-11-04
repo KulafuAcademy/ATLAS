@@ -22,14 +22,15 @@ export type AssessmentOutcome =
 
 type PendingCheck = {
   target: string;
+  soundFocus: string;
   onDone?: (outcome: AssessmentOutcome) => void;
 };
 
 /**
  * Record → POST /analyze → result, driven step by step by the caller:
- *   prepare(target)  on the tap (asks for the mic, clears the last result)
- *   startRecording() when it's time to speak
- *   finish(onDone)   to stop and send the clip to the server
+ *   prepare(target, soundFocus) on the tap (asks for the mic, clears the last result)
+ *   startRecording()            when it's time to speak
+ *   finish(onDone)              to stop and send the clip to the server
  *
  * `enabled: false` skips the /health polling (e.g. in card grids).
  */
@@ -43,6 +44,7 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
   const [attempts, setAttempts] = useState(0);
   const attemptsByTargetRef = useRef(new Map<string, number>());
   const targetRef = useRef<string | null>(null);
+  const soundFocusRef = useRef("");
   const pendingRef = useRef<PendingCheck | null>(null);
   const requestRef = useRef<AbortController | null>(null);
 
@@ -80,6 +82,7 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
         audio: recording.blob,
         fileName: recording.fileName,
         text: pending.target,
+        soundFocus: pending.soundFocus,
         signal: controller.signal,
       });
 
@@ -112,10 +115,11 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
   }
 
   /** Starts a new attempt for `nextTarget`. Resolves to false if the mic is unavailable. */
-  function prepare(nextTarget: string) {
+  function prepare(nextTarget: string, soundFocus: string) {
     cancelRequest();
     pendingRef.current = null;
     targetRef.current = nextTarget;
+    soundFocusRef.current = soundFocus;
     setTarget(nextTarget);
     setAttempts(attemptsByTargetRef.current.get(nextTarget) ?? 0);
     setResult(null);
@@ -132,7 +136,11 @@ export function usePronunciationAssessment({ enabled = true } = {}) {
   function finish(onDone?: (outcome: AssessmentOutcome) => void) {
     if (!targetRef.current) return;
 
-    pendingRef.current = { target: targetRef.current, onDone };
+    pendingRef.current = {
+      target: targetRef.current,
+      soundFocus: soundFocusRef.current,
+      onDone,
+    };
     recorder.stop();
   }
 

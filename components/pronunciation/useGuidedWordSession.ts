@@ -47,6 +47,7 @@ function waitFor(ms: number, signal: AbortSignal) {
  */
 function createBrowserEffects(
   word: string,
+  soundFocus: string,
 ): SessionEffects & { getMicStream: () => MediaStream | null } {
   let stream: MediaStream | null = null;
   let recorder: MediaRecorder | null = null;
@@ -179,7 +180,7 @@ function createBrowserEffects(
     },
 
     upload(clips, signal) {
-      return analyzeWordAttempts({ clips, text: word, signal });
+      return analyzeWordAttempts({ clips, text: word, soundFocus, signal });
     },
 
     wait: waitFor,
@@ -189,6 +190,8 @@ function createBrowserEffects(
 export type GuidedWordTarget = {
   word: string;
   ipa?: string;
+  /** The sound being practiced, sent to the server with the clips. */
+  soundFocus: string;
   /** Recorded model pronunciation; falls back to speech synthesis. */
   audioPath: string;
 };
@@ -240,7 +243,7 @@ export function useGuidedWordSession() {
 
   /** Starts the tries straight away, so call it from the child's tap. */
   function open(target: GuidedWordTarget) {
-    const effects = createBrowserEffects(target.word);
+    const effects = createBrowserEffects(target.word, target.soundFocus);
     const nextSession = new GuidedWordSession(target.word, effects);
 
     setFlow({ target, session: nextSession, getMicStream: effects.getMicStream });

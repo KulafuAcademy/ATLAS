@@ -229,6 +229,7 @@ export async function analyzePronunciation({
   audio,
   fileName,
   text,
+  soundFocus,
   signal,
 }: {
   audio: Blob;
@@ -236,6 +237,8 @@ export async function analyzePronunciation({
   fileName: string;
   /** The word or sentence the learner was asked to say. */
   text: string;
+  /** The sound being practiced, e.g. "R vs L". */
+  soundFocus: string;
   signal?: AbortSignal;
 }): Promise<AnalyzeResponse> {
   if (audio.size > maxAudioBytes) {
@@ -245,6 +248,7 @@ export async function analyzePronunciation({
   const form = new FormData();
   form.append("audio", audio, fileName);
   form.append("text", text);
+  form.append("soundFocus", soundFocus);
 
   return (await postForm("/analyze", form, signal)) as AnalyzeResponse;
 }
@@ -256,12 +260,15 @@ export async function analyzePronunciation({
 export async function analyzeWordAttempts({
   clips,
   text,
+  soundFocus,
   signal,
 }: {
   /** In the order they were said. Each extension must match its blob type. */
   clips: { blob: Blob; fileName: string }[];
   /** The single word the learner was asked to say. */
   text: string;
+  /** The sound being practiced, e.g. "R vs L". */
+  soundFocus: string;
   signal?: AbortSignal;
 }): Promise<AnalyzeWordResponse> {
   if (clips.some((clip) => clip.blob.size > maxAudioBytes)) {
@@ -270,6 +277,7 @@ export async function analyzeWordAttempts({
 
   const form = new FormData();
   form.append("text", text);
+  form.append("soundFocus", soundFocus);
   clips.forEach((clip) => form.append("audio", clip.blob, clip.fileName));
 
   return (await postForm("/analyze-word", form, signal)) as AnalyzeWordResponse;

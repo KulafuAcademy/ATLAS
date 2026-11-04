@@ -61,6 +61,8 @@ type WordTarget = {
   /** A single word, or a whole sentence such as the tongue twister. */
   kind: "word" | "sentence";
   word: string;
+  /** The sound being practiced, sent to the server with the clip. */
+  soundFocus: string;
   /** Recorded model pronunciation, played by the "Listen" button. */
   audioPath: string;
 };
@@ -102,7 +104,7 @@ export function useWordCheck() {
     clearCountdown();
     setTarget(next);
 
-    void assessment.prepare(next.word).then((ready) => {
+    void assessment.prepare(next.word, next.soundFocus).then((ready) => {
       if (ready) return;
 
       clearCountdown();

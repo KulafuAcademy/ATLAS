@@ -115,6 +115,7 @@ This drives the status badge: *Connecting...* → *Checker is ready* / *Checker 
 | --- | --- |
 | `audio` | The recording (max 10 MB, checked on the client too) |
 | `text` | The word or sentence the learner was asked to say |
+| `soundFocus` | The sound being practiced, such as `R vs L` (`pair.soundFocus`) |
 
 Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 
@@ -180,6 +181,7 @@ Nullable fields:
 | Field | Value |
 | --- | --- |
 | `text` | The single word (more than one word returns 400) |
+| `soundFocus` | The sound being practiced, such as `R vs L` (`pair.soundFocus`) |
 | `audio` | One per try, in order, 1-3 times. Each extension must match its format: `try1.webm`, or `try1.mp4` on Safari. Max 10 MB each. |
 
 The 200 response has the same fields as `/analyze`, for the **best** try, plus `bestAttempt` and `attempts[]` (`{ attempt, ok, score, grade, heard }` or `{ attempt, ok: false, error }`, where `error` is `too_short_or_quiet` or `could_not_decode`). A failed try doesn't fail the request. If no try is usable, it returns 200 with `{ "ok": false, "error": "too_short_or_quiet", "message": "...", "bestAttempt": null, "attempts": [...] }`. If every clip is undecodable, it returns 415. Other errors are as below.
