@@ -20,7 +20,7 @@ const practiceCopy = {
     pairs: (count: number) => `${count} pairs`,
     sentencesTitle: "Three finishing sentences",
     sentencesDescription: "Say each sentence slowly, then at a natural speed.",
-    wordHint: "Hover over a dotted word, or press and hold it, to see its meaning.",
+    wordHint: "Hover over or tap a dotted word to see its meaning.",
     play: "Play",
   },
   ja: {
@@ -28,7 +28,7 @@ const practiceCopy = {
     pairs: (count: number) => `${count}ペア`,
     sentencesTitle: "仕上げの3文",
     sentencesDescription: "最初はゆっくり、次は自然な速さで言いましょう。",
-    wordHint: "点線の単語にカーソルを合わせるか長押しすると、意味が表示されます。",
+    wordHint: "点線の単語にカーソルを合わせるかタップすると、意味が表示されます。",
     play: "再生",
   },
 };
