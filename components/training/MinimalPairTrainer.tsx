@@ -653,7 +653,7 @@ function PairPracticeCard({
         : copy.saySentenceAfterCountdown,
     );
 
-    void assessment.prepare(target).then((ready) => {
+    void assessment.prepare(target, pair.soundFocus).then((ready) => {
       if (ready) return;
 
       clearCountdown();

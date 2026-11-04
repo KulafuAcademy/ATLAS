@@ -78,6 +78,7 @@ This drives the status badge: *Connecting...* → *Checker is ready* / *Checker 
 | --- | --- |
 | `audio` | The recording (max 10 MB, checked on the client too) |
 | `text` | The word or sentence the learner was asked to say |
+| `soundFocus` | The sound being practiced, such as `R vs L` (`pair.soundFocus`) |
 
 Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 

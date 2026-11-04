@@ -198,6 +198,7 @@ export async function analyzePronunciation({
   audio,
   fileName,
   text,
+  soundFocus,
   signal,
 }: {
   audio: Blob;
@@ -205,6 +206,8 @@ export async function analyzePronunciation({
   fileName: string;
   /** The word or sentence the learner was asked to say. */
   text: string;
+  /** The sound being practiced, e.g. "R vs L". */
+  soundFocus: string;
   signal?: AbortSignal;
 }): Promise<AnalyzeResponse> {
   if (audio.size > maxAudioBytes) {
@@ -214,6 +217,7 @@ export async function analyzePronunciation({
   const form = new FormData();
   form.append("audio", audio, fileName);
   form.append("text", text);
+  form.append("soundFocus", soundFocus);
 
   let response: Response;
 
