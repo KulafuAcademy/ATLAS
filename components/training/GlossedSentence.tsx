@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
@@ -112,14 +113,30 @@ function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
         ref={popoverRef}
         id={popoverId}
         role="tooltip"
-        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 w-max max-w-64 -translate-x-1/2 border border-white/20 bg-black px-4 py-2 [transform:translateX(var(--shift,0px))] ${
+        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-2.5 w-max max-w-72 -translate-x-1/2 border border-white/20 bg-black px-4 py-2 [transform:translateX(var(--shift,0px))] ${
           open ? "block" : "hidden"
         }`}
       >
-        <span className="block text-[13px] font-semibold text-white/50">
-          {text(wordTypeLabels[entry.type])}
+        <span className="flex items-center gap-3">
+          {entry.image ? (
+            <Image
+              src={entry.image}
+              alt=""
+              width={56}
+              height={56}
+              loading="eager"
+              className="h-14 w-14 shrink-0 border border-white/10 bg-white/[0.03] p-1.5"
+            />
+          ) : null}
+          <span className="min-w-0">
+            <span className="block text-[13px] font-semibold text-white/50">
+              {text(wordTypeLabels[entry.type])}
+            </span>
+            <span className="mt-0.5 block text-[15px] leading-5 text-white">
+              {text(entry.meaning)}
+            </span>
+          </span>
         </span>
-        <span className="mt-0.5 block text-[15px] leading-5 text-white">{text(entry.meaning)}</span>
         <span
           aria-hidden
           className="absolute top-full left-[calc(50%-var(--shift,0px))] h-2 w-2 -translate-x-1/2 -translate-y-[calc(50%-0.5px)] rotate-45 border-r border-b border-white/20 bg-black"
