@@ -9,6 +9,7 @@ import {
   getSentenceFilename,
   useRecordedAudio,
 } from "./audio";
+import { GlossedSentence } from "./GlossedSentence";
 
 const practiceCopy = {
   en: {
@@ -16,6 +17,7 @@ const practiceCopy = {
     pairs: (count: number) => `${count} pairs`,
     sentencesTitle: "Three finishing sentences",
     sentencesDescription: "Say each sentence slowly, then at a natural speed.",
+    wordHint: "Hover over a dotted word, or press and hold it, to see its meaning.",
     play: "Play",
   },
   ja: {
@@ -23,6 +25,7 @@ const practiceCopy = {
     pairs: (count: number) => `${count}ペア`,
     sentencesTitle: "仕上げの3文",
     sentencesDescription: "最初はゆっくり、次は自然な速さで言いましょう。",
+    wordHint: "点線の単語にカーソルを合わせるか長押しすると、意味が表示されます。",
     play: "再生",
   },
 };
@@ -87,6 +90,7 @@ export function LessonPractice({
         <div>
           <h3 className="text-xl font-semibold text-white">{copy.sentencesTitle}</h3>
           <p className="mt-1 text-sm leading-6 text-white/55">{copy.sentencesDescription}</p>
+          <p className="text-sm leading-6 text-white/55">{copy.wordHint}</p>
         </div>
 
         <ol className="space-y-3">
@@ -96,7 +100,9 @@ export function LessonPractice({
               className="flex items-center gap-3 border border-white/10 bg-white/[0.03] p-3"
             >
               <span className="text-sm font-semibold text-white/50">{index + 1}</span>
-              <p className="flex-1 text-white">{sentence}</p>
+              <p className="flex-1 text-white">
+                <GlossedSentence sentence={sentence} />
+              </p>
               <button
                 type="button"
                 aria-label={`${copy.play}: ${sentence}`}
