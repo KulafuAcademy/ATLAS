@@ -234,7 +234,7 @@ export function PracticeLibrary({
 // Each image shows both sounds side by side: left half, then right half.
 const articulationGuides = {
   "r-vs-l": {
-    image: "/images/r-l-tongue-position-mouth-only.webp",
+    image: "/images/articulation/r-l-tongue-position-mouth-only.webp",
     left: {
       title: { en: "R: Keep the tongue tip free", ja: "R：舌先を浮かせる" },
       detail: {
@@ -251,7 +251,7 @@ const articulationGuides = {
     },
   },
   "b-v": {
-    image: "/images/b-v-articulation.webp",
+    image: "/images/articulation/b-v-articulation.webp",
     left: {
       title: { en: "B: Close both lips", ja: "B：唇を閉じる" },
       detail: {
@@ -268,7 +268,7 @@ const articulationGuides = {
     },
   },
   "s-sh": {
-    image: "/images/s-sh-articulation.webp",
+    image: "/images/articulation/s-sh-articulation.webp",
     left: {
       title: { en: "S: Keep the tongue forward", ja: "S：舌を前に置く" },
       detail: {
@@ -285,7 +285,7 @@ const articulationGuides = {
     },
   },
   "short-i-long-e": {
-    image: "/images/i-e-articulation.webp",
+    image: "/images/articulation/i-e-articulation.webp",
     left: {
       title: {
         en: "Short I: Lower and relaxed",
@@ -305,7 +305,7 @@ const articulationGuides = {
     },
   },
   th: {
-    image: "/images/th-s-articulation.webp",
+    image: "/images/articulation/th-s-articulation.webp",
     left: {
       title: { en: "TH: Tongue between the teeth", ja: "TH：舌先を歯の間へ" },
       detail: {
@@ -325,7 +325,7 @@ const articulationGuides = {
     },
   },
   "final-consonants": {
-    image: "/images/final-consonant-articulation.webp",
+    image: "/images/articulation/final-consonant-articulation.webp",
     left: {
       title: { en: "Stop on the consonant", ja: "子音で止める" },
       detail: {
