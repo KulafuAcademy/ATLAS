@@ -45,6 +45,7 @@ const modalCopy = {
     close: "Close",
     getReady: "Get ready...",
     speakNow: "Speak now",
+    stopSpeaking: "■ Stop, I'm done",
     secondsLeft: (seconds: number) => `${seconds}s`,
   },
   ja: {
@@ -53,6 +54,7 @@ const modalCopy = {
     close: "閉じる",
     getReady: "準備してください...",
     speakNow: "今話してください",
+    stopSpeaking: "■ ストップ（言えたよ）",
     secondsLeft: (seconds: number) => `${seconds}秒`,
   },
 };
@@ -82,13 +84,34 @@ export function useWordCheck() {
   const [target, setTarget] = useState<WordTarget | null>(null);
   const [countdown, setCountdown] = useState<CountdownState>(null);
   const timerRef = useRef<number | null>(null);
+  // Set only during the answer window, so "Stop" can end it early.
+  const endAnswerRef = useRef<(() => void) | null>(null);
 
   function clearCountdown() {
     if (timerRef.current !== null) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    endAnswerRef.current = null;
     setCountdown(null);
+  }
+
+  function endAnswer() {
+    clearCountdown();
+    assessment.finish((outcome) => {
+      const letter = outcome.kind === "result" ? outcome.result.grade.letter : "";
+
+      if (letter === "A" || letter === "B") {
+        playCorrectSound();
+      } else {
+        playIncorrectSound();
+      }
+    });
+  }
+
+  /** "Stop" during the answer window: check what was said so far. */
+  function stopEarly() {
+    endAnswerRef.current?.();
   }
 
   useEffect(
@@ -132,19 +155,11 @@ export function useWordCheck() {
         setCountdown({ phase, remaining });
         playCountdownGo();
         assessment.startRecording();
+        endAnswerRef.current = endAnswer;
         return;
       }
 
-      clearCountdown();
-      assessment.finish((outcome) => {
-        const letter = outcome.kind === "result" ? outcome.result.grade.letter : "";
-
-        if (letter === "A" || letter === "B") {
-          playCorrectSound();
-        } else {
-          playIncorrectSound();
-        }
-      });
+      endAnswer();
     }, 1000);
   }
 
@@ -155,7 +170,7 @@ export function useWordCheck() {
     setTarget(null);
   }
 
-  return { assessment, target, countdown, start, close };
+  return { assessment, target, countdown, start, stopEarly, close };
 }
 
 export type WordCheckState = ReturnType<typeof useWordCheck>;
@@ -284,6 +299,15 @@ export function WordAssessmentModal({ check }: { check: WordCheckState }) {
                 </span>
               </div>
               {recorder.stream ? <LevelMeter stream={recorder.stream} /> : null}
+              {target.kind === "sentence" ? (
+                <button
+                  type="button"
+                  onClick={check.stopEarly}
+                  className="h-11 w-full border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+                >
+                  {copy.stopSpeaking}
+                </button>
+              ) : null}
             </div>
           ) : null}
 

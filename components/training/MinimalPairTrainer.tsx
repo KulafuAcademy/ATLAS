@@ -1141,16 +1141,16 @@ function PairPracticeCard({
         countdown={countdown}
         kind="tongueTwister"
       />
-      {countdown?.kind === "tongueTwister" && countdown.phase === "answer" ? (
-        <ActionButton intent="secondary" onClick={endAnswerEarly}>
-          {copy.stopSpeaking}
-        </ActionButton>
-      ) : null}
       {aiRecordingStream && countdown?.kind === "tongueTwister" ? (
         <LevelMeter stream={aiRecordingStream} />
       ) : null}
       {sentenceCheck.isListening && !isTouchDevice() ? (
         <MicLevelMeter />
+      ) : null}
+      {countdown?.kind === "tongueTwister" && countdown.phase === "answer" ? (
+        <ActionButton intent="secondary" onClick={endAnswerEarly}>
+          {copy.stopSpeaking}
+        </ActionButton>
       ) : null}
       {answerFeedback ? (
         <FeedbackMessage feedback={answerFeedback} />
