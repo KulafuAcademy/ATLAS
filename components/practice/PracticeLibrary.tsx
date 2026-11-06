@@ -759,7 +759,10 @@ function PairCard({
     <article className="space-y-6">
       {/* Each word tile pairs listening and the AI check, like the sentence. */}
       <div className="grid grid-cols-2 gap-3">
-        {[pair.wordA, pair.wordB].map((word) => {
+        {[
+          { word: pair.wordA, ipa: pair.ipaA },
+          { word: pair.wordB, ipa: pair.ipaB },
+        ].map(({ word, ipa }) => {
           const audioPath = getPublicAudioPath("words", pair.soundFocus, word);
 
           return (
@@ -767,7 +770,10 @@ function PairCard({
               key={word}
               className="space-y-4 border border-white/10 bg-black p-4 text-center sm:p-6"
             >
-              <p className="text-3xl font-semibold text-white">{word}</p>
+              <div className="space-y-1">
+                <p className="text-3xl font-semibold text-white">{word}</p>
+                {ipa ? <p className="text-base text-white/60">{ipa}</p> : null}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
