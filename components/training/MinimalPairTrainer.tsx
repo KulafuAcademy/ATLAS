@@ -997,6 +997,13 @@ function PairPracticeCard({
     </TestGroup>
   );
 
+  const assessmentIpa =
+    assessment.target === pair.wordA
+      ? pair.ipaA
+      : assessment.target === pair.wordB
+        ? pair.ipaB
+        : undefined;
+
   const pronunciationStep = (
     <TestGroup
       step="3"
@@ -1036,6 +1043,11 @@ function PairPracticeCard({
           <p className="mt-2 text-5xl font-semibold text-white md:text-6xl">
             {assessment.target}
           </p>
+          {assessmentIpa ? (
+            <p className="mt-2 text-xl text-white/60 md:text-2xl">
+              {assessmentIpa}
+            </p>
+          ) : null}
         </div>
       ) : null}
       <CountdownDisplay
