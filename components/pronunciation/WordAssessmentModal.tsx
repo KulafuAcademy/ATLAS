@@ -36,7 +36,7 @@ import { usePronunciationAssessment } from "./usePronunciationAssessment";
 
 const prepareSeconds = 3;
 // Same answer windows as the pair page (MinimalPairTrainer).
-const answerSeconds = { word: 3, sentence: 8 };
+const answerSeconds = { word: 3, sentence: 10 };
 
 const modalCopy = {
   en: {

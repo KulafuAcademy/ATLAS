@@ -66,7 +66,7 @@ type TrainerCopy = typeof trainerCopy.en;
 
 const prepareSeconds = 3;
 const pronunciationAnswerSeconds = 3;
-const tongueTwisterAnswerSeconds = 8;
+const tongueTwisterAnswerSeconds = 10;
 const slowPlaybackRate = 0.75;
 
 type MinimalPairTrainerProps = {

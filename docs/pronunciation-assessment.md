@@ -4,7 +4,7 @@ On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say rig
 
 This applies on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
 
-The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: each word's mic button, and "Say the sentence" in the tongue twister box, opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 8 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
+The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: each word's mic button, and "Say the sentence" in the tongue twister box, opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 10 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
 
 The server is a separate project. This app only records audio, sends it, and shows the result.
 
@@ -43,7 +43,7 @@ Restart `npm run dev` after changing `.env.local`. `NEXT_PUBLIC_` values are rea
 tap "Say right"  ─► prepare(): ask for mic ─► "Get ready" 3-2-1
                                                    │
                          "Speak now" ─► startRecording() (MediaRecorder)
-                                                   │  3 s for a word, 8 s for the sentence
+                                                   │  3 s for a word, 10 s for the sentence
                          countdown ends ─► finish(): stop ─► POST /analyze (audio + text)
                                                    │
         ├─ ok: true             ─► panel: results (see "Results panel")
@@ -209,7 +209,7 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] Status badge shows *ready* when the server is up and *offline* when the URL is wrong.
 - [ ] Denying mic permission shows the friendly "allow the microphone" notice, and the page still works after allowing it.
 - [ ] "Say right" → countdown → panel shows "Listening..." with a moving level meter → "Checking..." → score.
-- [ ] "Say the sentence" records for the full 8 s window and scores every word.
+- [ ] "Say the sentence" records for the full 10 s window and scores every word.
 - [ ] Step 3/4 shows "verdict · See the details below." (no number, ⭕️ when passed, no ❌ otherwise) and plays the correct or incorrect sound.
 - [ ] No score number, grade letter or red appears anywhere in the results panel or the practice-page modal.
 - [ ] The praise is the headline, in Japanese when the app is in Japanese.
