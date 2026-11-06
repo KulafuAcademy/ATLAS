@@ -623,7 +623,7 @@ function QuickTest({
               type="button"
               disabled={!played || answer !== null}
               onClick={() => choose(value)}
-              className={`min-h-16 border text-xl font-semibold transition focus:outline-none disabled:cursor-not-allowed ${
+              className={`flex min-h-16 flex-col items-center justify-center gap-0.5 border py-2 text-xl font-semibold transition focus:outline-none disabled:cursor-not-allowed ${
                 isTarget
                   ? "border-white bg-white text-black"
                   : isWrongPick
@@ -633,7 +633,12 @@ function QuickTest({
                       : "border-white/10 bg-black text-white/30"
               }`}
             >
-              {value === "A" ? pair.wordA : pair.wordB}
+              <span>{value === "A" ? pair.wordA : pair.wordB}</span>
+              {(value === "A" ? pair.ipaA : pair.ipaB) ? (
+                <span className="text-sm font-normal opacity-70">
+                  {value === "A" ? pair.ipaA : pair.ipaB}
+                </span>
+              ) : null}
             </button>
           );
         })}
