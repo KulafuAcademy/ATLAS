@@ -4,7 +4,7 @@ On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say rig
 
 This applies on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
 
-The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: each word's mic button, and "Say the sentence" in the tongue twister box, opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 8 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
+The **Practice page** (`/practice`, Speaking mode) also scores single words and tongue twisters, in a simplified form: each word's mic button, and "Say the sentence" in the tongue twister box, opens a modal (`WordAssessmentModal`) that runs the same 3-2-1 countdown and recording (3 s for a word, 10 s for the sentence), then shows only the score ring, grade and verdict ("N of M words need practice" for a sentence), "Say it like" with IPA (words only), the IPA comparison (correct, different, missing and extra sounds), one tip for a word or every word to fix (with its score) for a sentence, "Listen to me" and "Try again". One `useWordCheck()` in `SpeakingPairs` is shared by every card, so `/health` is polled once, and only while Speaking mode is open. Closing the modal (×, Esc or the backdrop) stops the countdown, the mic and any request in flight.
 
 The server is a separate project. This app only records audio, sends it, and shows the result.
 
@@ -14,7 +14,7 @@ The server is a separate project. This app only records audio, sends it, and sho
 | --- | --- |
 | [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
 | [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
-| [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx) | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `ScoreRing`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`. |
+| [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx) | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `Verdict`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`. |
 | [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
 | [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts) | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL. |
 | [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts) | Polls `GET /health` every 30 s. |
@@ -43,7 +43,7 @@ Restart `npm run dev` after changing `.env.local`. `NEXT_PUBLIC_` values are rea
 tap "Say right"  ─► prepare(): ask for mic ─► "Get ready" 3-2-1
                                                    │
                          "Speak now" ─► startRecording() (MediaRecorder)
-                                                   │  3 s for a word, 8 s for the sentence
+                                                   │  3 s for a word, 10 s for the sentence
                          countdown ends ─► finish(): stop ─► POST /analyze (audio + text)
                                                    │
         ├─ ok: true             ─► panel: results (see "Results panel")
@@ -78,6 +78,7 @@ This drives the status badge: *Connecting...* → *Checker is ready* / *Checker 
 | --- | --- |
 | `audio` | The recording (max 10 MB, checked on the client too) |
 | `text` | The word or sentence the learner was asked to say |
+| `soundFocus` | The sound being practiced, such as `R vs L` (`pair.soundFocus`) |
 
 Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 
@@ -92,18 +93,39 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
   "expected": { "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k ..." },
   "heard":    { "phonemes": ["r","ɔ","k"], "soundsLike": "r-aw-k ..." },
   "words": [
-    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k" }
+    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k", "status": "practice" }
   ],
   "issues": [
     { "word": "Rock", "message": "you said \"aw\" ... instead of \"ah\" ...", "tip": "Open your mouth wide..." }
   ],
+  "praise": { "word": "Rock", "message": "Nice \"r\" in \"Rock\"!", "messageJa": "「Rock」の 「r」、いいね！" },
+  "focus": [
+    {
+      "sound": "ah", "words": ["Rock"], "wordIndexes": [0], "count": 1,
+      "message": "Let's practise the \"ah\" sound in \"Rock\".",
+      "messageJa": "「Rock」の 「ah」の おとを れんしゅう しよう。",
+      "tip": "Open your mouth wide like at the doctor.",
+      "tipJa": "おいしゃさんの ときみたいに、くちを 大きく あけよう。"
+    }
+  ],
+  "moreCount": 0,
   "feedback": "You're doing great! In \"Rock\", ..."
 }
 ```
 
+**Child-facing fields.** The child view uses these, never `issues` or any number:
+
+- `praise`: shown first, as the headline (`messageJa` in Japanese mode).
+- `focus`: 0–2 sounds to practise (max 1 for grade A/B), each with `message` and `tip` (and `...Ja` versions, both ≤ 80 chars). An empty array means nothing to fix.
+- `moreCount`: practice items left out of `focus`. **Not shown**, so children only see what to work on now.
+- `words[].status`: from the word's sound-by-sound alignment. `"great"` = every sound right, nothing extra. `"practice"` = at least one sound wrong, missing or extra. `"skipped"` = the word wasn't said at all. `"ok"` is only sent by older servers. Every word in `focus[].wordIndexes` is `"practice"` or `"skipped"`, but there can be more amber words than `focus` shows (it holds at most 2), so don't assume amber means "in focus".
+
+All four are optional: an older server that doesn't send them gets the verdict headline, the per-issue list and white word chips. Word colour never comes from `score`.
+
 Nullable fields:
 
 - `issues[].tip`: `null` means no tip line is shown.
+- `praise.word`, `focus[].sound`: `null` when there's no single word or sound to name.
 - `feedback`: `null` when the AI coach is offline. The "ATLAS Assessment" box is hidden.
 
 **IPA.** The server sends **no `ipa` or `heardIpa` fields**. `phonemes` are IPA symbols, and the UI builds the IPA by joining them (`formatIpa(ipa, phonemes)` in `PronunciationPanel.tsx`). The types also accept optional `ipa` / `words[].heardIpa`, in case the server adds them later:
@@ -133,11 +155,13 @@ Nullable fields:
 Top to bottom (`AssessmentResults` in `PronunciationPanel.tsx`):
 
 1. **Header:** "RESULTS", plus "N attempts" (scored attempts for this word or sentence during this visit). Before the first result, the header shows the server status instead.
-2. **Score row:** a ring gauge filled to `score`% in `grade.color` with the score inside, then the grade letter (in `grade.color`) and verdict. Below that, "⭕️ Every sound was correct" when `allWordsCorrect`, otherwise "N of M words need practice". Then `Target: "…"`.
+2. **Headline** (`ResultHeadline`): "🌟" + `praise.message`. Without `praise` (older server): the verdict in large text, green for A/B and amber for C/D, plus "🌟 Every sound was correct" when `allWordsCorrect`. The numeric `score` and the grade letter are **not shown** anywhere. Then `Target: "…"`.
 3. **ATLAS Assessment:** the `feedback` text in a rounded box labelled "ATLAS Assessment". Hidden when `feedback` is `null`.
-4. **Word by word:** a chip per word, coloured by `gradeFor(score)`. Tapping a chip shows "Say it like" (`soundsLike`, plus IPA from `phonemes`), and "We heard" only if the server sends `heardIpa`.
-5. **IPA:** one box per word. It shows the word, the expected IPA (`words[].phonemes`), and below it what was heard. The server sends `heard.phonemes` as one flat list with no word breaks, so `lib/phonemeAlignment.ts` matches it to the expected phonemes with an edit-distance (Levenshtein) alignment and splits it back into words. Each heard sound is coloured with a grade-band colour: **A green** = correct, **D red** = a different sound, **C amber** = an extra sound. A **missing** sound is shown in the theme's grey, struck through, so it can't be confused with red. The legend under the boxes shows a sample sound drawn in each style. Hidden if no word has phonemes.
-6. **What to fix:** `issues`, **excluding issues for words that scored 100**, each with its word's score tag, message and tip. If none are left: "Nothing to fix. Try it again at normal speed to lock it in."
+4. **Word by word:** a chip per word, coloured by `words[].status` only (`wordStatusColor()`), with the status read out to screen readers ("said perfectly", "needs practice", "skipped"). Tapping a chip shows "Say it like" (`soundsLike`, plus IPA from `phonemes`), and "We heard" only if the server sends `heardIpa`.
+5. **What to fix** (`FocusList`): a card per `focus` item, with the `sound` in an amber box, then the message and tip. The section is hidden when `focus` is empty. Older servers without `focus` get the old list: `issues`, excluding words that scored 100, or "Nothing to fix…".
+6. **Details (IPA)** (`IpaDetails`): folded by default. One box per word with the expected IPA (`words[].phonemes`) and below it what was heard. The server sends `heard.phonemes` as one flat list with no word breaks, so `lib/phonemeAlignment.ts` matches it to the expected phonemes with an edit-distance (Levenshtein) alignment and splits it back into words. **Green** = correct, **amber** = a different sound, **dotted-underlined grey** = an extra sound, **struck-through grey** = missing. The legend shows a sample of each. Hidden if no word has phonemes.
+
+The practice-page modal (`WordAssessmentModal.tsx`) uses the same headline, the first `focus` item for a single word (all of them for a sentence), and the same folded IPA.
 
 ## Grade bands and colours
 
@@ -152,14 +176,16 @@ The bands in `lib/pronunciationGrades.ts` match the server:
 
 Rules:
 
-- The overall score uses `grade.color` **from the response**, as-is.
-- Per-word colours and the score tags on issues use `gradeFor(words[].score)`. Don't add other cutoffs or shades.
-- These four colours are the **only** non-theme colours, and they appear only on score elements: the score ring and grade letter, the word chips, and the issue score tags. The "⭕️" mark is the app's existing success mark, also used in the practice steps. Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
-- If the server's bands ever change, update `pronunciationGrades` to match.
+- **No red in the child view.** The bands' colours above are kept for reference, but children only see:
+  - `wordStatusColors` for words: great = A green, practice = soft amber `#fbbf24`, skipped and ok = theme white. A missing or unknown status is also white.
+  - The same amber for the `focus` sound boxes, "different sound" in the IPA details, and the C/D verdict (`childVerdictColor`).
+- A step that didn't pass shows a neutral summary, not ❌.
+- Everything else uses the app's black and white theme (`white`, `white/NN`, `black`).
+- If the server's bands or status cutoffs ever change, update `pronunciationGrades.ts` to match.
 
 ## Copy and language
 
-The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. The one-line step summaries (`aiScore`, `aiChecking`, `aiFailed`, `micUnavailable`) are in `trainerCopy` in `MinimalPairTrainer.tsx`. Both follow the language toggle like the rest of the app. The verdict is translated by grade letter. Text generated by the server (`issues[].message`, `tip`, `feedback`, and the too-quiet `message`) is English only. In Japanese mode, the too-quiet notice uses the local translation.
+The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. The one-line step summaries (`aiResult`, `aiChecking`, `aiFailed`, `micUnavailable`) are in `trainerCopy` in `MinimalPairTrainer.tsx`. Both follow the language toggle like the rest of the app. The verdict is translated by grade letter. `praise` and `focus` come in both languages from the server (`...Ja` fields); Japanese mode falls back to the English text if a `...Ja` field is empty. Other server text (`issues[].message`, `tip`, `feedback`, and the too-quiet `message`) is English only. In Japanese mode, the too-quiet notice uses the local translation.
 
 ## Changing things
 
@@ -183,16 +209,19 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] Status badge shows *ready* when the server is up and *offline* when the URL is wrong.
 - [ ] Denying mic permission shows the friendly "allow the microphone" notice, and the page still works after allowing it.
 - [ ] "Say right" → countdown → panel shows "Listening..." with a moving level meter → "Checking..." → score.
-- [ ] "Say the sentence" records for the full 8 s window and scores every word.
-- [ ] Step 3/4 shows "Score NN · verdict" and plays the correct or incorrect sound.
+- [ ] "Say the sentence" records for the full 10 s window and scores every word.
+- [ ] Step 3/4 shows "verdict · See the details below." (no number, ⭕️ when passed, no ❌ otherwise) and plays the correct or incorrect sound.
+- [ ] No score number, grade letter or red appears anywhere in the results panel or the practice-page modal.
+- [ ] The praise is the headline, in Japanese when the app is in Japanese.
 - [ ] "Listen to me" plays the last recording (also on iOS Safari).
 - [ ] A silent clip shows the too-short/too-quiet notice.
 - [ ] While recording or checking, all "Say ..." buttons and "Try again" are disabled.
 - [ ] Tapping a word shows *Say it like* with IPA. There's no *We heard* column with the current server.
-- [ ] The IPA section shows one box per word: the expected IPA on top and the heard IPA below. Heard sounds are coloured (green correct, red different, amber extra, grey struck-through missing), and each legend sample matches its style. E.g. saying "id" for "it" shows a red `d`.
+- [ ] "Details (IPA)" is folded by default. Opened, it shows one box per word: the expected IPA on top and the heard IPA below. Heard sounds are styled (green correct, amber different, dotted-underlined grey extra, struck-through grey missing), and each legend sample matches its style. E.g. saying "id" for "it" shows an amber `d`.
 - [ ] The "ATLAS Assessment" box is hidden when `feedback` is `null`.
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
-- [ ] "What to fix" leaves out words that scored 100, and shows "Nothing to fix…" when none are left.
+- [ ] "What to fix" shows at most 2 cards (sound box, message, tip) and never mentions `moreCount`. It's hidden when `focus` is empty.
+- [ ] Word chips: green = great, amber = practice, white = skipped (or ok from an older server). `npm test` checks the "Green grass grows near a clear glass" example: white, white, amber, green, green, green, green.
 - [ ] "N attempts" goes up with each scored try of the same word, and is tracked separately per word or sentence.
 - [ ] "Try again" re-runs the same word or sentence, and scrolls the word card or sentence to the middle of the screen.
 - [ ] Tapping "Say right" shows a big "Say this: right" card centred on screen, and fades the other boxes. "Say the sentence" does the same with the sentence box highlighted. The fade ends when checking starts.

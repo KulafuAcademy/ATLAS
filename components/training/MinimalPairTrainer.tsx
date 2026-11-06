@@ -66,7 +66,7 @@ type TrainerCopy = typeof trainerCopy.en;
 
 const prepareSeconds = 3;
 const pronunciationAnswerSeconds = 3;
-const tongueTwisterAnswerSeconds = 8;
+const tongueTwisterAnswerSeconds = 10;
 const slowPlaybackRate = 0.75;
 
 type MinimalPairTrainerProps = {
@@ -123,13 +123,13 @@ const trainerCopy = {
     checkCouldNotStart: "Pronunciation check could not start. Try again.",
     getReady: "Get ready...",
     speakNow: "Speak now",
+    stopSpeaking: "■ Stop, I'm done",
     secondsLeft: (seconds: number) => `${seconds}s`,
     sayAfterCountdown: (word: string) => `Say "${word}" after countdown ends.`,
     saySentenceAfterCountdown: "Say the whole sentence after countdown ends.",
     aiChecking: "Checking your pronunciation…",
-    aiScore: (score: number, verdict: string) =>
-      `Score ${score} · ${verdict}. See the details below.`,
-    aiFailed: "Couldn't score that one. See below and try again.",
+    aiResult: (verdict: string) => `${verdict} · See the details below.`,
+    aiFailed: "Couldn't check that one. See below and try again.",
     micUnavailable: "The microphone isn't available. See below.",
     sayThis: "Say this",
     readThis: "Read this",
@@ -184,14 +184,14 @@ const trainerCopy = {
       "発音チェックを開始できませんでした。もう一度試してください。",
     getReady: "準備してください...",
     speakNow: "今話してください",
+    stopSpeaking: "■ ストップ（言えたよ）",
     secondsLeft: (seconds: number) => `${seconds}秒`,
     sayAfterCountdown: (word: string) =>
       `カウントダウン後に「${word}」を発音してください。`,
     saySentenceAfterCountdown: "カウントダウン後に文全体を発音してください。",
     aiChecking: "発音をチェックしています…",
-    aiScore: (score: number, verdict: string) =>
-      `スコア ${score}・${verdict}。くわしくは下を見てね。`,
-    aiFailed: "スコアを出せませんでした。下を見て、もう一度ためしてね。",
+    aiResult: (verdict: string) => `${verdict}・くわしくは下を見てね。`,
+    aiFailed: "チェックできませんでした。下を見て、もう一度ためしてね。",
     micUnavailable: "マイクが使えません。下を見てください。",
     sayThis: "これを言おう",
     readThis: "これを読もう",
@@ -314,6 +314,8 @@ function PairPracticeCard({
   const [countdown, setCountdown] = useState<CountdownState>(null);
   const countdownRef = useRef<CountdownState>(null);
   const countdownTimerRef = useRef<number | null>(null);
+  // The running countdown's endAnswer, so "Stop" can end the answer early.
+  const endAnswerRef = useRef<(() => void) | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Separate speed settings: words (steps 1-2) and the tongue twister (step 4).
   const [wordSlow, setWordSlow] = useState(false);
@@ -343,7 +345,19 @@ function PairPracticeCard({
       countdownTimerRef.current = null;
     }
 
+    endAnswerRef.current = null;
     updateCountdown(null);
+  }
+
+  // "Stop" during the answer window: judge what was said so far instead of
+  // waiting for the countdown to run out.
+  function endAnswerEarly() {
+    const endAnswer = endAnswerRef.current;
+
+    if (countdownRef.current?.phase !== "answer" || !endAnswer) return;
+
+    clearCountdown();
+    endAnswer();
   }
 
   // Runs the two-phase countdown shared by steps 3 and 4:
@@ -361,6 +375,7 @@ function PairPracticeCard({
     let phase: "prepare" | "answer" = "prepare";
     let remaining = prepareSeconds;
 
+    endAnswerRef.current = endAnswer;
     updateCountdown({ kind, phase, remaining });
     playCountdownTick();
 
@@ -638,7 +653,7 @@ function PairPracticeCard({
         : copy.saySentenceAfterCountdown,
     );
 
-    void assessment.prepare(target).then((ready) => {
+    void assessment.prepare(target, pair.soundFocus).then((ready) => {
       if (ready) return;
 
       clearCountdown();
@@ -669,7 +684,7 @@ function PairPracticeCard({
       return;
     }
 
-    const { score, grade } = outcome.result;
+    const { grade } = outcome.result;
     const passed = grade.letter === "A" || grade.letter === "B";
     const verdict =
       gradeByLetter(grade.letter)?.verdict[language] ?? grade.verdict;
@@ -679,7 +694,8 @@ function PairPracticeCard({
     } else {
       playIncorrectSound();
     }
-    showFeedback(kind, passed ? "success" : "error", copy.aiScore(score, verdict));
+    // Not passing is "neutral", not "error": no ❌ for a child who tried.
+    showFeedback(kind, passed ? "success" : "neutral", copy.aiResult(verdict));
   }
 
   function startPronunciationTest(target: QuizTarget) {
@@ -1130,6 +1146,11 @@ function PairPracticeCard({
       ) : null}
       {sentenceCheck.isListening && !isTouchDevice() ? (
         <MicLevelMeter />
+      ) : null}
+      {countdown?.kind === "tongueTwister" && countdown.phase === "answer" ? (
+        <ActionButton intent="secondary" onClick={endAnswerEarly}>
+          {copy.stopSpeaking}
+        </ActionButton>
       ) : null}
       {answerFeedback ? (
         <FeedbackMessage feedback={answerFeedback} />

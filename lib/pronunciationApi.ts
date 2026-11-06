@@ -51,6 +51,41 @@ export type PronunciationWord = {
    * null would mean the word wasn't heard at all.
    */
   heardIpa?: string | null;
+  /**
+   * Child-facing judgement from the word's sound-by-sound alignment. The
+   * only thing that colours the word (see `wordStatusColor()`).
+   */
+  status?: WordStatus;
+};
+
+/**
+ * - "great": every sound right, nothing extra.
+ * - "practice": at least one sound wrong, missing or extra.
+ * - "skipped": the word wasn't said at all.
+ * - "ok": only sent by older servers.
+ */
+export type WordStatus = "great" | "ok" | "practice" | "skipped";
+
+/** Something the learner did well, shown before anything to practise. */
+export type PronunciationPraise = {
+  word: string | null;
+  message: string;
+  messageJa: string;
+};
+
+/** One sound to practise, grouped across every word it happened in. */
+export type PronunciationFocus = {
+  /** The target sound, e.g. "r", "v", "ee". */
+  sound: string | null;
+  /** Distinct words it happened in. */
+  words: string[];
+  /** Indexes into `words[]` of every occurrence. */
+  wordIndexes: number[];
+  count: number;
+  message: string;
+  messageJa: string;
+  tip: string;
+  tipJa: string;
 };
 
 export type PronunciationIssue = {
@@ -69,7 +104,17 @@ export type AnalyzeSuccess = {
   expected: PhonemeTranscription;
   heard: PhonemeTranscription;
   words: PronunciationWord[];
+  /** One entry per wrong sound. Not shown to children when `focus` is sent. */
   issues: PronunciationIssue[];
+  /** Missing on older servers. */
+  praise?: PronunciationPraise;
+  /**
+   * 0–2 sounds to practise (max 1 for grade A/B); empty means nothing to
+   * fix. Missing on older servers, which fall back to `issues`.
+   */
+  focus?: PronunciationFocus[];
+  /** Further practice items left out of `focus`. */
+  moreCount?: number;
   /** AI coach feedback; null when the coach is offline. */
   feedback: string | null;
 };
@@ -153,6 +198,7 @@ export async function analyzePronunciation({
   audio,
   fileName,
   text,
+  soundFocus,
   signal,
 }: {
   audio: Blob;
@@ -160,6 +206,8 @@ export async function analyzePronunciation({
   fileName: string;
   /** The word or sentence the learner was asked to say. */
   text: string;
+  /** The sound being practiced, e.g. "R vs L". */
+  soundFocus: string;
   signal?: AbortSignal;
 }): Promise<AnalyzeResponse> {
   if (audio.size > maxAudioBytes) {
@@ -169,6 +217,7 @@ export async function analyzePronunciation({
   const form = new FormData();
   form.append("audio", audio, fileName);
   form.append("text", text);
+  form.append("soundFocus", soundFocus);
 
   let response: Response;
 

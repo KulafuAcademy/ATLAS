@@ -776,7 +776,14 @@ function PairCard({
                 <button
                   type="button"
                   aria-label={copy.sayWord(word)}
-                  onClick={() => onCheck({ kind: "word", word, audioPath })}
+                  onClick={() =>
+                    onCheck({
+                      kind: "word",
+                      word,
+                      soundFocus: pair.soundFocus,
+                      audioPath,
+                    })
+                  }
                   className="flex h-9 items-center justify-center gap-1.5 border border-white bg-white px-2 text-xs font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
                 >
                   <MicIcon />
@@ -810,6 +817,7 @@ function PairCard({
                 onCheck({
                   kind: "sentence",
                   word: pair.tongueTwister!.text,
+                  soundFocus: pair.soundFocus,
                   audioPath: twisterAudioPath,
                 })
               }

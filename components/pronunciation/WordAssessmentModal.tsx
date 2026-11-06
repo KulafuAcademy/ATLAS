@@ -14,29 +14,29 @@ import {
 import { stopPronunciationCheckEvent } from "@/components/training/useSentenceCheck";
 import type { Language } from "@/lib/i18n";
 import type { AnalyzeSuccess } from "@/lib/pronunciationApi";
-import { gradeByLetter } from "@/lib/pronunciationGrades";
 
 import { LevelMeter } from "./LevelMeter";
 import {
   assessmentNoticeText,
   CheckingIndicator,
   findWord,
+  FocusList,
   formatIpa,
-  IpaComparison,
+  IpaDetails,
   IssueItem,
   isPerfect,
   labelClassName,
   panelCopy,
   PlaybackButton,
   primaryButtonClassName,
-  ScoreRing,
+  ResultHeadline,
 } from "./PronunciationPanel";
 import type { PanelCopy } from "./PronunciationPanel";
 import { usePronunciationAssessment } from "./usePronunciationAssessment";
 
 const prepareSeconds = 3;
 // Same answer windows as the pair page (MinimalPairTrainer).
-const answerSeconds = { word: 3, sentence: 8 };
+const answerSeconds = { word: 3, sentence: 10 };
 
 const modalCopy = {
   en: {
@@ -45,6 +45,7 @@ const modalCopy = {
     close: "Close",
     getReady: "Get ready...",
     speakNow: "Speak now",
+    stopSpeaking: "■ Stop, I'm done",
     secondsLeft: (seconds: number) => `${seconds}s`,
   },
   ja: {
@@ -53,6 +54,7 @@ const modalCopy = {
     close: "閉じる",
     getReady: "準備してください...",
     speakNow: "今話してください",
+    stopSpeaking: "■ ストップ（言えたよ）",
     secondsLeft: (seconds: number) => `${seconds}秒`,
   },
 };
@@ -61,6 +63,8 @@ type WordTarget = {
   /** A single word, or a whole sentence such as the tongue twister. */
   kind: "word" | "sentence";
   word: string;
+  /** The sound being practiced, sent to the server with the clip. */
+  soundFocus: string;
   /** Recorded model pronunciation, played by the "Listen" button. */
   audioPath: string;
 };
@@ -80,13 +84,34 @@ export function useWordCheck() {
   const [target, setTarget] = useState<WordTarget | null>(null);
   const [countdown, setCountdown] = useState<CountdownState>(null);
   const timerRef = useRef<number | null>(null);
+  // Set only during the answer window, so "Stop" can end it early.
+  const endAnswerRef = useRef<(() => void) | null>(null);
 
   function clearCountdown() {
     if (timerRef.current !== null) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    endAnswerRef.current = null;
     setCountdown(null);
+  }
+
+  function endAnswer() {
+    clearCountdown();
+    assessment.finish((outcome) => {
+      const letter = outcome.kind === "result" ? outcome.result.grade.letter : "";
+
+      if (letter === "A" || letter === "B") {
+        playCorrectSound();
+      } else {
+        playIncorrectSound();
+      }
+    });
+  }
+
+  /** "Stop" during the answer window: check what was said so far. */
+  function stopEarly() {
+    endAnswerRef.current?.();
   }
 
   useEffect(
@@ -102,7 +127,7 @@ export function useWordCheck() {
     clearCountdown();
     setTarget(next);
 
-    void assessment.prepare(next.word).then((ready) => {
+    void assessment.prepare(next.word, next.soundFocus).then((ready) => {
       if (ready) return;
 
       clearCountdown();
@@ -130,19 +155,11 @@ export function useWordCheck() {
         setCountdown({ phase, remaining });
         playCountdownGo();
         assessment.startRecording();
+        endAnswerRef.current = endAnswer;
         return;
       }
 
-      clearCountdown();
-      assessment.finish((outcome) => {
-        const letter = outcome.kind === "result" ? outcome.result.grade.letter : "";
-
-        if (letter === "A" || letter === "B") {
-          playCorrectSound();
-        } else {
-          playIncorrectSound();
-        }
-      });
+      endAnswer();
     }, 1000);
   }
 
@@ -153,7 +170,7 @@ export function useWordCheck() {
     setTarget(null);
   }
 
-  return { assessment, target, countdown, start, close };
+  return { assessment, target, countdown, start, stopEarly, close };
 }
 
 export type WordCheckState = ReturnType<typeof useWordCheck>;
@@ -282,6 +299,15 @@ export function WordAssessmentModal({ check }: { check: WordCheckState }) {
                 </span>
               </div>
               {recorder.stream ? <LevelMeter stream={recorder.stream} /> : null}
+              {target.kind === "sentence" ? (
+                <button
+                  type="button"
+                  onClick={check.stopEarly}
+                  className="h-11 w-full border border-white bg-white px-3 text-sm font-semibold text-black transition hover:bg-black hover:text-white focus:outline-none"
+                >
+                  {copy.stopSpeaking}
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -351,50 +377,17 @@ function WordResult({
       ? (findWord(result.words, target.word) ?? result.words[0])
       : undefined;
   const expectedIpa = scored ? formatIpa(scored.ipa, scored.phonemes) : null;
-  const verdict =
-    language === "ja"
-      ? (gradeByLetter(result.grade.letter)?.verdict.ja ?? result.grade.verdict)
-      : result.grade.verdict;
-  // Same rule as the full panel: a word that scored 100 has nothing to fix.
-  const fixableIssues = result.issues.filter(
-    (item) => !isPerfect(findWord(result.words, item.word)),
-  );
+  // Older servers send no `focus`; same fallback rule as the full panel.
+  const fixableIssues = result.focus
+    ? []
+    : result.issues.filter(
+        (item) => !isPerfect(findWord(result.words, item.word)),
+      );
   const issue = fixableIssues[0];
-  const wordsToFix = new Set(
-    fixableIssues.map((item) => item.word.toLowerCase()),
-  ).size;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-5">
-        <ScoreRing
-          score={result.score}
-          color={result.grade.color}
-          label={copy.score}
-        />
-        <div className="min-w-0 space-y-1">
-          <p className="flex flex-wrap items-baseline gap-2">
-            <span
-              className="text-2xl font-bold"
-              style={{ color: result.grade.color }}
-              aria-label={`${copy.grade} ${result.grade.letter}`}
-            >
-              {result.grade.letter}
-            </span>
-            <span className="text-lg font-semibold text-white">{verdict}</span>
-          </p>
-          {result.allWordsCorrect ? (
-            <p className="flex items-center gap-1.5 text-sm text-white/60">
-              <span aria-hidden="true">⭕️</span>
-              {copy.everyCorrect}
-            </p>
-          ) : target.kind === "sentence" && wordsToFix > 0 ? (
-            <p className="text-sm text-white/60">
-              {copy.wordsToPractice(wordsToFix, result.words.length)}
-            </p>
-          ) : null}
-        </div>
-      </div>
+      <ResultHeadline result={result} copy={copy} language={language} />
 
       {scored?.soundsLike || expectedIpa ? (
         <div className="border border-white/10 bg-white/[0.02] p-3">
@@ -410,20 +403,14 @@ function WordResult({
         </div>
       ) : null}
 
-      {/* Correct, different, missing and extra sounds, as in the full panel. */}
-      {result.words.some((item) => item.phonemes?.length) ? (
-        <div className="space-y-2">
-          <p className={labelClassName}>{copy.ipa}</p>
-          <IpaComparison
-            words={result.words}
-            heardPhonemes={result.heard?.phonemes}
-            copy={copy}
-          />
-        </div>
-      ) : null}
-
-      {/* A sentence can miss several words, so name each one like the full panel. */}
-      {target.kind === "sentence" && fixableIssues.length > 0 ? (
+      {/* One sound for a word; a sentence gets the full list like the panel. */}
+      {result.focus ? (
+        <FocusList
+          focus={target.kind === "word" ? result.focus.slice(0, 1) : result.focus}
+          copy={copy}
+          language={language}
+        />
+      ) : target.kind === "sentence" && fixableIssues.length > 0 ? (
         <ul className="space-y-2">
           {fixableIssues.map((item, index) => (
             <IssueItem
@@ -444,6 +431,14 @@ function WordResult({
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {result.words.some((item) => item.phonemes?.length) ? (
+        <IpaDetails
+          words={result.words}
+          heardPhonemes={result.heard?.phonemes}
+          copy={copy}
+        />
       ) : null}
     </div>
   );
