@@ -2,6 +2,7 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { publicLearningAccessEnabled } from "@/lib/public-learning-access";
+import { localSsoEnabled, readSsoSession, SESSION_COOKIE } from './hub-sso';
 
 export function staffAuthConfig() {
   const url = process.env.AMPLIFY_SUPABASE_URL;
@@ -10,6 +11,10 @@ export function staffAuthConfig() {
 }
 
 export async function requireStaff() {
+  if (localSsoEnabled()) {
+    const store=await cookies();const session=await readSsoSession(store.get(SESSION_COOKIE)?.value);
+    return session ? {...session,response:null} : {user:null,accessToken:null,response:Response.json({error:'Hub sign-in is required.'},{status:401})};
+  }
   if (publicLearningAccessEnabled()) return { user: null, accessToken: null, response: null };
   const config = staffAuthConfig();
   if (!config) return { user: null, accessToken: null, response: Response.json({ error: "Staff authentication is not configured." }, { status: 503 }) };
