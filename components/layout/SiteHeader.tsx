@@ -50,6 +50,7 @@ export function SiteHeader() {
             ))}
           </nav>
           <LanguageToggle />
+          <a href="/staff/logout" className="hidden text-xs text-white/55 transition hover:text-white min-[500px]:inline">Sign out</a>
           {/* Phones: links move into a menu. */}
           <button
             type="button"
@@ -88,6 +89,7 @@ export function SiteHeader() {
           aria-label="Primary navigation"
           className="border-t border-white/10 px-6 pb-2 min-[500px]:hidden"
         >
+          <a href="/staff/logout" onClick={closeMenu} className="block border-b border-white/10 py-4 text-base text-white/70">Sign out</a>
           {navItems.map((item) => (
             <Link
               key={item.href}
