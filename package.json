@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test \"lib/**/*.test.mjs\""
+    "test": "node --test \"lib/**/*.test.mjs\"",
+    "test:staff": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "16.2.4",
+    "@supabase/ssr": "^0.12.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -22,6 +25,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
