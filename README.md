@@ -11,7 +11,7 @@ On each pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **"Say right / Say
 Setup:
 
 ```bash
-cp .env.example .env.local   # then set NEXT_PUBLIC_PRONUNCIATION_API_URL
+cp .env.example .env.local   # then set PRONOUNCE_API_URL and PRONOUNCE_API_KEY
 npm run dev
 ```
 

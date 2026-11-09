@@ -1,6 +1,6 @@
-# Pronunciation assessment (wav2vec2 API)
+# Pronunciation assessment (ZIPA API)
 
-On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the wav2vec2 pronunciation assessment server. On this page, each step is its own box. The full result appears in the **Results** panel **right under the step that ran the check**: under "Pronunciation test" for a word, and under "Tongue twister" for the sentence. The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
+On every pair page (e.g. `/lessons/r-vs-l/pairs/right-light`), **step 3 "Say right / Say light"** and **step 4 "Say the sentence"** are scored by the zipa pronunciation assessment server. On this page, each step is its own box. The full result appears in the **Results** panel **right under the step that ran the check**: under "Pronunciation test" for a word, and under "Tongue twister" for the sentence. The result includes the score, grade, a colour for each word, tips, and optional AI coach feedback. The step itself shows a one-line summary ("Score 87 · Good").
 
 This applies on the single-pair page (`SinglePairPractice`, which passes `useAiAssessment`). The lesson grid on the home page (`MinimalPairTrainer`) uses the same card without it, and keeps the browser speech-recognition checks.
 
@@ -10,27 +10,28 @@ The server is a separate project. This app only records audio, sends it, and sho
 
 ## Files
 
-| File | What it does |
-| --- | --- |
-| [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx) | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
-| [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx) | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again". |
-| [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx) | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `Verdict`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`. |
-| [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice. |
-| [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts) | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL. |
-| [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts) | Polls `GET /health` every 30 s. |
-| [`lib/pronunciationApi.ts`](../lib/pronunciationApi.ts) | The only module that talks to the server. Typed responses and `PronunciationApiError`. |
-| [`lib/pronunciationGrades.ts`](../lib/pronunciationGrades.ts) | The grade bands (`pronunciationGrades`) and `gradeFor(score)`. |
+| File                                                                                                                  | What it does                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`components/training/MinimalPairTrainer.tsx`](../components/training/MinimalPairTrainer.tsx)                         | `PairPracticeCard` with `useAiAssessment`: steps 3 and 4 call `startAiAssessment()`. Each step renders as its own box (`TestGroup separate`), and the panel is inserted under the step that matches `assessment.target`. Without `useAiAssessment` (home page grid), the same pieces render as one card, as before. |
+| [`components/pronunciation/PronunciationPanel.tsx`](../components/pronunciation/PronunciationPanel.tsx)               | The **Results** panel, shown under step 3 or step 4: server status, current target, live recording meter, "Checking...", notices, the result (see below), "Listen to me" and "Try again".                                                                                                                           |
+| [`components/pronunciation/WordAssessmentModal.tsx`](../components/pronunciation/WordAssessmentModal.tsx)             | Practice page only: `useWordCheck()` (countdown + recording for one word) and the simplified results modal. Reuses `Verdict`, `PlaybackButton`, `CheckingIndicator` and `panelCopy` from `PronunciationPanel.tsx`.                                                                                                  |
+| [`components/pronunciation/usePronunciationAssessment.ts`](../components/pronunciation/usePronunciationAssessment.ts) | Ties the recorder to the API: `prepare(target)` → `startRecording()` → `finish(onDone)`. Holds the target, result and notice.                                                                                                                                                                                       |
+| [`components/pronunciation/useVoiceRecorder.ts`](../components/pronunciation/useVoiceRecorder.ts)                     | MediaRecorder hook: `prepare()` asks for the mic up front, then `start` / `stop` / `cancel`. 15 s safety auto-stop, blob + playback URL.                                                                                                                                                                            |
+| [`components/pronunciation/useServerStatus.ts`](../components/pronunciation/useServerStatus.ts)                       | Polls `GET /health` every 30 s.                                                                                                                                                                                                                                                                                     |
+| [`lib/pronunciationApi.ts`](../lib/pronunciationApi.ts)                                                               | Browser client. Calls this app's `/api/pronounce/*` routes. Typed responses and `PronunciationApiError`.                                                                                                                                                                                                            |
+| [`lib/pronunciationProxy.ts`](../lib/pronunciationProxy.ts) + [`app/api/pronounce/`](../app/api/pronounce/)           | Server-side proxy: `health`, `analyze` and `analyze-word` routes that add `X-API-Key` and forward to the real server. The only code that knows the server address and key.                                                                                                                                          |
+| [`lib/pronunciationGrades.ts`](../lib/pronunciationGrades.ts)                                                         | The grade bands (`pronunciationGrades`) and `gradeFor(score)`.                                                                                                                                                                                                                                                      |
 
 ## Configuration
 
 Copy `.env.example` to `.env.local` and set:
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `NEXT_PUBLIC_PRONUNCIATION_API_URL` | No | Server base URL, no trailing slash. Defaults to the current ngrok URL in `lib/pronunciationApi.ts`. **Free ngrok URLs change whenever the tunnel restarts.** Update this when that happens. |
-| `NEXT_PUBLIC_PRONUNCIATION_API_KEY` | No | Only if the server is set up to require a key. It is sent as `X-API-Key`. Because it is `NEXT_PUBLIC_`, anyone can read it in the browser bundle, so treat it as a rate-limit token, not a secret. |
+| Variable                            | Required | Notes                                                                                                                                                                                                                                                                           |
+| ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRONOUNCE_API_URL` | **Yes** | Server base URL (Tailscale Funnel address), no trailing slash. Without it, the checker shows as offline. |
+| `PRONOUNCE_API_KEY` | **Yes** | Added as `X-API-Key` by the proxy. Without it, the checker shows as offline. A wrong key shows the "Server authentication failed" message. |
 
-Restart `npm run dev` after changing `.env.local`. `NEXT_PUBLIC_` values are read when the app is built.
+Both are server-side only: no `NEXT_PUBLIC_` prefix, never bundled into the browser, never committed. On Vercel, set them under Settings → Environment Variables. Restart `npm run dev` after changing `.env.local`.
 
 ### Browser requirements
 
@@ -62,7 +63,7 @@ The countdown and answer windows (`prepareSeconds`, `pronunciationAnswerSeconds`
 
 ## Server API
 
-Every request sends `ngrok-skip-browser-warning: true`. Without it, free ngrok tunnels return an HTML warning page instead of JSON. CORS is open on the server.
+The browser never calls the server directly. It calls `/api/pronounce/health`, `/api/pronounce/analyze` and `/api/pronounce/analyze-word` on this app, and those forward to the server's `/health`, `/analyze` and `/analyze-word` (reached through a Tailscale Funnel address), adding `X-API-Key` to the POSTs. Status codes and bodies are passed through unchanged, except that the proxy answers **503** when the server can't be reached, which the client treats as offline. `GET /health` needs no key, so a healthy status badge doesn't mean the key is valid.
 
 ### `GET /health`
 
@@ -70,14 +71,14 @@ Every request sends `ngrok-skip-browser-warning: true`. Without it, free ngrok t
 { "ok": true }
 ```
 
-This drives the status badge: *Connecting...* → *Checker is ready* / *Checker is offline*. It is polled every 30 s and re-checked right away when `/analyze` fails to connect.
+This drives the status badge: _Connecting..._ → _Checker is ready_ / _Checker is offline_. It is polled every 30 s and re-checked right away when `/analyze` fails to connect.
 
 ### `POST /analyze` (multipart/form-data)
 
-| Field | Value |
-| --- | --- |
-| `audio` | The recording (max 10 MB, checked on the client too) |
-| `text` | The word or sentence the learner was asked to say |
+| Field        | Value                                                           |
+| ------------ | --------------------------------------------------------------- |
+| `audio`      | The recording (server max 10 MB; the client caps at 4 MB because Vercel functions reject bodies over 4.5 MB) |
+| `text`       | The word or sentence the learner was asked to say               |
 | `soundFocus` | The sound being practiced, such as `R vs L` (`pair.soundFocus`) |
 
 Do not set `Content-Type` yourself. The browser adds the multipart boundary.
@@ -90,18 +91,35 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
   "score": 87,
   "grade": { "letter": "B", "verdict": "Good", "color": "#65a30d" },
   "allWordsCorrect": false,
-  "expected": { "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k ..." },
-  "heard":    { "phonemes": ["r","ɔ","k"], "soundsLike": "r-aw-k ..." },
+  "expected": { "phonemes": ["ɹ", "ɑ", "k"], "soundsLike": "r-ah-k ..." },
+  "heard": { "phonemes": ["r", "ɔ", "k"], "soundsLike": "r-aw-k ..." },
   "words": [
-    { "word": "Rock", "score": 67, "phonemes": ["ɹ","ɑ","k"], "soundsLike": "r-ah-k", "status": "practice" }
+    {
+      "word": "Rock",
+      "score": 67,
+      "phonemes": ["ɹ", "ɑ", "k"],
+      "soundsLike": "r-ah-k",
+      "status": "practice"
+    }
   ],
   "issues": [
-    { "word": "Rock", "message": "you said \"aw\" ... instead of \"ah\" ...", "tip": "Open your mouth wide..." }
+    {
+      "word": "Rock",
+      "message": "you said \"aw\" ... instead of \"ah\" ...",
+      "tip": "Open your mouth wide..."
+    }
   ],
-  "praise": { "word": "Rock", "message": "Nice \"r\" in \"Rock\"!", "messageJa": "「Rock」の 「r」、いいね！" },
+  "praise": {
+    "word": "Rock",
+    "message": "Nice \"r\" in \"Rock\"!",
+    "messageJa": "「Rock」の 「r」、いいね！"
+  },
   "focus": [
     {
-      "sound": "ah", "words": ["Rock"], "wordIndexes": [0], "count": 1,
+      "sound": "ah",
+      "words": ["Rock"],
+      "wordIndexes": [0],
+      "count": 1,
       "message": "Let's practise the \"ah\" sound in \"Rock\".",
       "messageJa": "「Rock」の 「ah」の おとを れんしゅう しよう。",
       "tip": "Open your mouth wide like at the doctor.",
@@ -136,19 +154,23 @@ Nullable fields:
 **Too short / too quiet** (HTTP 200)
 
 ```json
-{ "ok": false, "error": "too_short_or_quiet", "message": "Didn't catch that - the recording was too short or too quiet." }
+{
+  "ok": false,
+  "error": "too_short_or_quiet",
+  "message": "Didn't catch that - the recording was too short or too quiet."
+}
 ```
 
 **HTTP errors** return `{ "detail": "..." }`. `analyzePronunciation()` throws `PronunciationApiError` with `status` and `detail`:
 
-| Status | Meaning | Shown to the learner |
-| --- | --- | --- |
-| 0 | Network error / server unreachable (client-side) | "We couldn't reach the checker..." |
-| 400 | Empty `text` | "Pick something to say first." |
-| 401 | Bad or missing API key | "The checker isn't set up correctly..." |
-| 413 | File larger than 10 MB | "That recording is too long..." |
-| 415 | Audio couldn't be decoded | "We couldn't play that recording..." |
-| 502 | Response wasn't JSON, e.g. an ngrok page (client-side) | Generic "Something went wrong" |
+| Status | Meaning                                                                             | Shown to the learner                        |
+| ------ | ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| 0      | Network error, or proxy 503 (server unreachable or not configured)                  | "We couldn't reach the checker..."          |
+| 400    | Empty `text`                                                                        | "Pick something to say first."              |
+| 401    | Bad or missing API key (`{"detail": "invalid or missing X-API-Key"}`). Not retried. | "Server authentication failed (API key)..." |
+| 413    | File larger than 4 MB (client) or 10 MB (server)                                    | "That recording is too long..."             |
+| 415    | Audio couldn't be decoded                                                           | "We couldn't play that recording..."        |
+| 502    | Response wasn't JSON, e.g. an HTML error page (client-side)                         | Generic "Something went wrong"              |
 
 ## Results panel
 
@@ -167,12 +189,12 @@ The practice-page modal (`WordAssessmentModal.tsx`) uses the same headline, the 
 
 The bands in `lib/pronunciationGrades.ts` match the server:
 
-| Grade | Score | Verdict | Colour |
-| --- | --- | --- | --- |
-| A | ≥ 90 | Excellent! | `#16a34a` |
-| B | ≥ 75 | Good | `#65a30d` |
-| C | ≥ 55 | Needs some work | `#d97706` |
-| D | < 55 | Try again | `#dc2626` |
+| Grade | Score | Verdict         | Colour    |
+| ----- | ----- | --------------- | --------- |
+| A     | ≥ 90  | Excellent!      | `#16a34a` |
+| B     | ≥ 75  | Good            | `#65a30d` |
+| C     | ≥ 55  | Needs some work | `#d97706` |
+| D     | < 55  | Try again       | `#dc2626` |
 
 Rules:
 
@@ -199,14 +221,15 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
   - **tongue twister:** the sentence box gets a white border, a "Read this" label, and larger text.
 
   Everything goes back to normal when checking starts, so "Checking..." and the results are fully visible.
+
 - **Mic level meter:** while recording, `LevelMeter` (`components/pronunciation/LevelMeter.tsx`) shows under the step's "Speak now" bar. It uses the recording's own mic stream, so it also works on touch devices. The Results panel only says "Listening…", with no timer.
 - **Safety cap on recording length:** `maxRecordingSeconds` in `useVoiceRecorder.ts` (default 15 s). The answer windows are shorter, so this only matters if something goes wrong.
-- **Server URL:** set `NEXT_PUBLIC_PRONUNCIATION_API_URL`, or the fallback in `lib/pronunciationApi.ts`.
+- **Server URL and key:** set `PRONOUNCE_API_URL` / `PRONOUNCE_API_KEY` in `.env.local` and in Vercel. Neither has a fallback in code.
 - **New response fields:** add them to the types in `lib/pronunciationApi.ts` first.
 
 ## Manual test checklist
 
-- [ ] Status badge shows *ready* when the server is up and *offline* when the URL is wrong.
+- [ ] Status badge shows _ready_ when the server is up and _offline_ when the URL is wrong.
 - [ ] Denying mic permission shows the friendly "allow the microphone" notice, and the page still works after allowing it.
 - [ ] "Say right" → countdown → panel shows "Listening..." with a moving level meter → "Checking..." → score.
 - [ ] "Say the sentence" records for the full 10 s window and scores every word.
@@ -216,7 +239,7 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 - [ ] "Listen to me" plays the last recording (also on iOS Safari).
 - [ ] A silent clip shows the too-short/too-quiet notice.
 - [ ] While recording or checking, all "Say ..." buttons and "Try again" are disabled.
-- [ ] Tapping a word shows *Say it like* with IPA. There's no *We heard* column with the current server.
+- [ ] Tapping a word shows _Say it like_ with IPA. There's no _We heard_ column with the current server.
 - [ ] "Details (IPA)" is folded by default. Opened, it shows one box per word: the expected IPA on top and the heard IPA below. Heard sounds are styled (green correct, amber different, dotted-underlined grey extra, struck-through grey missing), and each legend sample matches its style. E.g. saying "id" for "it" shows an amber `d`.
 - [ ] The "ATLAS Assessment" box is hidden when `feedback` is `null`.
 - [ ] IPA shows single slashes (`/laɪt/`, not `//laɪt//`).
