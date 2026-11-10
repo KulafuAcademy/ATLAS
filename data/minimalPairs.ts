@@ -13,6 +13,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "right",
     wordB: "light",
+    ipaA: "/ɹaɪt/",
+    ipaB: "/laɪt/",
   },
   {
     id: "rice-lice",
@@ -26,6 +28,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "rice",
     wordB: "lice",
+    ipaA: "/ɹaɪs/",
+    ipaB: "/laɪs/",
   },
   {
     id: "road-load",
@@ -39,6 +43,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "road",
     wordB: "load",
+    ipaA: "/ɹoʊd/",
+    ipaB: "/loʊd/",
   },
   {
     id: "glass-grass",
@@ -52,6 +58,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "glass",
     wordB: "grass",
+    ipaA: "/ɡlæs/",
+    ipaB: "/ɡɹæs/",
   },
   {
     id: "free-flee",
@@ -65,6 +73,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "free",
     wordB: "flee",
+    ipaA: "/fɹi/",
+    ipaB: "/fli/",
   },
   {
     id: "red-led",
@@ -78,6 +88,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "red",
     wordB: "led",
+    ipaA: "/ɹɛd/",
+    ipaB: "/lɛd/",
   },
   {
     id: "rock-lock",
@@ -91,6 +103,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "rock",
     wordB: "lock",
+    ipaA: "/ɹɑk/",
+    ipaB: "/lɑk/",
   },
   {
     id: "rent-lent",
@@ -104,6 +118,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "rent",
     wordB: "lent",
+    ipaA: "/ɹɛnt/",
+    ipaB: "/lɛnt/",
   },
   {
     id: "royal-loyal",
@@ -117,6 +133,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "royal",
     wordB: "loyal",
+    ipaA: "/ˈɹɔɪəl/",
+    ipaB: "/ˈlɔɪəl/",
   },
   {
     id: "arrive-alive",
@@ -130,6 +148,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "arrive",
     wordB: "alive",
+    ipaA: "/əˈɹaɪv/",
+    ipaB: "/əˈlaɪv/",
   },
   {
     id: "correct-collect",
@@ -143,6 +163,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "correct",
     wordB: "collect",
+    ipaA: "/kəˈɹɛkt/",
+    ipaB: "/kəˈlɛkt/",
   },
   {
     id: "pray-play",
@@ -156,6 +178,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "pray",
     wordB: "play",
+    ipaA: "/pɹeɪ/",
+    ipaB: "/pleɪ/",
   },
   {
     id: "price-place",
@@ -169,6 +193,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "price",
     wordB: "place",
+    ipaA: "/pɹaɪs/",
+    ipaB: "/pleɪs/",
   },
   {
     id: "crown-clown",
@@ -182,6 +208,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "crown",
     wordB: "clown",
+    ipaA: "/kɹaʊn/",
+    ipaB: "/klaʊn/",
   },
   {
     id: "fry-fly",
@@ -195,6 +223,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "fry",
     wordB: "fly",
+    ipaA: "/fɹaɪ/",
+    ipaB: "/flaɪ/",
   },
   {
     id: "grow-glow",
@@ -208,6 +238,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "grow",
     wordB: "glow",
+    ipaA: "/ɡɹoʊ/",
+    ipaB: "/ɡloʊ/",
   },
   {
     id: "frame-flame",
@@ -221,6 +253,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "frame",
     wordB: "flame",
+    ipaA: "/fɹeɪm/",
+    ipaB: "/fleɪm/",
   },
   {
     id: "brown-blown",
@@ -234,6 +268,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "brown",
     wordB: "blown",
+    ipaA: "/bɹaʊn/",
+    ipaB: "/bloʊn/",
   },
   {
     id: "crash-clash",
@@ -247,6 +283,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "crash",
     wordB: "clash",
+    ipaA: "/kɹæʃ/",
+    ipaB: "/klæʃ/",
   },
   {
     id: "wrong-long",
@@ -260,6 +298,8 @@ export const rVsLPairs: MinimalPair[] = [
     },
     wordA: "wrong",
     wordB: "long",
+    ipaA: "/ɹɔŋ/",
+    ipaB: "/lɔŋ/",
   },
 ];
 
@@ -276,6 +316,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "ban",
     wordB: "van",
+    ipaA: "/bæn/",
+    ipaB: "/væn/",
   },
   {
     id: "bat-vat",
@@ -289,6 +331,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bat",
     wordB: "vat",
+    ipaA: "/bæt/",
+    ipaB: "/væt/",
   },
   {
     id: "bet-vet",
@@ -302,6 +346,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bet",
     wordB: "vet",
+    ipaA: "/bɛt/",
+    ipaB: "/vɛt/",
   },
   {
     id: "berry-very",
@@ -315,6 +361,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "berry",
     wordB: "very",
+    ipaA: "/ˈbɛɹi/",
+    ipaB: "/ˈvɛɹi/",
   },
   {
     id: "best-vest",
@@ -328,6 +376,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "best",
     wordB: "vest",
+    ipaA: "/bɛst/",
+    ipaB: "/vɛst/",
   },
   {
     id: "boat-vote",
@@ -341,6 +391,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "boat",
     wordB: "vote",
+    ipaA: "/boʊt/",
+    ipaB: "/voʊt/",
   },
   {
     id: "bow-vow",
@@ -354,6 +406,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bow",
     wordB: "vow",
+    ipaA: "/baʊ/",
+    ipaB: "/vaʊ/",
   },
   {
     id: "bail-veil",
@@ -367,6 +421,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bail",
     wordB: "veil",
+    ipaA: "/beɪl/",
+    ipaB: "/veɪl/",
   },
   {
     id: "beer-veer",
@@ -380,6 +436,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "beer",
     wordB: "veer",
+    ipaA: "/bɪɹ/",
+    ipaB: "/vɪɹ/",
   },
   {
     id: "bent-vent",
@@ -393,6 +451,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bent",
     wordB: "vent",
+    ipaA: "/bɛnt/",
+    ipaB: "/vɛnt/",
   },
   {
     id: "bolt-volt",
@@ -406,6 +466,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bolt",
     wordB: "volt",
+    ipaA: "/boʊlt/",
+    ipaB: "/voʊlt/",
   },
   {
     id: "base-vase",
@@ -419,6 +481,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "base",
     wordB: "vase",
+    ipaA: "/beɪs/",
+    ipaB: "/veɪs/",
   },
   {
     id: "robe-rove",
@@ -432,6 +496,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "robe",
     wordB: "rove",
+    ipaA: "/ɹoʊb/",
+    ipaB: "/ɹoʊv/",
   },
   {
     id: "curb-curve",
@@ -445,6 +511,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "curb",
     wordB: "curve",
+    ipaA: "/kɝb/",
+    ipaB: "/kɝv/",
   },
   {
     id: "blew-view",
@@ -458,6 +526,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "blew",
     wordB: "view",
+    ipaA: "/blu/",
+    ipaB: "/vju/",
   },
   {
     id: "jibe-jive",
@@ -471,6 +541,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "jibe",
     wordB: "jive",
+    ipaA: "/dʒaɪb/",
+    ipaB: "/dʒaɪv/",
   },
   {
     id: "rebel-revel",
@@ -484,6 +556,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "rebel",
     wordB: "revel",
+    ipaA: "/ˈɹɛbəl/",
+    ipaB: "/ˈɹɛvəl/",
   },
   {
     id: "fiber-fiver",
@@ -497,6 +571,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "fiber",
     wordB: "fiver",
+    ipaA: "/ˈfaɪbɚ/",
+    ipaB: "/ˈfaɪvɚ/",
   },
   {
     id: "bile-vile",
@@ -510,6 +586,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "bile",
     wordB: "vile",
+    ipaA: "/baɪl/",
+    ipaB: "/vaɪl/",
   },
   {
     id: "dribble-drivel",
@@ -523,6 +601,8 @@ export const bVsVPairs: MinimalPair[] = [
     },
     wordA: "dribble",
     wordB: "drivel",
+    ipaA: "/ˈdɹɪbəl/",
+    ipaB: "/ˈdɹɪvəl/",
   },
 ];
 
@@ -539,6 +619,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "see",
     wordB: "she",
+    ipaA: "/si/",
+    ipaB: "/ʃi/",
   },
   {
     id: "sip-ship",
@@ -552,6 +634,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sip",
     wordB: "ship",
+    ipaA: "/sɪp/",
+    ipaB: "/ʃɪp/",
   },
   {
     id: "sell-shell",
@@ -565,6 +649,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sell",
     wordB: "shell",
+    ipaA: "/sɛl/",
+    ipaB: "/ʃɛl/",
   },
   {
     id: "seat-sheet",
@@ -578,6 +664,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "seat",
     wordB: "sheet",
+    ipaA: "/sit/",
+    ipaB: "/ʃit/",
   },
   {
     id: "sake-shake",
@@ -591,6 +679,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sake",
     wordB: "shake",
+    ipaA: "/seɪk/",
+    ipaB: "/ʃeɪk/",
   },
   {
     id: "save-shave",
@@ -604,6 +694,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "save",
     wordB: "shave",
+    ipaA: "/seɪv/",
+    ipaB: "/ʃeɪv/",
   },
   {
     id: "same-shame",
@@ -617,6 +709,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "same",
     wordB: "shame",
+    ipaA: "/seɪm/",
+    ipaB: "/ʃeɪm/",
   },
   {
     id: "sign-shine",
@@ -630,6 +724,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sign",
     wordB: "shine",
+    ipaA: "/saɪn/",
+    ipaB: "/ʃaɪn/",
   },
   {
     id: "sort-short",
@@ -643,6 +739,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sort",
     wordB: "short",
+    ipaA: "/sɔɹt/",
+    ipaB: "/ʃɔɹt/",
   },
   {
     id: "sock-shock",
@@ -656,6 +754,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sock",
     wordB: "shock",
+    ipaA: "/sɑk/",
+    ipaB: "/ʃɑk/",
   },
   {
     id: "sew-show",
@@ -669,6 +769,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sew",
     wordB: "show",
+    ipaA: "/soʊ/",
+    ipaB: "/ʃoʊ/",
   },
   {
     id: "sore-shore",
@@ -682,6 +784,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sore",
     wordB: "shore",
+    ipaA: "/sɔɹ/",
+    ipaB: "/ʃɔɹ/",
   },
   {
     id: "sack-shack",
@@ -695,6 +799,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sack",
     wordB: "shack",
+    ipaA: "/sæk/",
+    ipaB: "/ʃæk/",
   },
   {
     id: "seep-sheep",
@@ -708,6 +814,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "seep",
     wordB: "sheep",
+    ipaA: "/sip/",
+    ipaB: "/ʃip/",
   },
   {
     id: "said-shed",
@@ -721,6 +829,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "said",
     wordB: "shed",
+    ipaA: "/sɛd/",
+    ipaB: "/ʃɛd/",
   },
   {
     id: "sue-shoe",
@@ -734,6 +844,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "Sue",
     wordB: "shoe",
+    ipaA: "/su/",
+    ipaB: "/ʃu/",
   },
   {
     id: "so-show",
@@ -747,6 +859,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "so",
     wordB: "show",
+    ipaA: "/soʊ/",
+    ipaB: "/ʃoʊ/",
   },
   {
     id: "seal-she'll",
@@ -760,6 +874,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "seal",
     wordB: "she'll",
+    ipaA: "/sil/",
+    ipaB: "/ʃil/",
   },
   {
     id: "sin-shin",
@@ -773,6 +889,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sin",
     wordB: "shin",
+    ipaA: "/sɪn/",
+    ipaB: "/ʃɪn/",
   },
   {
     id: "sigh-shy",
@@ -786,6 +904,8 @@ export const sVsShPairs: MinimalPair[] = [
     },
     wordA: "sigh",
     wordB: "shy",
+    ipaA: "/saɪ/",
+    ipaB: "/ʃaɪ/",
   },
 ];
 
@@ -802,6 +922,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "sit",
     wordB: "seat",
+    ipaA: "/sɪt/",
+    ipaB: "/sit/",
   },
   {
     id: "ship-sheep",
@@ -815,6 +937,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "ship",
     wordB: "sheep",
+    ipaA: "/ʃɪp/",
+    ipaB: "/ʃip/",
   },
   {
     id: "bit-beat",
@@ -828,6 +952,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "bit",
     wordB: "beat",
+    ipaA: "/bɪt/",
+    ipaB: "/bit/",
   },
   {
     id: "live-leave",
@@ -841,6 +967,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "live",
     wordB: "leave",
+    ipaA: "/lɪv/",
+    ipaB: "/liv/",
   },
   {
     id: "fit-feet",
@@ -854,6 +982,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "fit",
     wordB: "feet",
+    ipaA: "/fɪt/",
+    ipaB: "/fit/",
   },
   {
     id: "mitt-meet",
@@ -867,6 +997,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "mitt",
     wordB: "meet",
+    ipaA: "/mɪt/",
+    ipaB: "/mit/",
   },
   {
     id: "rid-read",
@@ -880,6 +1012,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "rid",
     wordB: "read",
+    ipaA: "/ɹɪd/",
+    ipaB: "/ɹid/",
   },
   {
     id: "fill-feel",
@@ -893,6 +1027,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "fill",
     wordB: "feel",
+    ipaA: "/fɪl/",
+    ipaB: "/fil/",
   },
   {
     id: "hill-heal",
@@ -906,6 +1042,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "hill",
     wordB: "heal",
+    ipaA: "/hɪl/",
+    ipaB: "/hil/",
   },
   {
     id: "still-steel",
@@ -919,6 +1057,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "still",
     wordB: "steel",
+    ipaA: "/stɪl/",
+    ipaB: "/stil/",
   },
   {
     id: "slip-sleep",
@@ -932,6 +1072,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "slip",
     wordB: "sleep",
+    ipaA: "/slɪp/",
+    ipaB: "/slip/",
   },
   {
     id: "chip-cheap",
@@ -945,6 +1087,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "chip",
     wordB: "cheap",
+    ipaA: "/tʃɪp/",
+    ipaB: "/tʃip/",
   },
   {
     id: "grin-green",
@@ -958,6 +1102,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "grin",
     wordB: "green",
+    ipaA: "/ɡɹɪn/",
+    ipaB: "/ɡɹin/",
   },
   {
     id: "lick-leak",
@@ -971,6 +1117,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "lick",
     wordB: "leak",
+    ipaA: "/lɪk/",
+    ipaB: "/lik/",
   },
   {
     id: "pick-peak",
@@ -984,6 +1132,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "pick",
     wordB: "peak",
+    ipaA: "/pɪk/",
+    ipaB: "/pik/",
   },
   {
     id: "dip-deep",
@@ -997,6 +1147,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "dip",
     wordB: "deep",
+    ipaA: "/dɪp/",
+    ipaB: "/dip/",
   },
   {
     id: "mill-meal",
@@ -1010,6 +1162,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "mill",
     wordB: "meal",
+    ipaA: "/mɪl/",
+    ipaB: "/mil/",
   },
   {
     id: "sin-seen",
@@ -1023,6 +1177,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "sin",
     wordB: "seen",
+    ipaA: "/sɪn/",
+    ipaB: "/sin/",
   },
   {
     id: "it-eat",
@@ -1036,6 +1192,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "it",
     wordB: "eat",
+    ipaA: "/ɪt/",
+    ipaB: "/it/",
   },
   {
     id: "hit-heat",
@@ -1049,6 +1207,8 @@ export const shortIVsLongEPairs: MinimalPair[] = [
     },
     wordA: "hit",
     wordB: "heat",
+    ipaA: "/hɪt/",
+    ipaB: "/hit/",
   },
 ];
 
@@ -1065,6 +1225,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "think",
     wordB: "sink",
+    ipaA: "/θɪŋk/",
+    ipaB: "/sɪŋk/",
   },
   {
     id: "thin-sin",
@@ -1078,6 +1240,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thin",
     wordB: "sin",
+    ipaA: "/θɪn/",
+    ipaB: "/sɪn/",
   },
   {
     id: "thank-sank",
@@ -1091,6 +1255,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thank",
     wordB: "sank",
+    ipaA: "/θæŋk/",
+    ipaB: "/sæŋk/",
   },
   {
     id: "thick-sick",
@@ -1104,6 +1270,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thick",
     wordB: "sick",
+    ipaA: "/θɪk/",
+    ipaB: "/sɪk/",
   },
   {
     id: "thigh-sight",
@@ -1117,6 +1285,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thigh",
     wordB: "sight",
+    ipaA: "/θaɪ/",
+    ipaB: "/saɪt/",
   },
   {
     id: "thought-sought",
@@ -1130,6 +1300,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thought",
     wordB: "sought",
+    ipaA: "/θɔt/",
+    ipaB: "/sɔt/",
   },
   {
     id: "thaw-saw",
@@ -1143,6 +1315,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thaw",
     wordB: "saw",
+    ipaA: "/θɔ/",
+    ipaB: "/sɔ/",
   },
   {
     id: "thumb-sum",
@@ -1156,6 +1330,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thumb",
     wordB: "sum",
+    ipaA: "/θʌm/",
+    ipaB: "/sʌm/",
   },
   {
     id: "three-free",
@@ -1169,6 +1345,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "three",
     wordB: "free",
+    ipaA: "/θɹi/",
+    ipaB: "/fɹi/",
   },
   {
     id: "thread-shred",
@@ -1182,6 +1360,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "thread",
     wordB: "shred",
+    ipaA: "/θɹɛd/",
+    ipaB: "/ʃɹɛd/",
   },
   {
     id: "they-day",
@@ -1195,6 +1375,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "they",
     wordB: "day",
+    ipaA: "/ðeɪ/",
+    ipaB: "/deɪ/",
   },
   {
     id: "then-den",
@@ -1208,6 +1390,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "then",
     wordB: "den",
+    ipaA: "/ðɛn/",
+    ipaB: "/dɛn/",
   },
   {
     id: "though-dough",
@@ -1221,6 +1405,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "though",
     wordB: "dough",
+    ipaA: "/ðoʊ/",
+    ipaB: "/doʊ/",
   },
   {
     id: "those-doze",
@@ -1234,6 +1420,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "those",
     wordB: "doze",
+    ipaA: "/ðoʊz/",
+    ipaB: "/doʊz/",
   },
   {
     id: "there-dare",
@@ -1247,6 +1435,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "there",
     wordB: "dare",
+    ipaA: "/ðɛɹ/",
+    ipaB: "/dɛɹ/",
   },
   {
     id: "than-dan",
@@ -1260,6 +1450,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "than",
     wordB: "Dan",
+    ipaA: "/ðæn/",
+    ipaB: "/dæn/",
   },
   {
     id: "breathe-breed",
@@ -1273,6 +1465,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "breathe",
     wordB: "breed",
+    ipaA: "/bɹið/",
+    ipaB: "/bɹid/",
   },
   {
     id: "bathe-bade",
@@ -1286,6 +1480,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "bathe",
     wordB: "bade",
+    ipaA: "/beɪð/",
+    ipaB: "/beɪd/",
   },
   {
     id: "other-udder",
@@ -1299,6 +1495,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "other",
     wordB: "udder",
+    ipaA: "/ˈʌðɚ/",
+    ipaB: "/ˈʌdɚ/",
   },
   {
     id: "worthy-wordy",
@@ -1312,6 +1510,8 @@ export const thPairs: MinimalPair[] = [
     },
     wordA: "worthy",
     wordB: "wordy",
+    ipaA: "/ˈwɝði/",
+    ipaB: "/ˈwɝdi/",
   },
 ];
 
@@ -1328,6 +1528,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "cap",
     wordB: "cab",
+    ipaA: "/kæp/",
+    ipaB: "/kæb/",
   },
   {
     id: "back-bag",
@@ -1341,6 +1543,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "back",
     wordB: "bag",
+    ipaA: "/bæk/",
+    ipaB: "/bæɡ/",
   },
   {
     id: "rice-rise",
@@ -1354,6 +1558,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "rice",
     wordB: "rise",
+    ipaA: "/ɹaɪs/",
+    ipaB: "/ɹaɪz/",
   },
   {
     id: "pick-pig",
@@ -1367,6 +1573,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "pick",
     wordB: "pig",
+    ipaA: "/pɪk/",
+    ipaB: "/pɪɡ/",
   },
   {
     id: "bet-bed",
@@ -1380,6 +1588,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "bet",
     wordB: "bed",
+    ipaA: "/bɛt/",
+    ipaB: "/bɛd/",
   },
   {
     id: "leaf-leave",
@@ -1393,6 +1603,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "leaf",
     wordB: "leave",
+    ipaA: "/lif/",
+    ipaB: "/liv/",
   },
   {
     id: "safe-save",
@@ -1406,6 +1618,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "safe",
     wordB: "save",
+    ipaA: "/seɪf/",
+    ipaB: "/seɪv/",
   },
   {
     id: "rope-robe",
@@ -1419,6 +1633,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "rope",
     wordB: "robe",
+    ipaA: "/ɹoʊp/",
+    ipaB: "/ɹoʊb/",
   },
   {
     id: "seat-seed",
@@ -1432,6 +1648,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "seat",
     wordB: "seed",
+    ipaA: "/sit/",
+    ipaB: "/sid/",
   },
   {
     id: "cart-card",
@@ -1445,6 +1663,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "cart",
     wordB: "card",
+    ipaA: "/kɑɹt/",
+    ipaB: "/kɑɹd/",
   },
   {
     id: "dock-dog",
@@ -1458,6 +1678,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "dock",
     wordB: "dog",
+    ipaA: "/dɑk/",
+    ipaB: "/dɔɡ/",
   },
   {
     id: "lock-log",
@@ -1471,6 +1693,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "lock",
     wordB: "log",
+    ipaA: "/lɑk/",
+    ipaB: "/lɔɡ/",
   },
   {
     id: "buck-bug",
@@ -1484,6 +1708,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "buck",
     wordB: "bug",
+    ipaA: "/bʌk/",
+    ipaB: "/bʌɡ/",
   },
   {
     id: "bat-bad",
@@ -1497,6 +1723,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "bat",
     wordB: "bad",
+    ipaA: "/bæt/",
+    ipaB: "/bæd/",
   },
   {
     id: "hit-hid",
@@ -1510,6 +1738,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "hit",
     wordB: "hid",
+    ipaA: "/hɪt/",
+    ipaB: "/hɪd/",
   },
   {
     id: "coat-cod",
@@ -1523,6 +1753,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "coat",
     wordB: "cod",
+    ipaA: "/koʊt/",
+    ipaB: "/kɑd/",
   },
   {
     id: "mat-mad",
@@ -1536,6 +1768,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "mat",
     wordB: "mad",
+    ipaA: "/mæt/",
+    ipaB: "/mæd/",
   },
   {
     id: "cup-cub",
@@ -1549,6 +1783,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "cup",
     wordB: "cub",
+    ipaA: "/kʌp/",
+    ipaB: "/kʌb/",
   },
   {
     id: "lap-lab",
@@ -1562,6 +1798,8 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "lap",
     wordB: "lab",
+    ipaA: "/læp/",
+    ipaB: "/læb/",
   },
   {
     id: "proof-prove",
@@ -1575,5 +1813,7 @@ export const finalConsonantPairs: MinimalPair[] = [
     },
     wordA: "proof",
     wordB: "prove",
+    ipaA: "/pɹuf/",
+    ipaB: "/pɹuv/",
   },
 ];

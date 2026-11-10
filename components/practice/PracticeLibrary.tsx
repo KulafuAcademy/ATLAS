@@ -623,7 +623,7 @@ function QuickTest({
               type="button"
               disabled={!played || answer !== null}
               onClick={() => choose(value)}
-              className={`min-h-16 border text-xl font-semibold transition focus:outline-none disabled:cursor-not-allowed ${
+              className={`flex min-h-16 flex-col items-center justify-center gap-0.5 border py-2 text-xl font-semibold transition focus:outline-none disabled:cursor-not-allowed ${
                 isTarget
                   ? "border-white bg-white text-black"
                   : isWrongPick
@@ -633,7 +633,12 @@ function QuickTest({
                       : "border-white/10 bg-black text-white/30"
               }`}
             >
-              {value === "A" ? pair.wordA : pair.wordB}
+              <span>{value === "A" ? pair.wordA : pair.wordB}</span>
+              {(value === "A" ? pair.ipaA : pair.ipaB) ? (
+                <span className="text-sm font-normal opacity-70">
+                  {value === "A" ? pair.ipaA : pair.ipaB}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -754,7 +759,10 @@ function PairCard({
     <article className="space-y-6">
       {/* Each word tile pairs listening and the AI check, like the sentence. */}
       <div className="grid grid-cols-2 gap-3">
-        {[pair.wordA, pair.wordB].map((word) => {
+        {[
+          { word: pair.wordA, ipa: pair.ipaA },
+          { word: pair.wordB, ipa: pair.ipaB },
+        ].map(({ word, ipa }) => {
           const audioPath = getPublicAudioPath("words", pair.soundFocus, word);
 
           return (
@@ -762,7 +770,10 @@ function PairCard({
               key={word}
               className="space-y-4 border border-white/10 bg-black p-4 text-center sm:p-6"
             >
-              <p className="text-3xl font-semibold text-white">{word}</p>
+              <div className="space-y-1">
+                <p className="text-3xl font-semibold text-white">{word}</p>
+                {ipa ? <p className="text-base text-white/60">{ipa}</p> : null}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -780,6 +791,7 @@ function PairCard({
                     onCheck({
                       kind: "word",
                       word,
+                      ipa,
                       soundFocus: pair.soundFocus,
                       audioPath,
                     })

@@ -10,6 +10,8 @@ export type MinimalPair = {
   };
   wordA: string;
   wordB: string;
+  ipaA?: string;
+  ipaB?: string;
   audioA?: string;
   audioB?: string;
 };

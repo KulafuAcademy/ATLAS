@@ -921,9 +921,9 @@ function PairPracticeCard({
         {pair.soundFocus}
       </p>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <WordLabel word={pair.wordA} />
+        <WordLabel word={pair.wordA} ipa={pair.ipaA} />
         <span className="text-sm text-white/30">vs</span>
-        <WordLabel word={pair.wordB} />
+        <WordLabel word={pair.wordB} ipa={pair.ipaB} />
       </div>
     </div>
   );
@@ -1000,6 +1000,13 @@ function PairPracticeCard({
     </TestGroup>
   );
 
+  const assessmentIpa =
+    assessment.target === pair.wordA
+      ? pair.ipaA
+      : assessment.target === pair.wordB
+        ? pair.ipaB
+        : undefined;
+
   const pronunciationStep = (
     <TestGroup
       step="3"
@@ -1039,6 +1046,11 @@ function PairPracticeCard({
           <p className="mt-2 text-5xl font-semibold text-white md:text-6xl">
             {assessment.target}
           </p>
+          {assessmentIpa ? (
+            <p className="mt-2 text-xl text-white/60 md:text-2xl">
+              {assessmentIpa}
+            </p>
+          ) : null}
         </div>
       ) : null}
       <CountdownDisplay
@@ -1527,9 +1539,14 @@ function SpeedToggle({
   );
 }
 
-function WordLabel({ word }: { word: string }) {
+function WordLabel({ word, ipa }: { word: string; ipa?: string }) {
   return (
-    <p className="text-3xl font-semibold text-white md:text-4xl">{word}</p>
+    <p className="flex flex-wrap items-baseline gap-x-3 text-3xl font-semibold text-white md:text-4xl">
+      {word}
+      {ipa ? (
+        <span className="text-base font-normal text-white/60 md:text-lg">{ipa}</span>
+      ) : null}
+    </p>
   );
 }
 
