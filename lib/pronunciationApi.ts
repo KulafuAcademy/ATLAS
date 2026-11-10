@@ -195,12 +195,6 @@ export async function analyzePronunciation({
   soundFocus: string;
   signal?: AbortSignal;
 }): Promise<AnalyzeResponse> {
-  // TEMP: remove after checking recording sizes.
-  console.log(
-    `[pronunciation] sending ${fileName} (${audio.type || "unknown type"}): ` +
-      `${audio.size} bytes (${(audio.size / 1024).toFixed(1)} KB) for "${text}"`,
-  );
-
   if (audio.size > maxAudioBytes) {
     throw new PronunciationApiError(413, "The recording is larger than 4 MB.");
   }
@@ -211,10 +205,6 @@ export async function analyzePronunciation({
   form.append("soundFocus", soundFocus);
 
   let response: Response;
-  // TEMP: remove after checking response times.
-  const startedAt = performance.now();
-  const elapsed = () => `${((performance.now() - startedAt) / 1000).toFixed(2)} s`;
-
   try {
     // No Content-Type: the browser adds it with the multipart boundary.
     response = await fetch(`${pronunciationApiUrl}/analyze`, {
@@ -223,25 +213,16 @@ export async function analyzePronunciation({
       signal,
     });
   } catch (error) {
-    // TEMP: remove after checking response times.
-    console.log(
-      `[pronunciation] ${signal?.aborted ? "cancelled" : "failed"} after ${elapsed()} for "${text}"`,
-    );
     if (signal?.aborted) throw error;
     throw new PronunciationApiError(0, "Could not reach the pronunciation server.");
   }
 
   // The proxy answers 503 when it can't reach the real server.
   if (response.status === 503) {
-    // TEMP: remove after checking response times.
-    console.log(`[pronunciation] HTTP 503 after ${elapsed()} for "${text}"`);
     throw new PronunciationApiError(0, "Could not reach the pronunciation server.");
   }
 
   const body = await readJson(response);
-
-  // TEMP: remove after checking response times.
-  console.log(`[pronunciation] HTTP ${response.status} after ${elapsed()} for "${text}"`);
 
   if (!response.ok) {
     throw new PronunciationApiError(
