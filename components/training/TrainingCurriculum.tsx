@@ -9,7 +9,7 @@ import { TrainingCategoryOverview } from "@/components/training/TrainingCategory
 import type { TrainingSection } from "@/data/trainingSections";
 import {
   getDailyPairs,
-  progressStorageKey,
+  getProgressStorageKey,
   withTestResult,
   type ProgressByCategory,
 } from "@/lib/trainingProgress";
@@ -66,7 +66,8 @@ export function TrainingCurriculum({
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
-      const storedProgress = window.localStorage.getItem(progressStorageKey);
+      const storageKey = getProgressStorageKey();
+      const storedProgress = window.localStorage.getItem(storageKey);
 
       if (!storedProgress) {
         return;
@@ -75,7 +76,7 @@ export function TrainingCurriculum({
       try {
         setProgressByCategory(JSON.parse(storedProgress) as ProgressByCategory);
       } catch {
-        window.localStorage.removeItem(progressStorageKey);
+        window.localStorage.removeItem(storageKey);
       }
     });
 
@@ -136,7 +137,7 @@ export function TrainingCurriculum({
       );
 
       window.localStorage.setItem(
-        progressStorageKey,
+        getProgressStorageKey(),
         JSON.stringify(nextProgress),
       );
 
