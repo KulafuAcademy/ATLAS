@@ -3,7 +3,14 @@
  * handlers in app/api/pronounce/*: the browser calls those routes, and they
  * forward to the real server with the API key. The server URL and key never
  * reach the browser (no NEXT_PUBLIC_ prefix).
+ *
+ * Every handler checks for a signed-in staff session before forwarding, so
+ * only AICA staff can reach the AI server. proxy.ts checks this too; the
+ * check here keeps the AI server protected even if that layer is bypassed
+ * or its matcher changes.
  */
+
+import { requireStaff } from "@/lib/staff-auth";
 
 const upstreamTimeoutMs = 60_000;
 
@@ -16,6 +23,21 @@ function upstreamConfig() {
 
 function jsonError(status: number, detail: string) {
   return Response.json({ detail }, { status });
+}
+
+/**
+ * Returns an error response unless the caller has a staff session.
+ * Re-wraps requireStaff's { error } body as { detail }, the field the
+ * client reads.
+ */
+async function staffGuard() {
+  const { response } = await requireStaff();
+  if (!response) return null;
+
+  const body = (await response.json().catch(() => null)) as {
+    error?: string;
+  } | null;
+  return jsonError(response.status, body?.error ?? "Staff access is required.");
 }
 
 /** Copies the upstream status and body back to the browser. */
@@ -32,6 +54,9 @@ async function relay(upstream: Response) {
 
 /** GET /health on the real server. */
 export async function proxyHealth() {
+  const denied = await staffGuard();
+  if (denied) return denied;
+
   const config = upstreamConfig();
   if (!config) return Response.json({ ok: false }, { status: 503 });
 
@@ -55,6 +80,9 @@ export async function proxyAnalyze(
   request: Request,
   path: "/analyze" | "/analyze-word",
 ) {
+  const denied = await staffGuard();
+  if (denied) return denied;
+
   const config = upstreamConfig();
   if (!config) {
     console.error("PRONOUNCE_API_URL or PRONOUNCE_API_KEY is not set.");
