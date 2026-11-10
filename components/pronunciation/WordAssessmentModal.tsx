@@ -63,6 +63,8 @@ type WordTarget = {
   /** A single word, or a whole sentence such as the tongue twister. */
   kind: "word" | "sentence";
   word: string;
+  /** Optional IPA transcription shown under the word, e.g. "/laɪt/". */
+  ipa?: string;
   /** The sound being practiced, sent to the server with the clip. */
   soundFocus: string;
   /** Recorded model pronunciation, played by the "Listen" button. */
@@ -251,15 +253,20 @@ export function WordAssessmentModal({ check }: { check: WordCheckState }) {
           </div>
 
           <div className="flex items-center justify-between gap-3 border border-white/10 bg-white/[0.02] px-4 py-3">
-            <p
-              className={`min-w-0 break-words font-semibold text-white ${
-                target.kind === "sentence"
-                  ? "text-xl leading-8 sm:text-2xl sm:leading-9"
-                  : "text-3xl sm:text-4xl"
-              }`}
-            >
-              {target.word}
-            </p>
+            <div className="min-w-0 space-y-1">
+              <p
+                className={`break-words font-semibold text-white ${
+                  target.kind === "sentence"
+                    ? "text-xl leading-8 sm:text-2xl sm:leading-9"
+                    : "text-3xl sm:text-4xl"
+                }`}
+              >
+                {target.word}
+              </p>
+              {target.ipa ? (
+                <p className="text-base text-white/60">{target.ipa}</p>
+              ) : null}
+            </div>
             <button
               type="button"
               onClick={() => playModel(target.audioPath, target.word)}

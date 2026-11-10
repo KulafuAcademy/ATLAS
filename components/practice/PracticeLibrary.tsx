@@ -791,6 +791,7 @@ function PairCard({
                     onCheck({
                       kind: "word",
                       word,
+                      ipa,
                       soundFocus: pair.soundFocus,
                       audioPath,
                     })
