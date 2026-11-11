@@ -85,7 +85,7 @@ export const panelCopy = {
         case 400:
           return "There was nothing to check. Please try again.";
         case 401:
-          return "The checker isn't set up correctly (API key). Please tell your teacher.";
+          return "Server authentication failed (API key). Please tell your teacher.";
         case 413:
           return "That recording is too long. Try a shorter one!";
         case 415:
@@ -156,7 +156,7 @@ export const panelCopy = {
         case 400:
           return "チェックする内容がありませんでした。もう一度ためしてね。";
         case 401:
-          return "チェッカーの設定に問題があります（APIキー）。先生に伝えてください。";
+          return "サーバーの認証に失敗しました（APIキー）。先生に伝えてください。";
         case 413:
           return "録音が長すぎます。短くしてみよう！";
         case 415:

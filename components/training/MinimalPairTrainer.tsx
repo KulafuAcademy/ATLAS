@@ -283,7 +283,7 @@ export function SinglePairPractice({ pair }: { pair: MinimalPair }) {
  *      useSentenceCheck and must match 100%.
  *
  * With `useAiAssessment`, steps 3 and 4 record the learner during the
- * answer window instead and score the clip with the wav2vec2 server; the
+ * answer window instead and score the clip with the ZIPA server; the
  * steps are split into separate boxes and the full result shows in a
  * PronunciationPanel right under the step that ran the check.
  * See docs/pronunciation-assessment.md.

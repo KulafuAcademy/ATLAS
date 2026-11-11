@@ -1,23 +1,20 @@
 /**
- * Client for the wav2vec2 pronunciation assessment server.
+ * Client for the ZIPA pronunciation assessment server.
  * See docs/pronunciation-assessment.md for the full API contract.
  *
- * Every request sends `ngrok-skip-browser-warning`: the server runs behind a
- * free ngrok tunnel, which otherwise answers with an HTML warning page
- * instead of JSON.
+ * Requests go to this app's own /api/pronounce/* routes, which add the API
+ * key and forward them to the real server (lib/pronunciationProxy.ts). The
+ * server address and key stay on the server and never reach the browser.
+ * A wrong or missing key on the server side still comes back as HTTP 401.
  */
 
-export const pronunciationApiUrl = (
-  process.env.NEXT_PUBLIC_PRONUNCIATION_API_URL ||
-  "https://oil-sterility-cyclic.ngrok-free.dev"
-).replace(/\/+$/, "");
+const pronunciationApiUrl = "/api/pronounce";
 
-// Optional. Only needed if the server is configured to require a key.
-// NEXT_PUBLIC_ values are visible in the browser bundle.
-const pronunciationApiKey = process.env.NEXT_PUBLIC_PRONUNCIATION_API_KEY;
-
-/** The server rejects uploads larger than this with HTTP 413. */
-export const maxAudioBytes = 10 * 1024 * 1024;
+/**
+ * The server accepts 10 MB, but Vercel functions reject request bodies over
+ * 4.5 MB, so cap below that. Recordings are at most 15 s, far smaller.
+ */
+export const maxAudioBytes = 4 * 1024 * 1024;
 
 const healthTimeoutMs = 8000;
 
@@ -144,23 +141,11 @@ export class PronunciationApiError extends Error {
   }
 }
 
-function requestHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "ngrok-skip-browser-warning": "true",
-  };
-
-  if (pronunciationApiKey) {
-    headers["X-API-Key"] = pronunciationApiKey;
-  }
-
-  return headers;
-}
-
 async function readJson(response: Response) {
   try {
     return (await response.json()) as Record<string, unknown> | null;
   } catch {
-    // ngrok's HTML warning page, or an empty body.
+    // An HTML error page or an empty body.
     return null;
   }
 }
@@ -174,8 +159,8 @@ export async function checkHealth(signal?: AbortSignal) {
   signal?.addEventListener("abort", abort);
 
   try {
+    // This only checks the server is up, not that the key works.
     const response = await fetch(`${pronunciationApiUrl}/health`, {
-      headers: requestHeaders(),
       cache: "no-store",
       signal: controller.signal,
     });
@@ -211,7 +196,7 @@ export async function analyzePronunciation({
   signal?: AbortSignal;
 }): Promise<AnalyzeResponse> {
   if (audio.size > maxAudioBytes) {
-    throw new PronunciationApiError(413, "The recording is larger than 10 MB.");
+    throw new PronunciationApiError(413, "The recording is larger than 4 MB.");
   }
 
   const form = new FormData();
@@ -220,17 +205,20 @@ export async function analyzePronunciation({
   form.append("soundFocus", soundFocus);
 
   let response: Response;
-
   try {
     // No Content-Type: the browser adds it with the multipart boundary.
     response = await fetch(`${pronunciationApiUrl}/analyze`, {
       method: "POST",
-      headers: requestHeaders(),
       body: form,
       signal,
     });
   } catch (error) {
     if (signal?.aborted) throw error;
+    throw new PronunciationApiError(0, "Could not reach the pronunciation server.");
+  }
+
+  // The proxy answers 503 when it can't reach the real server.
+  if (response.status === 503) {
     throw new PronunciationApiError(0, "Could not reach the pronunciation server.");
   }
 
