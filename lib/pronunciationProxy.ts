@@ -15,8 +15,8 @@ import { requireStaff } from "@/lib/staff-auth";
 const upstreamTimeoutMs = 60_000;
 
 function upstreamConfig() {
-  const url = process.env.PRONOUNCE_API_URL?.replace(/\/+$/, "");
-  const key = process.env.PRONOUNCE_API_KEY;
+  const url = process.env.ZIPA_API_URL?.replace(/\/+$/, "");
+  const key = process.env.ZIPA_API_KEY;
 
   return url && key ? { url, key } : null;
 }
@@ -85,7 +85,7 @@ export async function proxyAnalyze(
 
   const config = upstreamConfig();
   if (!config) {
-    console.error("PRONOUNCE_API_URL or PRONOUNCE_API_KEY is not set.");
+    console.error("ZIPA_API_URL or ZIPA_API_KEY is not set.");
     return jsonError(500, "The pronunciation server is not configured.");
   }
 
@@ -111,7 +111,7 @@ export async function proxyAnalyze(
 
     if (upstream.status === 401) {
       // The browser can't fix this, so make it visible in the server logs.
-      console.error("Pronunciation server rejected PRONOUNCE_API_KEY (401).");
+      console.error("Pronunciation server rejected ZIPA_API_KEY (401).");
     }
 
     return relay(upstream);

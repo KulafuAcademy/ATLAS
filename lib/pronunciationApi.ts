@@ -1,5 +1,5 @@
 /**
- * Client for the wav2vec2 pronunciation assessment server.
+ * Client for the ZIPA pronunciation assessment server.
  * See docs/pronunciation-assessment.md for the full API contract.
  *
  * Requests go to this app's own /api/pronounce/* routes, which add the API

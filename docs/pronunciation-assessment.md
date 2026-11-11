@@ -28,8 +28,8 @@ Copy `.env.example` to `.env.local` and set:
 
 | Variable                            | Required | Notes                                                                                                                                                                                                                                                                           |
 | ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PRONOUNCE_API_URL` | **Yes** | Server base URL (Tailscale Funnel address), no trailing slash. Without it, the checker shows as offline. |
-| `PRONOUNCE_API_KEY` | **Yes** | Added as `X-API-Key` by the proxy. Without it, the checker shows as offline. A wrong key shows the "Server authentication failed" message. |
+| `ZIPA_API_URL` | **Yes** | Server base URL (Tailscale Funnel address), no trailing slash. Without it, the checker shows as offline. |
+| `ZIPA_API_KEY` | **Yes** | Added as `X-API-Key` by the proxy. Without it, the checker shows as offline. A wrong key shows the "Server authentication failed" message. |
 
 Both are server-side only: no `NEXT_PUBLIC_` prefix, never bundled into the browser, never committed. On Vercel, set them under Settings → Environment Variables. Restart `npm run dev` after changing `.env.local`.
 
@@ -224,7 +224,7 @@ The panel's text is in `panelCopy` (`en` / `ja`) in `PronunciationPanel.tsx`. Th
 
 - **Mic level meter:** while recording, `LevelMeter` (`components/pronunciation/LevelMeter.tsx`) shows under the step's "Speak now" bar. It uses the recording's own mic stream, so it also works on touch devices. The Results panel only says "Listening…", with no timer.
 - **Safety cap on recording length:** `maxRecordingSeconds` in `useVoiceRecorder.ts` (default 15 s). The answer windows are shorter, so this only matters if something goes wrong.
-- **Server URL and key:** set `PRONOUNCE_API_URL` / `PRONOUNCE_API_KEY` in `.env.local` and in Vercel. Neither has a fallback in code.
+- **Server URL and key:** set `ZIPA_API_URL` / `ZIPA_API_KEY` in `.env.local` and in Vercel. Neither has a fallback in code.
 - **New response fields:** add them to the types in `lib/pronunciationApi.ts` first.
 
 ## Manual test checklist
