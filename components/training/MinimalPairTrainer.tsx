@@ -10,11 +10,13 @@ import {
   usePronunciationAssessment,
   type AssessmentOutcome,
 } from "@/components/pronunciation/usePronunciationAssessment";
+import { twisterGlossary } from "@/data/twisterGlossary";
 import type { LocalizedText } from "@/lib/i18n";
 import { gradeByLetter } from "@/lib/pronunciationGrades";
 import type { MinimalPair } from "@/types/training";
 
 import { getPublicAudioPath } from "./audio";
+import { GlossedSentence } from "./GlossedSentence";
 import {
   createAudioContext,
   playCorrectSound,
@@ -1100,7 +1102,15 @@ function PairPracticeCard({
               : "text-lg leading-8"
           }`}
         >
-          {tongueTwister.text}
+          {/* Plain text while the learner reads it out, so popovers don't get in the way. */}
+          {focusKind === "tongueTwister" ? (
+            tongueTwister.text
+          ) : (
+            <GlossedSentence
+              sentence={tongueTwister.text}
+              glossary={twisterGlossary[pair.id] ?? {}}
+            />
+          )}
         </p>
         {/* Hidden while the learner reads it out, so the sentence has room. */}
         {focusKind === "tongueTwister" ? null : (

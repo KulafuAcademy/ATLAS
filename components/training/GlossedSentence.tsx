@@ -4,8 +4,9 @@ import Image from "next/image";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { wordGlossary, wordTypeLabels } from "@/data/wordGlossary";
-import type { GlossaryEntry } from "@/data/wordGlossary";
+import { twisterWordTypeLabels } from "@/data/twisterGlossary";
+import type { TwisterGlossaryEntry } from "@/data/twisterGlossary";
+import { wordGlossary } from "@/data/wordGlossary";
 
 const TAP_POPOVER_MS = 4000;
 const VIEWPORT_GUTTER_PX = 16;
@@ -13,15 +14,28 @@ const VIEWPORT_GUTTER_PX = 16;
 // Only one popover is open at a time, across all sentences.
 let closeOpenPopover: (() => void) | null = null;
 
-export function GlossedSentence({ sentence }: { sentence: string }) {
+// Defaults to the lesson sentence glossary. A tongue twister passes its own, where
+// "word#2" is the entry for the second time that word appears.
+export function GlossedSentence({
+  sentence,
+  glossary = wordGlossary,
+}: {
+  sentence: string;
+  glossary?: Record<string, TwisterGlossaryEntry>;
+}) {
+  const seen = new Map<string, number>();
+
   return sentence.split(/([A-Za-z']+)/).map((part, index) => {
-    const entry = wordGlossary[part.toLowerCase()];
+    const key = part.toLowerCase();
+    const count = (seen.get(key) ?? 0) + 1;
+    seen.set(key, count);
+    const entry = (count > 1 ? glossary[`${key}#${count}`] : undefined) ?? glossary[key];
 
     return entry ? <GlossedWord key={index} word={part} entry={entry} /> : part;
   });
 }
 
-function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
+function GlossedWord({ word, entry }: { word: string; entry: TwisterGlossaryEntry }) {
   const { text } = useLanguage();
   const [open, setOpen] = useState(false);
   const popoverId = useId();
@@ -146,7 +160,7 @@ function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
           ) : null}
           <span className="min-w-0">
             <span className="block text-[13px] font-semibold text-white/50">
-              {text(wordTypeLabels[entry.type])}
+              {text(twisterWordTypeLabels[entry.type])}
             </span>
             <span className="mt-0.5 block text-[15px] leading-5 text-white">
               {text(entry.meaning)}
