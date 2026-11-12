@@ -7,8 +7,11 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { wordGlossary, wordTypeLabels } from "@/data/wordGlossary";
 import type { GlossaryEntry } from "@/data/wordGlossary";
 
-const HOLD_DELAY_MS = 300;
+const TAP_POPOVER_MS = 4000;
 const VIEWPORT_GUTTER_PX = 16;
+
+// Only one popover is open at a time, across all sentences.
+let closeOpenPopover: (() => void) | null = null;
 
 export function GlossedSentence({ sentence }: { sentence: string }) {
   return sentence.split(/([A-Za-z']+)/).map((part, index) => {
@@ -23,21 +26,28 @@ function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
   const [open, setOpen] = useState(false);
   const popoverId = useId();
   const popoverRef = useRef<HTMLSpanElement>(null);
-  // Set from the moment a touch lands until it lifts, including after the popover opens.
-  const holdTimer = useRef<number | null>(null);
+  const dismissTimer = useRef<number | null>(null);
+  // How the current press started, since a click alone doesn't reliably say it was a touch.
+  const pressPointerType = useRef<string | null>(null);
 
   function hide() {
-    if (holdTimer.current !== null) {
-      window.clearTimeout(holdTimer.current);
-      holdTimer.current = null;
+    if (dismissTimer.current !== null) {
+      window.clearTimeout(dismissTimer.current);
+      dismissTimer.current = null;
     }
     setOpen(false);
   }
 
+  function show() {
+    closeOpenPopover?.();
+    closeOpenPopover = hide;
+    setOpen(true);
+  }
+
   useEffect(
     () => () => {
-      if (holdTimer.current !== null) {
-        window.clearTimeout(holdTimer.current);
+      if (dismissTimer.current !== null) {
+        window.clearTimeout(dismissTimer.current);
       }
     },
     [],
@@ -71,30 +81,36 @@ function GlossedWord({ word, entry }: { word: string; entry: GlossaryEntry }) {
         aria-describedby={popoverId}
         onPointerEnter={(event) => {
           if (event.pointerType !== "touch") {
-            setOpen(true);
+            show();
           }
         }}
-        onPointerLeave={hide}
-        onPointerDown={(event) => {
-          if (event.pointerType === "touch") {
-            holdTimer.current = window.setTimeout(() => setOpen(true), HOLD_DELAY_MS);
-          }
-        }}
-        onPointerUp={(event) => {
-          if (event.pointerType === "touch") {
+        onPointerLeave={(event) => {
+          // A finger leaves as soon as it lifts, which must not close a tapped popover.
+          if (event.pointerType !== "touch") {
             hide();
           }
         }}
-        onPointerCancel={hide}
-        onContextMenu={(event) => {
-          // A long press would open the browser menu on top of the popover.
-          if (holdTimer.current !== null) {
-            event.preventDefault();
+        onPointerDown={(event) => {
+          pressPointerType.current = event.pointerType;
+        }}
+        onClick={() => {
+          const tapped = pressPointerType.current === "touch";
+          pressPointerType.current = null;
+
+          if (!tapped) {
+            return;
+          }
+
+          if (open) {
+            hide();
+          } else {
+            show();
+            dismissTimer.current = window.setTimeout(hide, TAP_POPOVER_MS);
           }
         }}
         onFocus={(event) => {
           if (event.currentTarget.matches(":focus-visible")) {
-            setOpen(true);
+            show();
           }
         }}
         onBlur={hide}
