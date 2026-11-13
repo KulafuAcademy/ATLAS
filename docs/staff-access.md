@@ -1,6 +1,6 @@
 # Central staff access
 
-ATLAS uses AMPLIFY's Supabase Auth project. Configure `AMPLIFY_SUPABASE_URL` and `AMPLIFY_SUPABASE_ANON_KEY` as server-side variables for local development and in every Vercel environment. No service-role key is required or accepted in ATLAS.
+ATLAS uses AMPLIFY's Supabase Auth project. Configure `AMPLIFY_SUPABASE_URL` and `AMPLIFY_SUPABASE_ANON_KEY` as server-side variables for local development and in every Vercel environment. No service-role key is required or accepted in ATLAS. The `/dashboard` page reads practice stats through the staff-only `/api/dashboard/*` routes, which query Supabase on the server with the same variables; the browser never receives the Supabase URL or key.
 
 Staff authorization requires the exact server-managed `app_metadata.staff_access: true` flag, checked using Supabase `auth.getUser()` for protected requests. The editable user metadata and AMPLIFY's separate admin email allowlist do not grant ATLAS staff access.
 
