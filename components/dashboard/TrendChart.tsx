@@ -15,9 +15,9 @@ const MARGIN = { top: 8, right: 16, bottom: 0, left: 0 };
 type Datum = DayPoint & { label: string };
 
 /**
- * Perfect rate per school day, with tries in a short panel underneath that
- * shares the x-axis (two aligned panels instead of a dual-axis chart). The
- * x-axis is categorical, so only days with data appear: no weekend gaps.
+ * Perfect rate per day, with tries in a short panel underneath that shares
+ * the x-axis (two aligned panels instead of a dual-axis chart). The x-axis is
+ * categorical, so only days with data appear; days without practice leave no gap.
  */
 export function TrendChart({ days }: { days: DayPoint[] }) {
   const theme = useChartTheme();
@@ -26,7 +26,7 @@ export function TrendChart({ days }: { days: DayPoint[] }) {
   const data: Datum[] = days.map((d) => ({ ...d, label: formatDay(d.day) }));
   const first = days[0];
   const last = days[days.length - 1];
-  const ariaLabel = `Line chart of perfect rate per school day from ${formatDayLong(first.day)} to ${formatDayLong(last.day)}, ${days.length} days. Latest day ${formatRate(last.rate)} perfect from ${formatInt(last.tries)} tries. Bars underneath show tries per day.`;
+  const ariaLabel = `Line chart of perfect rate per day with practice from ${formatDayLong(first.day)} to ${formatDayLong(last.day)}, ${days.length} days. Latest day ${formatRate(last.rate)} perfect from ${formatInt(last.tries)} tries. Bars underneath show tries per day.`;
 
   const tooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: Datum }> }) => {
     const d = active ? payload?.[0]?.payload : undefined;

@@ -34,11 +34,6 @@ export type DailyRow = {
   avg_score: number | null;
 };
 
-export type AttemptRow = {
-  attempt_no: number;
-  perfect: boolean;
-};
-
 export type Stats = {
   tries: number;
   attempts: number;
@@ -119,13 +114,13 @@ export function totals(rows: DailyRow[]): Stats {
   return finish(acc);
 }
 
-export function schoolDaysPractised(rows: DailyRow[]) {
+export function daysPractised(rows: DailyRow[]) {
   return new Set(rows.filter((row) => row.tries > 0).map((row) => row.day)).size;
 }
 
 export type DayPoint = Stats & { day: string };
 
-/** One point per day that has data, in date order (so no weekend gaps). */
+/** One point per day that has data, in date order (days without practice are left out, not zero). */
 export function byDay(rows: DailyRow[]): DayPoint[] {
   return [...groupBy(rows, (row) => row.day)]
     .map(([day, { acc }]) => ({ day, ...finish(acc) }))
@@ -148,7 +143,7 @@ export function byFocus(rows: DailyRow[]): FocusPoint[] {
 
 export type WeekRow = { week: string } & Partial<Record<SoundFocus, Stats>>;
 
-/** Perfect rate per Mon–Fri week, per focus. */
+/** Perfect rate per Monday–Sunday week, per focus. */
 export function byWeekAndFocus(rows: DailyRow[]): WeekRow[] {
   const groups = groupBy(rows, (row) => `${weekStart(row.day)}|${row.sound_focus}`);
   const weeks = new Map<string, WeekRow>();
@@ -213,22 +208,4 @@ export function hardest(rows: DailyRow[], kind: "words" | "tongue_twisters", min
   return byWord(wanted)
     .filter((word) => word.attempts >= minAttempts && word.rate !== null)
     .sort((a, b) => a.rate! - b.rate! || b.attempts - a.attempts);
-}
-
-export type RetryPoint = { label: "1" | "2" | "3+"; attempts: number; perfect: number; rate: number | null };
-
-/** Perfect rate by attempt number (1, 2, 3+) over usable attempts. */
-export function retryStats(rows: AttemptRow[]): RetryPoint[] {
-  const buckets: RetryPoint[] = [
-    { label: "1", attempts: 0, perfect: 0, rate: null },
-    { label: "2", attempts: 0, perfect: 0, rate: null },
-    { label: "3+", attempts: 0, perfect: 0, rate: null },
-  ];
-  for (const row of rows) {
-    const bucket = buckets[Math.min(Math.max(row.attempt_no, 1), 3) - 1];
-    bucket.attempts += 1;
-    if (row.perfect) bucket.perfect += 1;
-  }
-  for (const bucket of buckets) bucket.rate = bucket.attempts > 0 ? (bucket.perfect / bucket.attempts) * 100 : null;
-  return buckets;
 }

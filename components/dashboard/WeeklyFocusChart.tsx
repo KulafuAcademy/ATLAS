@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { ChartTooltipBox, DataTableToggle, tableClass, tdClass, thClass } from "@/components/dashboard/ui";
 import { useChartTheme } from "@/components/dashboard/hooks";
 import { SOUND_FOCUSES, type SoundFocus, type WeekRow } from "@/lib/dashboard/aggregate";
-import { formatSchoolWeek } from "@/lib/dashboard/dates";
+import { formatWeek } from "@/lib/dashboard/dates";
 import { formatInt, formatRate } from "@/lib/dashboard/format";
 
 /** Color follows the focus (fixed slot), never its rank or the filter. */
@@ -24,14 +24,14 @@ export function WeeklyFocusChart({ weeks }: { weeks: WeekRow[] }) {
 
   const present = SOUND_FOCUSES.filter((f) => weeks.some((w) => w[f]));
   const data: Datum[] = weeks.map((w) => {
-    const row: Datum = { week: w.week, label: formatSchoolWeek(w.week) };
+    const row: Datum = { week: w.week, label: formatWeek(w.week) };
     for (const f of present) if (w[f]?.rate != null) row[f] = w[f]!.rate!;
     return row;
   });
   const byWeek = new Map(weeks.map((w) => [w.week, w]));
   const colorOf = (f: SoundFocus) => theme.series[SOUND_FOCUSES.indexOf(f)];
   const lastWeek = weeks[weeks.length - 1];
-  const ariaLabel = `Line chart of weekly perfect rate for ${present.join(", ")} over ${weeks.length} school week${weeks.length === 1 ? "" : "s"}. Latest week: ${present
+  const ariaLabel = `Line chart of weekly perfect rate for ${present.join(", ")} over ${weeks.length} week${weeks.length === 1 ? "" : "s"}. Latest week: ${present
     .map((f) => `${f} ${formatRate(lastWeek[f]?.rate ?? null)}`)
     .join(", ")}.`;
 
@@ -114,7 +114,7 @@ export function WeeklyFocusChart({ weeks }: { weeks: WeekRow[] }) {
           <tbody>
             {[...weeks].reverse().map((w) => (
               <tr key={w.week}>
-                <td className={tdClass}>{formatSchoolWeek(w.week)}</td>
+                <td className={tdClass}>{formatWeek(w.week)}</td>
                 {present.map((f) => (
                   <td key={f} className={`${tdClass} text-right`}>
                     {w[f] ? `${formatRate(w[f]!.rate)} · ${formatInt(w[f]!.attempts)}` : "—"}

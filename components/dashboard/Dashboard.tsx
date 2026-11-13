@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
-import { FocusBars, RetryBars } from "@/components/dashboard/Bars";
+import { FocusBars } from "@/components/dashboard/Bars";
 import { PairGapChart } from "@/components/dashboard/PairGapChart";
 import { TrendChart } from "@/components/dashboard/TrendChart";
 import { WeeklyFocusChart } from "@/components/dashboard/WeeklyFocusChart";
@@ -19,13 +19,12 @@ import {
   hardest,
   isSoundFocus,
   pairGaps,
-  retryStats,
-  schoolDaysPractised,
+  daysPractised,
   totals,
   type SoundFocus,
   type Stats,
 } from "@/lib/dashboard/aggregate";
-import { fetchDailyStats, fetchRetryAttempts } from "@/lib/dashboard/data";
+import { fetchDailyStats } from "@/lib/dashboard/data";
 import { RANGE_KEYS, formatDayLong, resolveRange, type RangeKey } from "@/lib/dashboard/dates";
 import { formatInt, formatRate, formatScore } from "@/lib/dashboard/format";
 import { PREVIOUS_PHRASE, RANGE_LABELS, buildSummary } from "@/lib/dashboard/summary";
@@ -67,8 +66,6 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
   const fetchStart = range.previous?.start ?? range.start;
   const loadDaily = useCallback(() => fetchDailyStats(fetchStart, range.end), [fetchStart, range.end]);
   const daily = useAsync(loadDaily);
-  const loadRetry = useCallback(() => fetchRetryAttempts(range.start, range.end, focus), [range.start, range.end, focus]);
-  const retry = useAsync(loadRetry);
 
   const view = useMemo(() => {
     if (!daily.data) return null;
@@ -83,8 +80,8 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
     return {
       current,
       previous,
-      days: schoolDaysPractised(rows),
-      prevDays: prevRows ? schoolDaysPractised(prevRows) : null,
+      days: daysPractised(rows),
+      prevDays: prevRows ? daysPractised(prevRows) : null,
       trend: byDay(rows),
       focuses,
       weeks: byWeekAndFocus(rows),
@@ -103,9 +100,7 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
   }, [daily.data, range, focus, rangeKey]);
 
   const dailyState: LoadState = { loading: daily.loading, error: daily.error, retry: daily.retry };
-  const retryState: LoadState = { loading: retry.loading, error: retry.error, retry: retry.retry };
   const empty = !view || view.current.tries === 0;
-  const retryPoints = retry.data ? retryStats(retry.data) : null;
   const vsLabel = range.key === "all" ? null : text({ en: `vs ${PREVIOUS_PHRASE[range.key].en}`, ja: `${PREVIOUS_PHRASE[range.key].ja}比` });
   const minNote = { en: `Only items with at least ${MIN_ATTEMPTS} attempts in this range.`, ja: `この期間に${MIN_ATTEMPTS}回以上の有効な録音がある項目のみ。` };
 
@@ -161,9 +156,9 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
         />
         <Kpi
           state={dailyState}
-          label={text({ en: "School days practised", ja: "練習した登校日" })}
+          label={text({ en: "Days practised", ja: "練習した日数" })}
           value={view ? formatInt(view.days) : ""}
-          detail={text({ en: "Mon–Fri with practice", ja: "練習があった平日" })}
+          detail={text({ en: "Days with any practice", ja: "練習があった日" })}
           delta={view && vsLabel ? <Delta value={view.prevDays && view.prevDays > 0 ? view.days - view.prevDays : null} label={view.prevDays ? vsLabel : text({ en: "nothing to compare", ja: "比較なし" })} /> : null}
         />
       </div>
@@ -173,8 +168,8 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
           id="trend"
           wide
           eyebrow={{ en: "1 · Trend", ja: "1 · 推移" }}
-          title={{ en: "Perfect rate per school day", ja: "登校日ごとの満点率" }}
-          note={{ en: "Only days with practice are shown, so weekends leave no gaps.", ja: "練習があった日だけを表示します（週末の空白なし）。" }}
+          title={{ en: "Perfect rate per day", ja: "日ごとの満点率" }}
+          note={{ en: "Only days with practice are shown.", ja: "練習があった日だけを表示します。" }}
           skeletonHeight={400}
           state={dailyState}
           empty={empty}
@@ -198,7 +193,7 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
           id="weekly"
           eyebrow={{ en: "3 · Over time", ja: "3 · 週ごと" }}
           title={{ en: "Sound focus over time", ja: "音ごとの週別満点率" }}
-          note={{ en: "Perfect rate per school week (Mon–Fri).", ja: "登校週（月〜金）ごとの満点率。" }}
+          note={{ en: "Perfect rate per week (Monday–Sunday).", ja: "週（月〜日）ごとの満点率。" }}
           skeletonHeight={340}
           state={dailyState}
           empty={empty}
@@ -247,19 +242,6 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
           empty={!view || view.twisters.length === 0}
         >
           {view ? <WordTable rows={view.twisters} kind="tongue_twisters" caption="Hardest tongue twisters, lowest perfect rate first" /> : null}
-        </Section>
-
-        <Section
-          id="retries"
-          wide
-          eyebrow={{ en: "7 · Retries", ja: "7 · やり直し" }}
-          title={{ en: "Does trying again help?", ja: "やり直すと上達する？" }}
-          note={{ en: "Perfect rate of usable tries by attempt number.", ja: "何回目の挑戦かごとの、有効な録音の満点率。" }}
-          skeletonHeight={256}
-          state={retryState}
-          empty={!retryPoints || retryPoints.every((p) => p.attempts === 0)}
-        >
-          {retryPoints ? <RetryBars points={retryPoints} /> : null}
         </Section>
       </div>
     </div>

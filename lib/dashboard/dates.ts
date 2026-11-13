@@ -5,7 +5,6 @@
 // time zone.
 
 export const SCHOOL_TIME_ZONE = "Asia/Manila";
-const MANILA_OFFSET = "+08:00"; // Manila has no daylight saving time.
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -32,7 +31,7 @@ export function todayInManila(now: Date = new Date()) {
   return manilaDay(now);
 }
 
-/** The Manila calendar day of an instant (e.g. `attempts.created_at`). */
+/** The Manila calendar day of an instant. */
 export function manilaDay(instant: Date | string) {
   const date = typeof instant === "string" ? new Date(instant) : instant;
   // en-CA formats as YYYY-MM-DD.
@@ -74,29 +73,18 @@ export function formatDayLong(day: string) {
   return `${formatDay(day)}, ${y}`;
 }
 
-/** "Oct 12–16" or "Oct 26 – Nov 1" for the Mon–Fri school week starting `monday`. */
-export function formatSchoolWeek(monday: string) {
-  const friday = addDays(monday, 4);
+/** "Oct 12–18" or "Oct 26 – Nov 1" for the Monday–Sunday week starting `monday`. */
+export function formatWeek(monday: string) {
+  const sunday = addDays(monday, 6);
   const a = parts(monday);
-  const b = parts(friday);
-  return a.m === b.m ? `${MONTHS[a.m - 1]} ${a.d}–${b.d}` : `${formatDay(monday)} – ${formatDay(friday)}`;
-}
-
-/** Start of a Manila day as a timestamptz literal, for filtering `created_at`. */
-export function manilaDayStartTimestamp(day: string) {
-  return `${day}T00:00:00${MANILA_OFFSET}`;
+  const b = parts(sunday);
+  return a.m === b.m ? `${MONTHS[a.m - 1]} ${a.d}–${b.d}` : `${formatDay(monday)} – ${formatDay(sunday)}`;
 }
 
 export type RangeKey = "today" | "week" | "4w" | "all";
 
 export const RANGE_KEYS: RangeKey[] = ["today", "week", "4w", "all"];
 
-/** The school day (Mon–Fri) before `day`. */
-export function previousSchoolDay(day: string) {
-  let prev = addDays(day, -1);
-  while (weekdayIndex(prev) > 4) prev = addDays(prev, -1);
-  return prev;
-}
 
 export type DateRange = {
   key: RangeKey;
@@ -109,17 +97,16 @@ export type DateRange = {
 };
 
 /**
- * "Today" compares with the previous school day (so Monday compares with
- * Friday, not an empty Sunday). Week ranges are aligned to Monday so they line
- * up with the weekly chart: "This week" is Monday → today; "Last 4 weeks" is
- * this week plus the three before it. The previous period is the same span
- * shifted back.
+ * "Today" compares with yesterday. Week ranges are aligned to Monday so they
+ * line up with the Monday–Sunday weeks of the weekly chart: "This week" is
+ * Monday → today; "Last 4 weeks" is this week plus the three before it. The
+ * previous period is the same span shifted back.
  */
 export function resolveRange(key: RangeKey, today: string = todayInManila()): DateRange {
   if (key === "all") return { key, start: null, end: today, previous: null };
   if (key === "today") {
-    const prev = previousSchoolDay(today);
-    return { key, start: today, end: today, previous: { start: prev, end: prev } };
+    const yesterday = addDays(today, -1);
+    return { key, start: today, end: today, previous: { start: yesterday, end: yesterday } };
   }
   const weeks = key === "week" ? 1 : 4;
   const start = addDays(weekStart(today), -7 * (weeks - 1));

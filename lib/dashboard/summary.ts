@@ -18,7 +18,7 @@ const PERIOD_PHRASE: Record<RangeKey, { en: string; ja: string }> = {
 };
 
 export const PREVIOUS_PHRASE: Record<Exclude<RangeKey, "all">, { en: string; ja: string }> = {
-  today: { en: "the previous school day", ja: "前の登校日" },
+  today: { en: "yesterday", ja: "昨日" },
   week: { en: "last week", ja: "先週" },
   "4w": { en: "the previous 4 weeks", ja: "その前の4週間" },
 };

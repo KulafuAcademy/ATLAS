@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const { response } = await requireStaff();
   if (response) return response;
   const query = parseDashboardQuery(request.url);
-  if (!query) return Response.json({ error: "Invalid date range or sound focus." }, { status: 400 });
+  if (!query) return Response.json({ error: "Invalid date range." }, { status: 400 });
   try {
     const rows = await queryDailyStats(query.start, query.end);
     return Response.json({ rows }, { headers: { "Cache-Control": "no-store" } });

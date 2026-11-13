@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { byDay, byFocus, hardest, pairGaps, retryStats, toDailyRow, totals, type DailyRow } from "../lib/dashboard/aggregate";
-import { addDays, formatDay, formatSchoolWeek, manilaDay, resolveRange, weekStart } from "../lib/dashboard/dates";
+import { byDay, byFocus, byWeekAndFocus, daysPractised, hardest, pairGaps, toDailyRow, totals, type DailyRow } from "../lib/dashboard/aggregate";
+import { addDays, formatDay, formatWeek, manilaDay, resolveRange, weekStart } from "../lib/dashboard/dates";
 import { buildSummary } from "../lib/dashboard/summary";
 
 function row(partial: Partial<DailyRow>): DailyRow {
@@ -27,35 +27,39 @@ test("date helpers never shift a plain date", () => {
   assert.equal(addDays("2026-10-31", 1), "2026-11-01");
   assert.equal(weekStart("2026-11-13"), "2026-11-09"); // Friday → Monday
   assert.equal(weekStart("2026-11-09"), "2026-11-09");
-  assert.equal(formatSchoolWeek("2026-10-26"), "Oct 26–30");
-  assert.equal(formatSchoolWeek("2026-11-30"), "Nov 30 – Dec 4");
+  assert.equal(weekStart("2026-11-15"), "2026-11-09"); // Sunday belongs to the week that started Monday
+  assert.equal(formatWeek("2026-11-09"), "Nov 9–15");
+  assert.equal(formatWeek("2026-10-26"), "Oct 26 – Nov 1");
   // 23:30 UTC is already the next day in Manila.
   assert.equal(manilaDay("2026-11-12T23:30:00Z"), "2026-11-13");
 });
 
-test("dashboard API only accepts plain dates and known sound focuses", async () => {
+test("dashboard API only accepts plain dates", async () => {
   const { parseDashboardQuery } = await import("../lib/dashboard/query");
   const base = "http://x/api/dashboard/daily-stats";
-  assert.deepEqual(parseDashboardQuery(`${base}?end=2026-11-13&start=2026-10-19&focus=TH+sounds`), {
-    start: "2026-10-19",
-    end: "2026-11-13",
-    focus: "TH sounds",
-  });
-  assert.deepEqual(parseDashboardQuery(`${base}?end=2026-11-13`), { start: null, end: "2026-11-13", focus: null });
+  assert.deepEqual(parseDashboardQuery(`${base}?end=2026-11-13&start=2026-10-19`), { start: "2026-10-19", end: "2026-11-13" });
+  assert.deepEqual(parseDashboardQuery(`${base}?end=2026-11-13`), { start: null, end: "2026-11-13" });
   assert.equal(parseDashboardQuery(`${base}?start=2026-10-19`), null);
   assert.equal(parseDashboardQuery(`${base}?end=2026-11-13&start=2026-10-19);drop`), null);
-  assert.equal(parseDashboardQuery(`${base}?end=2026-11-13&focus=Nope`), null);
 });
 
-test("today compares with the previous school day", () => {
+test("today compares with yesterday, weekends included", () => {
   assert.deepEqual(resolveRange("today", "2026-11-13"), {
     key: "today",
     start: "2026-11-13",
     end: "2026-11-13",
     previous: { start: "2026-11-12", end: "2026-11-12" },
   });
-  // Monday → Friday, skipping the weekend.
-  assert.deepEqual(resolveRange("today", "2026-11-09").previous, { start: "2026-11-06", end: "2026-11-06" });
+  // Monday compares with Sunday.
+  assert.deepEqual(resolveRange("today", "2026-11-09").previous, { start: "2026-11-08", end: "2026-11-08" });
+});
+
+test("weekend practice counts as days and joins its Monday–Sunday week", () => {
+  const rows = [row({ day: "2026-11-13" }), row({ day: "2026-11-14" }), row({ day: "2026-11-15" }), row({ day: "2026-11-16" })];
+  assert.equal(daysPractised(rows), 4);
+  assert.deepEqual(byDay(rows).map((d) => d.day), ["2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16"]);
+  const weeks = byWeekAndFocus(rows);
+  assert.deepEqual(weeks.map((w) => [w.week, w["R vs L"]?.attempts]), [["2026-11-09", 30], ["2026-11-16", 10]]);
 });
 
 test("ranges are Monday-aligned with an equal previous period", () => {
@@ -91,7 +95,7 @@ test("byDay skips empty days and sorts; byFocus puts the hardest first", () => {
   assert.deepEqual(byFocus(rows).map((f) => f.focus), ["TH sounds", "R vs L"]);
 });
 
-test("pair gaps, hardest words and retry buckets", () => {
+test("pair gaps and hardest words", () => {
   const rows = [
     row({ target: "word_a", text: "right", perfect: 4 }),
     row({ target: "word_b", text: "light", pair_word: "right", perfect: 9 }),
@@ -103,14 +107,6 @@ test("pair gaps, hardest words and retry buckets", () => {
   assert.equal(gap.gap, 50);
   assert.deepEqual(hardest(rows, "words", 10).map((w) => w.text), ["right", "light"]); // rock has < 10 attempts
   assert.deepEqual(hardest(rows, "tongue_twisters", 10).map((w) => w.text), ["Right by the light"]);
-
-  const buckets = retryStats([
-    { attempt_no: 1, perfect: false },
-    { attempt_no: 2, perfect: true },
-    { attempt_no: 3, perfect: true },
-    { attempt_no: 7, perfect: false },
-  ]);
-  assert.deepEqual(buckets.map((b) => [b.label, b.attempts, b.rate]), [["1", 1, 0], ["2", 1, 100], ["3+", 2, 50]]);
 });
 
 test("summary sentence reports change in points and the hardest sound", () => {
