@@ -37,17 +37,17 @@ type SummaryInput = {
 /** One sentence describing the selected view, built only from the data. */
 export function buildSummary(input: SummaryInput): LocalizedText | null {
   const { range, focus, current, previous } = input;
-  if (current.tries === 0) return null;
+  if (current.attempts === 0) return null;
 
   const period = PERIOD_PHRASE[range];
   const scopeEn = focus ? ` on ${focus}` : "";
   const scopeJa = focus ? `${focus}を` : "";
-  let en = `${period.en} kids made ${formatInt(current.tries)} tries${scopeEn}`;
-  let ja = `${period.ja}、子どもたちは${scopeJa}${formatInt(current.tries)}回練習しました`;
+  let en = `${period.en} kids made ${formatInt(current.attempts)} attempts${scopeEn}`;
+  let ja = `${period.ja}、子どもたちは${scopeJa}${formatInt(current.attempts)}回練習しました`;
 
   if (current.rate !== null) {
-    en += `; ${formatRate(current.rate)} of usable tries were perfect`;
-    ja += `。使える録音のうち${formatRate(current.rate)}が満点でした`;
+    en += `; ${formatRate(current.rate)} were perfect`;
+    ja += `。そのうち${formatRate(current.rate)}が満点でした`;
 
     if (range !== "all") {
       const prev = PREVIOUS_PHRASE[range];

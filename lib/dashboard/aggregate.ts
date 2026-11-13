@@ -28,28 +28,25 @@ export type DailyRow = {
   target: Target;
   text: string;
   pair_word: string | null;
-  tries: number;
   attempts: number;
   perfect: number;
   avg_score: number | null;
 };
 
 export type Stats = {
-  tries: number;
   attempts: number;
   perfect: number;
-  /** Percent of usable attempts that were perfect; null when there were none. */
+  /** Percent of attempts that were perfect; null when there were none. */
   rate: number | null;
   /** Attempt-weighted average score; null when there were none. */
   avgScore: number | null;
 };
 
-type Acc = { tries: number; attempts: number; perfect: number; scoreSum: number; scoreWeight: number };
+type Acc = { attempts: number; perfect: number; scoreSum: number; scoreWeight: number };
 
-const newAcc = (): Acc => ({ tries: 0, attempts: 0, perfect: 0, scoreSum: 0, scoreWeight: 0 });
+const newAcc = (): Acc => ({ attempts: 0, perfect: 0, scoreSum: 0, scoreWeight: 0 });
 
 function add(acc: Acc, row: DailyRow) {
-  acc.tries += row.tries;
   acc.attempts += row.attempts;
   acc.perfect += row.perfect;
   if (row.avg_score !== null && row.attempts > 0) {
@@ -60,7 +57,6 @@ function add(acc: Acc, row: DailyRow) {
 
 function finish(acc: Acc): Stats {
   return {
-    tries: acc.tries,
     attempts: acc.attempts,
     perfect: acc.perfect,
     rate: acc.attempts > 0 ? (acc.perfect / acc.attempts) * 100 : null,
@@ -92,7 +88,6 @@ export function toDailyRow(raw: Record<string, unknown>): DailyRow {
     target: raw.target as Target,
     text: String(raw.text),
     pair_word: raw.pair_word == null ? null : String(raw.pair_word),
-    tries: Number(raw.tries) || 0,
     attempts: Number(raw.attempts) || 0,
     perfect: Number(raw.perfect) || 0,
     avg_score: raw.avg_score == null ? null : Number(raw.avg_score),
@@ -114,8 +109,8 @@ export function totals(rows: DailyRow[]): Stats {
   return finish(acc);
 }
 
-export function daysPractised(rows: DailyRow[]) {
-  return new Set(rows.filter((row) => row.tries > 0).map((row) => row.day)).size;
+export function daysPracticed(rows: DailyRow[]) {
+  return new Set(rows.filter((row) => row.attempts > 0).map((row) => row.day)).size;
 }
 
 export type DayPoint = Stats & { day: string };
@@ -124,20 +119,20 @@ export type DayPoint = Stats & { day: string };
 export function byDay(rows: DailyRow[]): DayPoint[] {
   return [...groupBy(rows, (row) => row.day)]
     .map(([day, { acc }]) => ({ day, ...finish(acc) }))
-    .filter((point) => point.tries > 0)
+    .filter((point) => point.attempts > 0)
     .sort((a, b) => a.day.localeCompare(b.day));
 }
 
 export type FocusPoint = Stats & { focus: SoundFocus };
 
-/** Hardest first (lowest perfect rate); focuses with no usable attempts go last. */
+/** Hardest first (lowest perfect rate); focuses with no attempts go last. */
 export function byFocus(rows: DailyRow[]): FocusPoint[] {
   const groups = groupBy(rows, (row) => row.sound_focus);
   return SOUND_FOCUSES.map((focus) => {
     const entry = groups.get(focus);
     return { focus, ...finish(entry ? entry.acc : newAcc()) };
   })
-    .filter((point) => point.tries > 0)
+    .filter((point) => point.attempts > 0)
     .sort((a, b) => (a.rate ?? Infinity) - (b.rate ?? Infinity));
 }
 
@@ -168,7 +163,26 @@ export type WordStats = Stats & {
   pairWord: string | null;
 };
 
-function byWord(rows: DailyRow[]): WordStats[] {
+export function isTarget(value: unknown): value is Target {
+  return value === "word_a" || value === "word_b" || value === "tongue_twister";
+}
+
+/** Detail page for one word or tongue twister. */
+export function itemHref(pairId: number, target: Target) {
+  return `/dashboard/items/${pairId}/${target}`;
+}
+
+const TARGET_ORDER: Record<Target, number> = { word_a: 0, word_b: 1, tongue_twister: 2 };
+
+/** Curriculum order: sound focus, then pair number, then word A, word B, tongue twister. */
+export function compareItems(a: WordStats, b: WordStats) {
+  const fa = SOUND_FOCUSES.indexOf(a.focus as SoundFocus);
+  const fb = SOUND_FOCUSES.indexOf(b.focus as SoundFocus);
+  return fa - fb || a.pairNo - b.pairNo || TARGET_ORDER[a.target] - TARGET_ORDER[b.target];
+}
+
+/** Stats per word / tongue twister (one entry per pair_id + target). */
+export function byWord(rows: DailyRow[]): WordStats[] {
   return [...groupBy(rows, (row) => `${row.pair_id}|${row.target}`)].map(([, { acc, first }]) => ({
     pairId: first.pair_id,
     pairNo: first.pair_no,
@@ -200,7 +214,7 @@ export function pairGaps(rows: DailyRow[]): PairGap[] {
   return result.sort((x, y) => y.gap - x.gap || x.pairId - y.pairId);
 }
 
-/** Words (or tongue twisters) with at least `minAttempts` usable attempts, hardest first. */
+/** Words (or tongue twisters) with at least `minAttempts` attempts, hardest first. */
 export function hardest(rows: DailyRow[], kind: "words" | "tongue_twisters", minAttempts: number): WordStats[] {
   const wanted = rows.filter((row) =>
     kind === "tongue_twisters" ? row.target === "tongue_twister" : row.target !== "tongue_twister",

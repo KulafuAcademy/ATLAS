@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
@@ -9,7 +10,7 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { WeeklyFocusChart } from "@/components/dashboard/WeeklyFocusChart";
 import { WordTable } from "@/components/dashboard/WordTable";
 import { useAsync } from "@/components/dashboard/hooks";
-import { Delta, ErrorState, Section, Skeleton, type LoadState } from "@/components/dashboard/ui";
+import { Delta, ErrorState, Kpi, Section, Skeleton, ToggleGroup, type LoadState } from "@/components/dashboard/ui";
 import {
   SOUND_FOCUSES,
   byDay,
@@ -19,7 +20,7 @@ import {
   hardest,
   isSoundFocus,
   pairGaps,
-  daysPractised,
+  daysPracticed,
   totals,
   type SoundFocus,
   type Stats,
@@ -80,8 +81,7 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
     return {
       current,
       previous,
-      days: daysPractised(rows),
-      prevDays: prevRows ? daysPractised(prevRows) : null,
+      days: daysPracticed(rows),
       trend: byDay(rows),
       focuses,
       weeks: byWeekAndFocus(rows),
@@ -100,13 +100,15 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
   }, [daily.data, range, focus, rangeKey]);
 
   const dailyState: LoadState = { loading: daily.loading, error: daily.error, retry: daily.retry };
-  const empty = !view || view.current.tries === 0;
+  const empty = !view || view.current.attempts === 0;
   const vsLabel = range.key === "all" ? null : text({ en: `vs ${PREVIOUS_PHRASE[range.key].en}`, ja: `${PREVIOUS_PHRASE[range.key].ja}比` });
-  const minNote = { en: `Only items with at least ${MIN_ATTEMPTS} attempts in this range.`, ja: `この期間に${MIN_ATTEMPTS}回以上の有効な録音がある項目のみ。` };
+  const minNote = { en: `Only items with at least ${MIN_ATTEMPTS} attempts in this range.`, ja: `この期間に${MIN_ATTEMPTS}回以上の練習がある項目のみ。` };
 
   return (
     <div className="space-y-6">
       <Filters rangeKey={rangeKey} focus={focus} onRange={changeRange} onFocus={changeFocus} />
+
+      <ItemsLink />
 
       <p className="text-sm text-white/45">
         {range.start ? spanLabel(range.start, range.end) : text({ en: `All practice up to ${formatDayLong(range.end)}`, ja: `${formatDayLong(range.end)}までのすべての練習` })}
@@ -132,13 +134,13 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
       </div>
 
       {/* KPI cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Kpi
           state={dailyState}
-          label={text({ en: "Tries", ja: "練習回数" })}
-          value={view ? formatInt(view.current.tries) : ""}
-          detail={view ? text({ en: `${formatInt(view.current.attempts)} usable`, ja: `有効 ${formatInt(view.current.attempts)}` }) : ""}
-          delta={view && vsLabel ? <Delta value={relativeChange(view.current.tries, view.previous?.tries)} unit="%" label={vsLabel} /> : null}
+          label={text({ en: "Attempts", ja: "練習回数" })}
+          value={view ? formatInt(view.current.attempts) : ""}
+          detail={view ? text({ en: `Across ${formatInt(view.days)} ${view.days === 1 ? "day" : "days"}`, ja: `${formatInt(view.days)}日間` }) : ""}
+          delta={view && vsLabel ? <Delta value={relativeChange(view.current.attempts, view.previous?.attempts)} unit="%" label={vsLabel} /> : null}
         />
         <Kpi
           state={dailyState}
@@ -153,13 +155,6 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
           value={view ? formatScore(view.current.avgScore) : ""}
           detail={text({ en: "out of 100", ja: "100点満点" })}
           delta={view && vsLabel ? <Delta value={pointChange(view.current, view.previous, "avgScore")} unit=" pts" label={vsLabel} /> : null}
-        />
-        <Kpi
-          state={dailyState}
-          label={text({ en: "Days practised", ja: "練習した日数" })}
-          value={view ? formatInt(view.days) : ""}
-          detail={text({ en: "Days with any practice", ja: "練習があった日" })}
-          delta={view && vsLabel ? <Delta value={view.prevDays && view.prevDays > 0 ? view.days - view.prevDays : null} label={view.prevDays ? vsLabel : text({ en: "nothing to compare", ja: "比較なし" })} /> : null}
         />
       </div>
 
@@ -248,8 +243,24 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
   );
 }
 
-function spanLabel(start: string, end: string) {
-  return start === end ? formatDayLong(start) : `${formatDayLong(start)} – ${formatDayLong(end)}`;
+function ItemsLink() {
+  const { text } = useLanguage();
+  return (
+    <Link
+      href="/dashboard/items"
+      className="flex items-center justify-between gap-4 border border-white/10 bg-white/[0.02] px-5 py-4 transition hover:border-white/35 focus:outline-none focus-visible:border-white"
+    >
+      <span>
+        <span className="block text-sm font-semibold text-white">{text({ en: "All words & tongue twisters", ja: "すべての単語と早口文" })}</span>
+        <span className="block text-xs text-white/45">
+          {text({ en: "Browse every item and open its own stats.", ja: "項目ごとの記録を一覧で確認できます。" })}
+        </span>
+      </span>
+      <span aria-hidden="true" className="text-white/55">
+        →
+      </span>
+    </Link>
+  );
 }
 
 function relativeChange(current: number, previous: number | undefined) {
@@ -263,25 +274,6 @@ function pointChange(current: Stats, previous: Stats | null, key: "rate" | "avgS
   return a == null || b == null ? null : a - b;
 }
 
-function Kpi({ state, label, value, detail, delta }: { state: LoadState; label: string; value: string; detail: string; delta: React.ReactNode }) {
-  return (
-    <div className="flex min-h-36 flex-col justify-between gap-3 border border-white/10 bg-white/[0.02] p-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">{label}</p>
-      {state.loading ? (
-        <Skeleton height={64} />
-      ) : state.error ? (
-        <p className="text-sm text-white/45">—</p>
-      ) : (
-        <div className="space-y-1">
-          <p className="text-3xl font-semibold text-white">{value}</p>
-          <p className="text-xs text-white/45">{detail}</p>
-          {delta}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Filters({
   rangeKey,
   focus,
@@ -293,42 +285,46 @@ function Filters({
   onRange: (key: RangeKey) => void;
   onFocus: (focus: SoundFocus | null) => void;
 }) {
-  const { text } = useLanguage();
   return (
     <div className="flex flex-col gap-4 border border-white/10 bg-white/[0.02] p-4 sm:flex-row sm:items-end sm:justify-between">
-      <fieldset className="space-y-2">
-        <legend className="mb-2 text-xs uppercase tracking-[0.22em] text-white/35">{text({ en: "Date range", ja: "期間" })}</legend>
-        <div className="flex flex-wrap gap-2">
-          {RANGE_KEYS.map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={rangeKey === key}
-              onClick={() => onRange(key)}
-              className={`h-10 shrink-0 border px-4 text-sm font-semibold transition focus:outline-none focus-visible:ring-1 focus-visible:ring-white ${
-                rangeKey === key ? "border-white bg-white text-black" : "border-white/10 text-white/60 hover:border-white/35 hover:text-white"
-              }`}
-            >
-              {text(RANGE_LABELS[key])}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <label className="space-y-2 sm:w-64">
-        <span className="block text-xs uppercase tracking-[0.22em] text-white/35">{text({ en: "Sound focus", ja: "音" })}</span>
-        <select
-          value={focus ?? "all"}
-          onChange={(event) => onFocus(isSoundFocus(event.target.value) ? event.target.value : null)}
-          className="h-10 w-full border border-white/10 bg-black px-3 text-sm text-white outline-none transition focus:border-white/50"
-        >
-          <option value="all">{text({ en: "All sounds", ja: "すべての音" })}</option>
-          {SOUND_FOCUSES.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
-      </label>
+      <RangeToggle value={rangeKey} onChange={onRange} />
+      <FocusSelect value={focus} onChange={onFocus} />
     </div>
   );
+}
+
+export function RangeToggle({ value, onChange }: { value: RangeKey; onChange: (key: RangeKey) => void }) {
+  return (
+    <ToggleGroup
+      legend={{ en: "Date range", ja: "期間" }}
+      options={RANGE_KEYS.map((key) => ({ key, label: RANGE_LABELS[key] }))}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+export function FocusSelect({ value, onChange }: { value: SoundFocus | null; onChange: (focus: SoundFocus | null) => void }) {
+  const { text } = useLanguage();
+  return (
+    <label className="space-y-2 sm:w-64">
+      <span className="block text-xs uppercase tracking-[0.22em] text-white/35">{text({ en: "Sound focus", ja: "音" })}</span>
+      <select
+        value={value ?? "all"}
+        onChange={(event) => onChange(isSoundFocus(event.target.value) ? event.target.value : null)}
+        className="h-10 w-full border border-white/10 bg-black px-3 text-sm text-white outline-none transition focus:border-white/50"
+      >
+        <option value="all">{text({ en: "All sounds", ja: "すべての音" })}</option>
+        {SOUND_FOCUSES.map((f) => (
+          <option key={f} value={f}>
+            {f}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export function spanLabel(start: string, end: string) {
+  return start === end ? formatDayLong(start) : `${formatDayLong(start)} – ${formatDayLong(end)}`;
 }

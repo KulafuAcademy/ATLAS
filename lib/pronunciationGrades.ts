@@ -56,7 +56,7 @@ export function gradeByLetter(letter: string) {
 
 /**
  * Child-facing colours for `words[].status`. There is deliberately no red:
- * a word to practise is a soft amber, a skipped or "ok" word stays the theme
+ * a word to practice is a soft amber, a skipped or "ok" word stays the theme
  * white.
  */
 export const wordStatusColors: Record<WordStatus, string> = {
@@ -66,7 +66,7 @@ export const wordStatusColors: Record<WordStatus, string> = {
   skipped: "#ffffff",
 };
 
-/** The amber used for anything the child should practise. */
+/** The amber used for anything the child should practice. */
 export const practiceColor = wordStatusColors.practice;
 
 /**

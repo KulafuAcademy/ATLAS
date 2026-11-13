@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { tableClass, tdClass, thClass } from "@/components/dashboard/ui";
-import type { WordStats } from "@/lib/dashboard/aggregate";
+import { itemHref, type WordStats } from "@/lib/dashboard/aggregate";
 import { formatInt, formatRate, formatScore } from "@/lib/dashboard/format";
 
 const TOP = 15;
@@ -35,7 +36,7 @@ export function WordTable({ rows, kind, caption }: { rows: WordStats[]; kind: "w
                 {text({ en: "Sound focus", ja: "音" })}
               </th>
               <th scope="col" className={`${thClass} text-right`}>
-                {text({ en: "Attempts", ja: "有効回数" })}
+                {text({ en: "Attempts", ja: "練習回数" })}
               </th>
               <th scope="col" className={`${thClass} text-right`}>
                 {text({ en: "Perfect", ja: "満点" })}
@@ -52,7 +53,9 @@ export function WordTable({ rows, kind, caption }: { rows: WordStats[]; kind: "w
             {visible.map((w) => (
               <tr key={`${w.pairId}-${w.target}`}>
                 <th scope="row" className={`${tdClass} font-semibold text-white ${isWords ? "" : "min-w-64 max-w-md whitespace-normal"}`}>
-                  {w.text}
+                  <Link href={itemHref(w.pairId, w.target)} className="underline decoration-white/25 underline-offset-4 transition hover:decoration-white focus:outline-none focus-visible:decoration-white">
+                    {w.text}
+                  </Link>
                 </th>
                 {isWords ? <td className={tdClass}>{w.pairWord ?? "—"}</td> : null}
                 <td className={`${tdClass} whitespace-nowrap`}>{w.focus}</td>

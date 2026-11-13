@@ -578,7 +578,7 @@ export function ResultHeadline({
 }
 
 /**
- * Up to two sounds to practise, each with one tip. `moreCount` is
+ * Up to two sounds to practice, each with one tip. `moreCount` is
  * deliberately not shown: children only see what to work on now.
  */
 export function FocusList({

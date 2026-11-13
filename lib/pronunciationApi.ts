@@ -63,14 +63,14 @@ export type PronunciationWord = {
  */
 export type WordStatus = "great" | "ok" | "practice" | "skipped";
 
-/** Something the learner did well, shown before anything to practise. */
+/** Something the learner did well, shown before anything to practice. */
 export type PronunciationPraise = {
   word: string | null;
   message: string;
   messageJa: string;
 };
 
-/** One sound to practise, grouped across every word it happened in. */
+/** One sound to practice, grouped across every word it happened in. */
 export type PronunciationFocus = {
   /** The target sound, e.g. "r", "v", "ee". */
   sound: string | null;
@@ -106,7 +106,7 @@ export type AnalyzeSuccess = {
   /** Missing on older servers. */
   praise?: PronunciationPraise;
   /**
-   * 0–2 sounds to practise (max 1 for grade A/B); empty means nothing to
+   * 0–2 sounds to practice (max 1 for grade A/B); empty means nothing to
    * fix. Missing on older servers, which fall back to `issues`.
    */
   focus?: PronunciationFocus[];

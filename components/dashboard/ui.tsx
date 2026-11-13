@@ -137,6 +137,61 @@ export function DataTableToggle({ label, children }: { label: LocalizedText; chi
   );
 }
 
+/** A KPI card with loading and error states. */
+export function Kpi({ state, label, value, detail, delta }: { state: LoadState; label: string; value: string; detail: string; delta?: ReactNode }) {
+  return (
+    <div className="flex min-h-36 flex-col justify-between gap-3 border border-white/10 bg-white/[0.02] p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">{label}</p>
+      {state.loading ? (
+        <Skeleton height={64} />
+      ) : state.error ? (
+        <p className="text-sm text-white/45">—</p>
+      ) : (
+        <div className="space-y-1">
+          <p className="text-3xl font-semibold text-white">{value}</p>
+          <p className="text-xs text-white/45">{detail}</p>
+          {delta}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A row of toggle buttons (one pressed at a time). */
+export function ToggleGroup<K extends string>({
+  legend,
+  options,
+  value,
+  onChange,
+}: {
+  legend: LocalizedText;
+  options: { key: K; label: LocalizedText }[];
+  value: K;
+  onChange: (key: K) => void;
+}) {
+  const { text } = useLanguage();
+  return (
+    <fieldset className="space-y-2">
+      <legend className="mb-2 text-xs uppercase tracking-[0.22em] text-white/35">{text(legend)}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            aria-pressed={value === option.key}
+            onClick={() => onChange(option.key)}
+            className={`h-10 shrink-0 border px-4 text-sm font-semibold transition focus:outline-none focus-visible:ring-1 focus-visible:ring-white ${
+              value === option.key ? "border-white bg-white text-black" : "border-white/10 text-white/60 hover:border-white/35 hover:text-white"
+            }`}
+          >
+            {text(option.label)}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export const tableClass = "w-full min-w-max border-collapse text-left text-sm tabular-nums";
 export const thClass = "border-b border-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-white/40";
 export const tdClass = "border-b border-white/[0.06] px-3 py-2 text-white/75";

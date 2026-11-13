@@ -37,7 +37,7 @@ export function FocusBars({
               <span className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="font-semibold text-white">{p.focus}</span>
                 <span className="tabular-nums text-white/65">
-                  {formatRate(p.rate)} · {formatInt(p.tries)} {text({ en: "tries", ja: "回" })}
+                  {formatRate(p.rate)} · {formatInt(p.attempts)} {text({ en: "attempts", ja: "回" })}
                 </span>
               </span>
               <span aria-hidden="true" className="mt-2 block h-2 w-full rounded-full bg-white/[0.06]">
@@ -46,9 +46,9 @@ export function FocusBars({
               <HoverTip>
                 <strong className="text-white">{p.focus}</strong>
                 <br />
-                Perfect: {formatInt(p.perfect)} of {formatInt(p.attempts)} usable ({formatRate(p.rate)})
+                Perfect: {formatInt(p.perfect)} of {formatInt(p.attempts)} attempts ({formatRate(p.rate)})
                 <br />
-                Tries: {formatInt(p.tries)} · Avg score: {formatScore(p.avgScore)}
+                Avg score: {formatScore(p.avgScore)}
                 <br />
                 <span className="text-white/50">{isSelected ? "Click to show all sounds" : "Click to filter to this sound"}</span>
               </HoverTip>

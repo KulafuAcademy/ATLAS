@@ -15,7 +15,7 @@ const MARGIN = { top: 8, right: 16, bottom: 0, left: 0 };
 type Datum = DayPoint & { label: string };
 
 /**
- * Perfect rate per day, with tries in a short panel underneath that shares
+ * Perfect rate per day, with attempts in a short panel underneath that shares
  * the x-axis (two aligned panels instead of a dual-axis chart). The x-axis is
  * categorical, so only days with data appear; days without practice leave no gap.
  */
@@ -26,15 +26,15 @@ export function TrendChart({ days }: { days: DayPoint[] }) {
   const data: Datum[] = days.map((d) => ({ ...d, label: formatDay(d.day) }));
   const first = days[0];
   const last = days[days.length - 1];
-  const ariaLabel = `Line chart of perfect rate per day with practice from ${formatDayLong(first.day)} to ${formatDayLong(last.day)}, ${days.length} days. Latest day ${formatRate(last.rate)} perfect from ${formatInt(last.tries)} tries. Bars underneath show tries per day.`;
+  const ariaLabel = `Line chart of perfect rate per day with practice from ${formatDayLong(first.day)} to ${formatDayLong(last.day)}, ${days.length} days. Latest day ${formatRate(last.rate)} perfect from ${formatInt(last.attempts)} attempts. Bars underneath show attempts per day.`;
 
   const tooltip = ({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ payload?: Datum }> }) => {
     const d = active ? payload?.[0]?.payload : undefined;
     if (!d) return null;
     return (
       <ChartTooltipBox title={formatDayLong(d.day)}>
-        <p>Perfect rate: {formatRate(d.rate)} ({formatInt(d.perfect)} of {formatInt(d.attempts)} usable)</p>
-        <p>Tries: {formatInt(d.tries)}</p>
+        <p>Perfect rate: {formatRate(d.rate)} ({formatInt(d.perfect)} of {formatInt(d.attempts)})</p>
+        <p>Attempts: {formatInt(d.attempts)}</p>
         <p>Average score: {formatScore(d.avgScore)}</p>
       </ChartTooltipBox>
     );
@@ -84,7 +84,7 @@ export function TrendChart({ days }: { days: DayPoint[] }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="mb-1 mt-3 text-xs text-white/45">{text({ en: "Tries", ja: "練習回数" })}</p>
+        <p className="mb-1 mt-3 text-xs text-white/45">{text({ en: "Attempts", ja: "練習回数" })}</p>
         <div className="h-24">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} syncId="dashboard-trend" margin={MARGIN} barCategoryGap={2}>
@@ -100,7 +100,7 @@ export function TrendChart({ days }: { days: DayPoint[] }) {
                 axisLine={false}
               />
               <Tooltip content={tooltip} cursor={{ fill: "rgba(255,255,255,0.05)" }} />
-              <Bar dataKey="tries" fill={theme.muted} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+              <Bar dataKey="attempts" fill={theme.muted} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -110,8 +110,7 @@ export function TrendChart({ days }: { days: DayPoint[] }) {
           <thead>
             <tr>
               <th className={thClass}>{text({ en: "Day", ja: "日付" })}</th>
-              <th className={`${thClass} text-right`}>{text({ en: "Tries", ja: "練習回数" })}</th>
-              <th className={`${thClass} text-right`}>{text({ en: "Usable", ja: "有効" })}</th>
+              <th className={`${thClass} text-right`}>{text({ en: "Attempts", ja: "練習回数" })}</th>
               <th className={`${thClass} text-right`}>{text({ en: "Perfect rate", ja: "満点率" })}</th>
               <th className={`${thClass} text-right`}>{text({ en: "Avg score", ja: "平均点" })}</th>
             </tr>
@@ -120,7 +119,6 @@ export function TrendChart({ days }: { days: DayPoint[] }) {
             {[...days].reverse().map((d) => (
               <tr key={d.day}>
                 <td className={tdClass}>{formatDayLong(d.day)}</td>
-                <td className={`${tdClass} text-right`}>{formatInt(d.tries)}</td>
                 <td className={`${tdClass} text-right`}>{formatInt(d.attempts)}</td>
                 <td className={`${tdClass} text-right`}>{formatRate(d.rate)}</td>
                 <td className={`${tdClass} text-right`}>{formatScore(d.avgScore)}</td>

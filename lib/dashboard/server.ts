@@ -12,7 +12,7 @@ import { staffAuthConfig } from "@/lib/staff-auth";
 // filtered by date and paged with .range() until a short page comes back.
 
 const PAGE_SIZE = 1000;
-const DAILY_COLUMNS = "day,sound_focus,pair_no,pair_id,target,text,pair_word,tries,attempts,perfect,avg_score";
+const DAILY_COLUMNS = "day,sound_focus,pair_no,pair_id,target,text,pair_word,attempts,perfect,avg_score";
 
 let client: SupabaseClient | null = null;
 

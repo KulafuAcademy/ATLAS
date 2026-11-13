@@ -134,7 +134,7 @@ Do not set `Content-Type` yourself. The browser adds the multipart boundary.
 **Child-facing fields.** The child view uses these, never `issues` or any number:
 
 - `praise`: shown first, as the headline (`messageJa` in Japanese mode).
-- `focus`: 0–2 sounds to practise (max 1 for grade A/B), each with `message` and `tip` (and `...Ja` versions, both ≤ 80 chars). An empty array means nothing to fix.
+- `focus`: 0–2 sounds to practice (max 1 for grade A/B), each with `message` and `tip` (and `...Ja` versions, both ≤ 80 chars). An empty array means nothing to fix.
 - `moreCount`: practice items left out of `focus`. **Not shown**, so children only see what to work on now.
 - `words[].status`: from the word's sound-by-sound alignment. `"great"` = every sound right, nothing extra. `"practice"` = at least one sound wrong, missing or extra. `"skipped"` = the word wasn't said at all. `"ok"` is only sent by older servers. Every word in `focus[].wordIndexes` is `"practice"` or `"skipped"`, but there can be more amber words than `focus` shows (it holds at most 2), so don't assume amber means "in focus".
 
