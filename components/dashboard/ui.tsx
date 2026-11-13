@@ -50,7 +50,28 @@ export function Section({ id, eyebrow, title, note, wide, skeletonHeight, state,
 }
 
 export function Skeleton({ height, className = "" }: { height: number; className?: string }) {
-  return <div aria-hidden="true" className={`animate-pulse bg-white/[0.06] ${className}`} style={{ height }} />;
+  return <div aria-hidden="true" className={`skeleton-shimmer ${className}`} style={{ height }} />;
+}
+
+/**
+ * Spinner + "Loading data…" while a query runs. The row keeps its height when
+ * idle so the page doesn't jump, and screen readers hear when loading starts.
+ */
+export function LoadingNotice({ loading }: { loading: boolean }) {
+  const { text } = useLanguage();
+  return (
+    <div role="status" aria-live="polite" className="flex h-5 items-center gap-2.5 text-sm text-white/60">
+      {loading ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white motion-reduce:animate-none"
+          />
+          {text({ en: "Loading data…", ja: "データを読み込み中…" })}
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 export function ErrorState({ message, onRetry, height }: { message: string; onRetry: () => void; height?: number }) {

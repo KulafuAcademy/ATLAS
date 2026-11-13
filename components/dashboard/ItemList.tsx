@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useLanguage } from "@/components/language/LanguageProvider";
 import { FocusSelect, RangeToggle } from "@/components/dashboard/Dashboard";
 import { useAsync } from "@/components/dashboard/hooks";
-import { Section, ToggleGroup, tableClass, tdClass, thClass } from "@/components/dashboard/ui";
+import { LoadingNotice, Section, ToggleGroup, tableClass, tdClass, thClass } from "@/components/dashboard/ui";
 import { byWord, compareItems, filterRows, itemHref, type SoundFocus, type WordStats } from "@/lib/dashboard/aggregate";
 import { fetchDailyStats } from "@/lib/dashboard/data";
 import { resolveRange, type RangeKey } from "@/lib/dashboard/dates";
@@ -126,6 +126,8 @@ export function ItemList({ initialKind, initialRange, initialFocus, today }: Ite
           </label>
         </div>
       </div>
+
+      <LoadingNotice loading={daily.loading} />
 
       <Section
         id="items"

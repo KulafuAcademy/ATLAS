@@ -10,7 +10,7 @@ import { TrendChart } from "@/components/dashboard/TrendChart";
 import { WeeklyFocusChart } from "@/components/dashboard/WeeklyFocusChart";
 import { WordTable } from "@/components/dashboard/WordTable";
 import { useAsync } from "@/components/dashboard/hooks";
-import { Delta, ErrorState, Kpi, Section, Skeleton, ToggleGroup, type LoadState } from "@/components/dashboard/ui";
+import { Delta, ErrorState, Kpi, LoadingNotice, Section, Skeleton, ToggleGroup, type LoadState } from "@/components/dashboard/ui";
 import {
   SOUND_FOCUSES,
   byDay,
@@ -109,6 +109,8 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
       <Filters rangeKey={rangeKey} focus={focus} onRange={changeRange} onFocus={changeFocus} />
 
       <ItemsLink />
+
+      <LoadingNotice loading={daily.loading} />
 
       <p className="text-sm text-white/45">
         {range.start ? spanLabel(range.start, range.end) : text({ en: `All practice up to ${formatDayLong(range.end)}`, ja: `${formatDayLong(range.end)}までのすべての練習` })}

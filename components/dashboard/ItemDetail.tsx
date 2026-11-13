@@ -7,7 +7,7 @@ import { useLanguage } from "@/components/language/LanguageProvider";
 import { RangeToggle, spanLabel } from "@/components/dashboard/Dashboard";
 import { TrendChart } from "@/components/dashboard/TrendChart";
 import { useAsync } from "@/components/dashboard/hooks";
-import { ErrorState, Kpi, Section, Skeleton, tableClass, tdClass, thClass, type LoadState } from "@/components/dashboard/ui";
+import { ErrorState, Kpi, LoadingNotice, Section, Skeleton, tableClass, tdClass, thClass, type LoadState } from "@/components/dashboard/ui";
 import { byDay, byWord, compareItems, filterRows, itemHref, totals, type Target, type WordStats } from "@/lib/dashboard/aggregate";
 import { fetchDailyStats } from "@/lib/dashboard/data";
 import { formatDayLong, resolveRange, type RangeKey } from "@/lib/dashboard/dates";
@@ -71,6 +71,8 @@ export function ItemDetail({ pairId, target, initialRange, today }: ItemDetailPr
       <Link href="/dashboard/items" className="inline-block text-sm text-white/55 transition hover:text-white focus:outline-none focus-visible:text-white">
         ← {text({ en: "All words & tongue twisters", ja: "すべての単語と早口文" })}
       </Link>
+
+      <LoadingNotice loading={daily.loading} />
 
       {/* Title */}
       <div className="min-h-24 space-y-3">
