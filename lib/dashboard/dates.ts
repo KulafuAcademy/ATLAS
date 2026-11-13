@@ -81,10 +81,14 @@ export function formatWeek(monday: string) {
   return a.m === b.m ? `${MONTHS[a.m - 1]} ${a.d}–${b.d}` : `${formatDay(monday)} – ${formatDay(sunday)}`;
 }
 
-export type RangeKey = "today" | "week" | "4w" | "all";
+export type RangeKey = "today" | "week" | "month" | "all";
 
-export const RANGE_KEYS: RangeKey[] = ["today", "week", "4w", "all"];
+export const RANGE_KEYS: RangeKey[] = ["today", "week", "month", "all"];
 
+/** First day of the month containing `day`. */
+export function monthStart(day: string) {
+  return `${day.slice(0, 7)}-01`;
+}
 
 export type DateRange = {
   key: RangeKey;
@@ -97,10 +101,10 @@ export type DateRange = {
 };
 
 /**
- * "Today" compares with yesterday. Week ranges are aligned to Monday so they
- * line up with the Monday–Sunday weeks of the weekly chart: "This week" is
- * Monday → today; "Last 4 weeks" is this week plus the three before it. The
- * previous period is the same span shifted back.
+ * "Today" compares with yesterday. "This week" is Monday → today (lining up
+ * with the Monday–Sunday weeks of the weekly chart) and compares with the same
+ * days of last week. "This month" is the 1st → today and compares with the
+ * same days of last month, cut off at last month's final day.
  */
 export function resolveRange(key: RangeKey, today: string = todayInManila()): DateRange {
   if (key === "all") return { key, start: null, end: today, previous: null };
@@ -108,14 +112,20 @@ export function resolveRange(key: RangeKey, today: string = todayInManila()): Da
     const yesterday = addDays(today, -1);
     return { key, start: today, end: today, previous: { start: yesterday, end: yesterday } };
   }
-  const weeks = key === "week" ? 1 : 4;
-  const start = addDays(weekStart(today), -7 * (weeks - 1));
-  const shift = -7 * weeks;
+  if (key === "month") {
+    const start = monthStart(today);
+    const lastMonthEnd = addDays(start, -1);
+    const lastMonthStart = monthStart(lastMonthEnd);
+    const sameDay = addDays(lastMonthStart, parts(today).d - 1);
+    const prevEnd = sameDay > lastMonthEnd ? lastMonthEnd : sameDay;
+    return { key, start, end: today, previous: { start: lastMonthStart, end: prevEnd } };
+  }
+  const start = weekStart(today);
   return {
     key,
     start,
     end: today,
-    previous: { start: addDays(start, shift), end: addDays(today, shift) },
+    previous: { start: addDays(start, -7), end: addDays(today, -7) },
   };
 }
 

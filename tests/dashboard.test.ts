@@ -62,16 +62,23 @@ test("weekend practice counts as days and joins its Monday–Sunday week", () =>
   assert.deepEqual(weeks.map((w) => [w.week, w["R vs L"]?.attempts]), [["2026-11-09", 30], ["2026-11-16", 10]]);
 });
 
-test("ranges are Monday-aligned with an equal previous period", () => {
+test("week is Monday-aligned and month starts on the 1st, each vs the same days before", () => {
   assert.deepEqual(resolveRange("week", "2026-11-13"), {
     key: "week",
     start: "2026-11-09",
     end: "2026-11-13",
     previous: { start: "2026-11-02", end: "2026-11-06" },
   });
-  const fourWeeks = resolveRange("4w", "2026-11-13");
-  assert.equal(fourWeeks.start, "2026-10-19");
-  assert.deepEqual(fourWeeks.previous, { start: "2026-09-21", end: "2026-10-16" });
+  assert.deepEqual(resolveRange("month", "2026-11-13"), {
+    key: "month",
+    start: "2026-11-01",
+    end: "2026-11-13",
+    previous: { start: "2026-10-01", end: "2026-10-13" },
+  });
+  // March 31 compares with all of February, not a day past its end.
+  assert.deepEqual(resolveRange("month", "2026-03-31").previous, { start: "2026-02-01", end: "2026-02-28" });
+  // January compares with December of the year before.
+  assert.deepEqual(resolveRange("month", "2026-01-05").previous, { start: "2025-12-01", end: "2025-12-05" });
   assert.equal(resolveRange("all", "2026-11-13").previous, null);
 });
 
@@ -111,7 +118,7 @@ test("pair gaps and hardest words", () => {
 
 test("summary sentence reports change in points and the hardest sound", () => {
   const summary = buildSummary({
-    range: "4w",
+    range: "month",
     focus: null,
     current: { tries: 3480, attempts: 3000, perfect: 1740, rate: 58, avgScore: 70 },
     previous: { tries: 3000, attempts: 2500, perfect: 1225, rate: 49, avgScore: 65 },
@@ -120,6 +127,6 @@ test("summary sentence reports change in points and the hardest sound", () => {
   });
   assert.equal(
     typeof summary === "object" && summary?.en,
-    "Over the last 4 weeks kids made 3,480 tries; 58% of usable tries were perfect, up 9 points from the previous 4 weeks. TH sounds is the hardest sound.",
+    "This month kids made 3,480 tries; 58% of usable tries were perfect, up 9 points from last month. TH sounds is the hardest sound.",
   );
 });

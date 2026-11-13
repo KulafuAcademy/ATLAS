@@ -25,7 +25,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         }}
       />
       <Dashboard
-        initialRange={isRangeKey(query.range) ? query.range : "4w"}
+        initialRange={isRangeKey(query.range) ? query.range : "today"}
         initialFocus={isSoundFocus(query.focus) ? query.focus : null}
         today={todayInManila()}
       />

@@ -6,21 +6,21 @@ import { formatInt, formatRate } from "@/lib/dashboard/format";
 export const RANGE_LABELS: Record<RangeKey, { en: string; ja: string }> = {
   today: { en: "Today", ja: "今日" },
   week: { en: "This week", ja: "今週" },
-  "4w": { en: "Last 4 weeks", ja: "過去4週間" },
+  month: { en: "This month", ja: "今月" },
   all: { en: "All time", ja: "全期間" },
 };
 
 const PERIOD_PHRASE: Record<RangeKey, { en: string; ja: string }> = {
   today: { en: "Today", ja: "今日" },
   week: { en: "This week", ja: "今週" },
-  "4w": { en: "Over the last 4 weeks", ja: "過去4週間で" },
+  month: { en: "This month", ja: "今月" },
   all: { en: "Since practice began", ja: "これまでに" },
 };
 
 export const PREVIOUS_PHRASE: Record<Exclude<RangeKey, "all">, { en: string; ja: string }> = {
   today: { en: "yesterday", ja: "昨日" },
   week: { en: "last week", ja: "先週" },
-  "4w": { en: "the previous 4 weeks", ja: "その前の4週間" },
+  month: { en: "last month", ja: "先月" },
 };
 
 type SummaryInput = {

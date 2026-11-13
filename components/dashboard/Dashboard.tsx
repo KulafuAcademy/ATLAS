@@ -45,7 +45,7 @@ export function Dashboard({ initialRange, initialFocus, today }: DashboardProps)
   const [focus, setFocus] = useState<SoundFocus | null>(initialFocus);
   const range = useMemo(() => resolveRange(rangeKey, today), [rangeKey, today]);
 
-  // Keep the view shareable: ?range=4w&focus=TH+sounds
+  // Keep the view shareable: ?range=month&focus=TH+sounds
   const updateUrl = (nextRange: RangeKey, nextFocus: SoundFocus | null) => {
     const params = new URLSearchParams();
     params.set("range", nextRange);
